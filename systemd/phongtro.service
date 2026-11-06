@@ -1,0 +1,17 @@
+[Unit]
+Description=PhongTro Online Spring Boot Backend Service
+After=syslog.target network.target mysql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/phongtro
+EnvironmentFile=/opt/phongtro/.env
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom -jar /opt/phongtro/service-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
