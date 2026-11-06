@@ -4,7 +4,7 @@ Hệ thống Backend Service cho dự án **PhongTro Online** (Hệ thống Thu�
 
 ---
 
-## 🏛️ Cấu trúc dự án (`com.service`)
+## Cấu trúc dự án (`com.service`)
 
 ```text
 service/src/main/java/com/service/
@@ -29,7 +29,7 @@ service/src/main/java/com/service/
 
 ---
 
-## 🚀 Hướng dẫn Build & Khởi Chạy
+## Hướng dẫn Build & Khởi Chạy
 
 ### 1. Thiết lập biến môi trường
 ```bash
@@ -51,7 +51,7 @@ cd service
 
 ---
 
-## 🧪 Kiểm thử API đã hoàn thiện
+##  Kiểm thử API đã hoàn thiện
 
 * **Đăng nhập**:
   ```bash
