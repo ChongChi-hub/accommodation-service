@@ -5,6 +5,13 @@ services:
     image: mysql:8.0
     container_name: phongtro_mysql
     restart: always
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=256M
+      --max_connections=150
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    mem_limit: 1g
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword123}
       MYSQL_DATABASE: room_rental
@@ -15,7 +22,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ../server/database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -30,20 +37,21 @@ services:
       dockerfile: Dockerfile
     container_name: phongtro_backend
     restart: always
+    mem_limit: 1.2g
     depends_on:
       mysql:
         condition: service_healthy
     environment:
-      PORT: 8080
+      PORT: 8085
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: room_rental
       DB_USER: ${DB_USER:-phongtro_user}
       DB_PASSWORD: ${DB_PASSWORD:-phongtro_pass123}
       JWT_SECRET: ${JWT_SECRET:-phongtro_super_secret_key_change_in_production_2024}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
     ports:
-      - "8080:8080"
+      - "8085:8085"
     volumes:
       - uploads_data:/app/uploads
     networks:
@@ -56,4 +64,3 @@ volumes:
 networks:
   phongtro_network:
     driver: bridge
-
