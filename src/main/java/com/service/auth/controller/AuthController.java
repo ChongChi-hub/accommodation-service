@@ -32,6 +32,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
     }
 
+    @PostMapping("/google-login")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthResponse response = authService.googleLogin(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập Google thành công", response));
+    }
+
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserDto>> getProfile(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();

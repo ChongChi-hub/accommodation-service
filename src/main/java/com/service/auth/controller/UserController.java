@@ -1,5 +1,6 @@
 package com.service.auth.controller;
 
+import com.service.admin.service.AdminService;
 import com.service.auth.dto.KycReviewRequest;
 import com.service.auth.dto.KycSubmitRequest;
 import com.service.auth.dto.UserDto;
@@ -13,15 +14,31 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
 
     private final AuthService authService;
+    private final AdminService adminService;
 
-    public UserController(AuthService authService) {
+    public UserController(AuthService authService, AdminService adminService) {
         this.authService = authService;
+        this.adminService = adminService;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> listUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String kycStatus
+    ) {
+        Map<String, Object> result = adminService.listAllUsers(role, search, kycStatus, page, limit);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")

@@ -12,12 +12,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class AuthService {
@@ -239,6 +244,63 @@ public class AuthService {
                 user.setIsVerified(true);
             }
             userRepository.save(user);
+        }
+    }
+
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest request) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest googleReq = HttpRequest.newBuilder()
+                    .uri(URI.create("https://www.googleapis.com/oauth2/v3/userinfo"))
+                    .header("Authorization", "Bearer " + request.getToken())
+                    .GET()
+                    .build();
+
+            HttpResponse<String> googleRes = client.send(googleReq, HttpResponse.BodyHandlers.ofString());
+            if (googleRes.statusCode() != 200) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Invalid Google Access Token");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> payload = mapper.readValue(googleRes.body(), Map.class);
+            String email = (String) payload.get("email");
+            String name = (String) payload.get("name");
+            String picture = (String) payload.get("picture");
+
+            if (email == null || email.isBlank()) {
+                throw new AppException(HttpStatus.BAD_REQUEST, "Không lấy được email từ Google");
+            }
+
+            UserEntity user = userRepository.findByEmail(email).orElse(null);
+            if (user == null) {
+                String randomPass = UUID.randomUUID().toString();
+                user = UserEntity.builder()
+                        .id(UUID.randomUUID().toString())
+                        .email(email)
+                        .fullName(name != null ? name : "Google User")
+                        .phone("")
+                        .passwordHash(passwordEncoder.encode(randomPass))
+                        .avatarUrl(picture)
+                        .role("tenant")
+                        .isVerified(true)
+                        .kycStatus("unverified")
+                        .build();
+                user = userRepository.save(user);
+            }
+
+            String token = jwtUtils.generateAccessToken(user.getId(), user.getEmail(), user.getRole(), user.getKycStatus());
+            String refreshToken = jwtUtils.generateRefreshToken(user.getId());
+
+            return AuthResponse.builder()
+                    .user(mapToUserDto(user))
+                    .token(token)
+                    .refreshToken(refreshToken)
+                    .build();
+        } catch (AppException ae) {
+            throw ae;
+        } catch (Exception e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi đăng nhập Google: " + e.getMessage());
         }
     }
 }

@@ -62,6 +62,9 @@ public class SecurityConfig {
                         // Pre-flight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // Health check & static uploads
+                        .requestMatchers("/api/v1/health", "/uploads/**").permitAll()
+
                         // Public Auth endpoints
                         .requestMatchers(
                                 "/api/v1/auth/register",
