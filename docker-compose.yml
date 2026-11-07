@@ -35,6 +35,16 @@ services:
     networks:
       - toam_network
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: toam_mailpit
+    restart: always
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - toam_network
+
   api-gateway:
     build:
       context: .
@@ -71,6 +81,106 @@ services:
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
       JWT_SECRET: ${JWT_SECRET:-toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+  listing-service:
+    build:
+      context: .
+      dockerfile: listing-service/Dockerfile
+    container_name: toam_listing
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_listing
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: booking-service/Dockerfile
+    container_name: toam_booking
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_booking
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: billing-service/Dockerfile
+    container_name: toam_billing
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_billing
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+  communication-service:
+    build:
+      context: .
+      dockerfile: communication-service/Dockerfile
+    container_name: toam_communication
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_communication
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    container_name: toam_admin
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_admin
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy

@@ -19,17 +19,23 @@ public class AuthController {
     private final RefreshTokenUseCase refreshTokenUseCase;
     private final GetProfileUseCase getProfileUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
+    private final ForgotPasswordUseCase forgotPasswordUseCase;
+    private final ResetPasswordUseCase resetPasswordUseCase;
 
     public AuthController(RegisterUseCase registerUseCase,
                           LoginUseCase loginUseCase,
                           RefreshTokenUseCase refreshTokenUseCase,
                           GetProfileUseCase getProfileUseCase,
-                          ChangePasswordUseCase changePasswordUseCase) {
+                          ChangePasswordUseCase changePasswordUseCase,
+                          ForgotPasswordUseCase forgotPasswordUseCase,
+                          ResetPasswordUseCase resetPasswordUseCase) {
         this.registerUseCase = registerUseCase;
         this.loginUseCase = loginUseCase;
         this.refreshTokenUseCase = refreshTokenUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.changePasswordUseCase = changePasswordUseCase;
+        this.forgotPasswordUseCase = forgotPasswordUseCase;
+        this.resetPasswordUseCase = resetPasswordUseCase;
     }
 
     @PostMapping("/register")
@@ -83,6 +89,22 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         return ResponseEntity.ok(ApiResponse.message("Đăng xuất thành công"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordCommand command,
+                                                            HttpServletRequest request) {
+        if (command.getIpAddress() == null) {
+            command.setIpAddress(request.getRemoteAddr());
+        }
+        forgotPasswordUseCase.execute(command);
+        return ResponseEntity.ok(ApiResponse.message("Nếu email tồn tại trên hệ thống, mã xác thực OTP đã được gửi đến hộp thư của bạn."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordCommand command) {
+        resetPasswordUseCase.execute(command);
+        return ResponseEntity.ok(ApiResponse.message("Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
     }
 }
 
