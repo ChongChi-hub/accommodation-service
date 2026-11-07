@@ -60,3 +60,22 @@
 | Cổng chặn đăng tin trên UI | Chưa có | Thêm cảnh báo banner trên Landlord Dashboard và Rooms list khi KYC chưa APPROVED. Nút "Gửi duyệt" bị vô hiệu kèm tooltip giải thích và liên kết KYC. |
 | Quản lý duyệt KYC Admin/Moderator | Dùng `StaticAdminRepository` | Nối API kiểm duyệt thật `/api/v1/moderation/kyc/**`, hiển thị ảnh đối chiếu hai mặt có zoom, cảnh báo ghi nhật ký xem, modal phê duyệt / từ chối với lý do chuẩn. |
 
+---
+
+## 5. Kết quả hoàn thành & Nghiệm thu
+
+- **Backend (accommodation-service)**:
+  - Hoàn tất migration `V4__user_profile_and_kyc_schema.sql` và seed dev lặp lại `R__03_seed_profile_and_kyc.sql`.
+  - Bộ sinh ảnh seed `IdentitySeedAssetLoader` đóng dấu bản quyền mờ synthetic watermark "MẪU - KHÔNG PHẢI GIẤY TỜ THẬT" cho thẻ CCCD, mã hoá AES-256-GCM và băm HMAC-SHA256 chuẩn bảo mật.
+  - Cổng KYC Gate trên `listing-service` chặn chủ trọ chưa được duyệt (`ERR_KYC_REQUIRED`, HTTP 403) với chính sách fail-closed và cache 60s.
+  - Toàn bộ test suite backend và ArchUnit DDD xanh 100% (`.\gradlew test` BUILD SUCCESSFUL).
+- **Frontend (accommodation-web)**:
+  - Bổ sung domain entities `UserProfile`, `LandlordKyc` và các repositories `KycRepository`, `HttpKycRepository`, `HttpAuthRepository` với đầy đủ use cases.
+  - `UserProfileView` hoàn chỉnh với `AvatarManager`, `UserProfileForm` (địa giới 2 cấp Tỉnh/Thành -> Phường/Xã, phiên bản lạc quan 409) và `UserChangePasswordView` (thước đo độ mạnh mật khẩu, cảnh báo thu hồi phiên).
+  - `/dashboard/landlord/kyc` hỗ trợ trọn vẹn 4 trạng thái (`NONE`, `PENDING`, `APPROVED`, `REJECTED`) cùng luồng nộp lại khi bị từ chối.
+  - Cổng KYC Gate banner và kiểm tra điều kiện duyệt tin trên giao diện chủ trọ.
+  - Trang duyệt KYC Admin & Moderator nối API thật, xem ảnh đối chiếu 2 mặt bảo mật có zoom và dialog phê duyệt/từ chối kèm lý do chuẩn hoá.
+  - 100% parity i18n (`vi.json` và `en.json`: 673 keys).
+  - Next.js production build (`npm run build`) xanh 100% (160/160 routes). Tất cả các file đều tuân thủ giới hạn $\le 250$ dòng và không chứa emoji.
+
+
