@@ -66,3 +66,4 @@ docker compose up -d --build
 * **Tài liệu đặc tả (SRS):** Xem tại [`docs/SRS.md`](./docs/SRS.md).
 * **Quyết định kiến trúc (ADR):** Xem tại [`docs/DECISIONS.md`](./docs/DECISIONS.md).
 * **Schema cũ tham chiếu:** Xem tại [`docs/legacy/schema.sql`](./docs/legacy/schema.sql).
+
