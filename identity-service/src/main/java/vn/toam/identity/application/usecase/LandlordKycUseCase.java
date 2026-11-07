@@ -106,9 +106,18 @@ public class LandlordKycUseCase {
 
         Optional<UserVerification> existingOpt = verificationRepository.findByUserId(landlordId);
         if (existingOpt.isPresent()) {
-            KycStatus currentStatus = existingOpt.get().getStatus();
+            UserVerification existing = existingOpt.get();
+            KycStatus currentStatus = existing.getStatus();
             if (currentStatus == KycStatus.PENDING || currentStatus == KycStatus.APPROVED) {
                 throw new IdentityDomainException("Ho so dang cho duyet hoac da duoc xac minh", "ERR_KYC_ALREADY_SUBMITTED");
+            }
+            if (existing.getAttemptCount() >= MAX_SUBMISSIONS_PER_DAY &&
+                    existing.getSubmittedAt() != null &&
+                    existing.getSubmittedAt().isAfter(java.time.Instant.now().minus(java.time.Duration.ofHours(24)))) {
+                throw new IdentityDomainException(
+                        "Ban da vuot qua so lan nop ho so KYC trong 24 gio (toi da 3 lan). Vui long thu lai sau.",
+                        "ERR_KYC_RATE_LIMIT_EXCEEDED"
+                );
             }
         }
 
