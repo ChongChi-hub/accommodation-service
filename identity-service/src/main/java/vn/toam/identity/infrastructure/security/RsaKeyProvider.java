@@ -27,6 +27,10 @@ public class RsaKeyProvider {
     private final RSAPrivateKey privateKey;
     private final RSAPublicKey publicKey;
 
+    public RsaKeyProvider() {
+        this(null, null);
+    }
+
     public RsaKeyProvider(
             @Value("${jwt.private-key:}") String privateKeyPem,
             @Value("${jwt.public-key:}") String publicKeyPem) {

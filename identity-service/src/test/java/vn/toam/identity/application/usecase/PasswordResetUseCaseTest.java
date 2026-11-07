@@ -10,6 +10,7 @@ import vn.toam.identity.application.dto.ForgotPasswordCommand;
 import vn.toam.identity.application.dto.ResetPasswordCommand;
 import vn.toam.identity.application.port.EmailServicePort;
 import vn.toam.identity.application.port.PasswordEncoderPort;
+import vn.toam.identity.application.port.RateLimiterPort;
 import vn.toam.identity.domain.exception.IdentityDomainException;
 import vn.toam.identity.domain.model.User;
 import vn.toam.identity.domain.model.UserRoleType;
@@ -39,13 +40,15 @@ class PasswordResetUseCaseTest {
     private PasswordEncoderPort passwordEncoder;
     @Mock
     private EmailServicePort emailService;
+    @Mock
+    private RateLimiterPort rateLimiter;
 
     private ForgotPasswordUseCase forgotPasswordUseCase;
     private ResetPasswordUseCase resetPasswordUseCase;
 
     @BeforeEach
     void setUp() {
-        forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, resetTokenRepository, passwordEncoder, emailService);
+        forgotPasswordUseCase = new ForgotPasswordUseCase(userRepository, resetTokenRepository, passwordEncoder, emailService, rateLimiter);
         resetPasswordUseCase = new ResetPasswordUseCase(userRepository, resetTokenRepository, refreshTokenRepository, passwordEncoder, emailService);
     }
 
@@ -141,5 +144,51 @@ class PasswordResetUseCaseTest {
         assertEquals("ERR_AUTH_INVALID_OTP", ex.getErrorCode());
         assertEquals(2, token.getAttempts());
         verify(resetTokenRepository).save(token);
+    }
+
+    @Test
+    @DisplayName("Reset password locks OTP immediately when reaching 5 wrong attempts")
+    void resetPasswordLocksOtpAtFifthAttempt() {
+        User user = User.createNew("tenant@toam.vn", "0901234567", "old_hash", "Nguyen Van Thue", UserRoleType.TENANT);
+        when(userRepository.findByEmail("tenant@toam.vn")).thenReturn(Optional.of(user));
+
+        PasswordResetTokenJpaEntity token = PasswordResetTokenJpaEntity.builder()
+                .id("tok-5")
+                .userId(user.getId())
+                .otpHash("hashed_otp")
+                .expiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
+                .attempts(4)
+                .build();
+
+        when(resetTokenRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(Optional.of(token));
+        when(passwordEncoder.matches("000000", "hashed_otp")).thenReturn(false);
+
+        ResetPasswordCommand command = ResetPasswordCommand.builder()
+                .email("tenant@toam.vn")
+                .otp("000000")
+                .newPassword("newPassword123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> resetPasswordUseCase.execute(command));
+        assertEquals("ERR_AUTH_OTP_LOCKED", ex.getErrorCode());
+        assertEquals(5, token.getAttempts());
+        assertTrue(token.isUsed());
+        assertFalse(token.isValid());
+    }
+
+    @Test
+    @DisplayName("Forgot password throws exception when rate limit cooldown is violated")
+    void forgotPasswordRateLimitCooldown() {
+        doThrow(new IdentityDomainException("Vui lòng đợi ít nhất 60 giây", "ERR_RATE_LIMIT_COOLDOWN"))
+                .when(rateLimiter).checkForgotPasswordRateLimit(any(), any());
+
+        ForgotPasswordCommand command = ForgotPasswordCommand.builder()
+                .email("tenant@toam.vn")
+                .ipAddress("127.0.0.1")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> forgotPasswordUseCase.execute(command));
+        assertEquals("ERR_RATE_LIMIT_COOLDOWN", ex.getErrorCode());
     }
 }

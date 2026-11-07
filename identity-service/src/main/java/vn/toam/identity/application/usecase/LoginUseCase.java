@@ -40,8 +40,8 @@ public class LoginUseCase {
 
     @Transactional
     public AuthResult execute(LoginCommand command) {
-        if (loginAttemptPort.isBlocked(command.getEmail())) {
-            throw new IdentityDomainException("Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
+        if (loginAttemptPort.isBlocked(command.getEmail(), command.getIpAddress())) {
+            throw new IdentityDomainException("Tài khoản hoặc địa chỉ IP đã bị tạm khóa do nhập sai mật khẩu nhiều lần liên tiếp. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
         }
 
         User user = userRepository.findByEmail(command.getEmail())

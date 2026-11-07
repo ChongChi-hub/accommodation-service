@@ -21,6 +21,10 @@ public class JwtTokenProvider implements TokenProviderPort {
     private final RsaKeyProvider rsaKeyProvider;
     private final long expirationMs;
 
+    public JwtTokenProvider(RsaKeyProvider rsaKeyProvider) {
+        this(rsaKeyProvider, 900000L);
+    }
+
     public JwtTokenProvider(
             RsaKeyProvider rsaKeyProvider,
             @Value("${jwt.expiration-ms:900000}") long expirationMs) {
