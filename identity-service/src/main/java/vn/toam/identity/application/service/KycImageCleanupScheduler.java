@@ -27,7 +27,7 @@ public class KycImageCleanupScheduler {
     public KycImageCleanupScheduler(
             UserVerificationRepository verificationRepository,
             KycPrivateStoragePort kycStorage,
-            @Value("${app.kyc.cleanup-enabled:true}") boolean cleanupEnabled,
+            @Value("${app.kyc.cleanup-enabled:false}") boolean cleanupEnabled,
             @Value("${app.kyc.retention-days:30}") int retentionDays) {
         this.verificationRepository = verificationRepository;
         this.kycStorage = kycStorage;

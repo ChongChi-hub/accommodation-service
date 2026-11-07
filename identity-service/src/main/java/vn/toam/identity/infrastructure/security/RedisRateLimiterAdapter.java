@@ -161,13 +161,25 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
     public void checkPasswordChangeAllowed(String userId, String ipAddress) {
         String cleanUser = userId != null ? userId : "unknown";
         Instant now = Instant.now();
+        boolean isProd = isProductionEnvironment();
         if (redisTemplate != null && isRedisAlive()) {
             try {
                 if (Boolean.TRUE.equals(redisTemplate.hasKey("rate:pwd:lock:user:" + cleanUser))) {
                     throw new IdentityDomainException("Ban da nhap sai mat khau qua 5 lan. Vui long thu lai sau 15 phut.", "ERR_AUTH_PASSWORD_CHANGE_LOCKED");
                 }
                 return;
-            } catch (IdentityDomainException e) { throw e; } catch (Exception ignored) {}
+            } catch (IdentityDomainException e) {
+                throw e;
+            } catch (Exception ex) {
+                if (isProd) {
+                    log.error("Redis password rate limiter failed in production: {}", ex.getMessage());
+                    throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng trên môi trường production.", "ERR_RATE_LIMIT_UNAVAILABLE");
+                }
+            }
+        }
+        if (isProd) {
+            log.error("Redis unavailable in production profile. In-memory password lockout is forbidden.");
+            throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng trên môi trường production.", "ERR_RATE_LIMIT_UNAVAILABLE");
         }
         Instant lockedUntil = inMemoryPasswordLocks.get(cleanUser);
         if (lockedUntil != null && now.isBefore(lockedUntil)) {
@@ -179,6 +191,7 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
     public void recordFailedPasswordChange(String userId, String ipAddress) {
         String cleanUser = userId != null ? userId : "unknown";
         Instant now = Instant.now();
+        boolean isProd = isProductionEnvironment();
         if (redisTemplate != null && isRedisAlive()) {
             try {
                 Long attempts = redisTemplate.opsForValue().increment("rate:pwd:cnt:user:" + cleanUser);
@@ -188,7 +201,16 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
                     redisTemplate.delete("rate:pwd:cnt:user:" + cleanUser);
                 }
                 return;
-            } catch (Exception ignored) {}
+            } catch (Exception ex) {
+                if (isProd) {
+                    log.error("Redis password rate limiter failed in production: {}", ex.getMessage());
+                    throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng trên môi trường production.", "ERR_RATE_LIMIT_UNAVAILABLE");
+                }
+            }
+        }
+        if (isProd) {
+            log.error("Redis unavailable in production profile. In-memory fallback is forbidden.");
+            throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng trên môi trường production.", "ERR_RATE_LIMIT_UNAVAILABLE");
         }
         int attempts = inMemoryPasswordAttempts.getOrDefault(cleanUser, 0) + 1;
         if (attempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
