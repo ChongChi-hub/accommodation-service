@@ -19,9 +19,12 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 @Service
@@ -36,8 +39,35 @@ public class LandlordImageService {
     public static final long MAX_FILE_SIZE = 5 * 1024 * 1024L; // 5MB
     public static final int MAX_ROOM_IMAGES = 10;
     public static final int MAX_DIMENSION = 8000;
+    public static final int MAX_UPLOADS_PER_MINUTE = 30;
+
+    private final Map<Long, Queue<Instant>> uploadTimestampsByLandlord = new ConcurrentHashMap<>();
+
+    public void clearRateLimits() {
+        uploadTimestampsByLandlord.clear();
+    }
+
+    private void checkUploadRateLimit(Long landlordId, int incomingCount) {
+        Instant now = Instant.now();
+        Instant cutoff = now.minusSeconds(60);
+        Queue<Instant> timestamps = uploadTimestampsByLandlord.computeIfAbsent(landlordId, k -> new ConcurrentLinkedQueue<>());
+
+        while (!timestamps.isEmpty() && timestamps.peek().isBefore(cutoff)) {
+            timestamps.poll();
+        }
+
+        if (timestamps.size() + incomingCount > MAX_UPLOADS_PER_MINUTE) {
+            throw new IllegalStateException("Bạn đã vượt quá giới hạn tải ảnh lên (tối đa " + MAX_UPLOADS_PER_MINUTE + " ảnh/phút). Vui lòng thử lại sau.");
+        }
+        for (int i = 0; i < incomingCount; i++) {
+            timestamps.add(now);
+        }
+    }
 
     public ImageUploadResponse uploadImages(Long landlordId, Long roomId, MultipartFile[] files, String actorId) {
+        // Enforce per-user upload rate limiting
+        checkUploadRateLimit(landlordId, files != null ? files.length : 0);
+
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 

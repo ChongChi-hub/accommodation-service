@@ -22,6 +22,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -170,6 +171,74 @@ class LandlordImageServiceTest {
         verify(imageStoragePort, times(1)).delete("rooms/101/201.webp");
         verify(roomImageRepository, times(1)).delete(coverImg);
         verify(roomImageRepository, times(1)).setCoverForRoom(101L, 202L);
+    }
+
+    @Test
+    @DisplayName("Upload GIF format is rejected because only JPG, PNG, WebP are permitted")
+    void testUploadGifRejected() {
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(101L, 1L)).thenReturn(Optional.of(mockRoom));
+        when(roomImageRepository.countByRoomId(101L)).thenReturn(0L);
+
+        byte[] gifBytes = "GIF89a\u0001\u0000\u0001\u0000\u0080\u0000\u0000\u0000\u0000\u0000\u00ff\u00ff\u00ff!\u00f9\u0004\u0001\u0000\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;".getBytes();
+        MockMultipartFile file = new MockMultipartFile("files", "sample.gif", "image/gif", gifBytes);
+
+        ImageUploadResponse response = imageService.uploadImages(1L, 101L, new MultipartFile[]{file}, "u-landlord-01");
+
+        assertThat(response.getTotalUploaded()).isEqualTo(0);
+        assertThat(response.getTotalFailed()).isEqualTo(1);
+        assertThat(response.getItems().get(0).getErrorMessage()).contains("Định dạng file không được hỗ trợ");
+    }
+
+    @Test
+    @DisplayName("Upload spoofed extension with payload is rejected by magic byte inspection")
+    void testUploadSpoofedExtensionRejected() {
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(101L, 1L)).thenReturn(Optional.of(mockRoom));
+        when(roomImageRepository.countByRoomId(101L)).thenReturn(0L);
+
+        byte[] payload = "<?php system($_GET['cmd']); ?>".getBytes();
+        MockMultipartFile file = new MockMultipartFile("files", "shell.php.jpg", "image/jpeg", payload);
+
+        ImageUploadResponse response = imageService.uploadImages(1L, 101L, new MultipartFile[]{file}, "u-landlord-01");
+
+        assertThat(response.getTotalUploaded()).isEqualTo(0);
+        assertThat(response.getTotalFailed()).isEqualTo(1);
+        assertThat(response.getItems().get(0).getErrorMessage()).contains("Định dạng file không được hỗ trợ");
+    }
+
+    @Test
+    @DisplayName("Upload rate limiting locks out user when exceeding 30 uploads per minute")
+    void testUploadRateLimitingLockout() throws IOException {
+        imageService.clearRateLimits();
+
+        // 31 dummy files in one batch
+        MultipartFile[] batch = new MultipartFile[31];
+        byte[] testBytes = createTestJpegBytes(10, 10);
+        for (int i = 0; i < 31; i++) {
+            batch[i] = new MockMultipartFile("files", "img_" + i + ".jpg", "image/jpeg", testBytes);
+        }
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
+                imageService.uploadImages(1L, 101L, batch, "u-landlord-01"));
+    }
+
+    @Test
+    @DisplayName("Image IDOR: Landlord B cannot upload to, set cover for, or delete images from Landlord A's room")
+    void testImageEndpointIdorPrevention() {
+        Long attackerLandlordId = 999L;
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(101L, attackerLandlordId))
+                .thenReturn(Optional.empty());
+
+        // 1. Upload IDOR
+        org.junit.jupiter.api.Assertions.assertThrows(NoSuchElementException.class, () ->
+                imageService.uploadImages(attackerLandlordId, 101L, new MultipartFile[]{}, "u-attacker"));
+
+        // 2. Set Cover IDOR
+        org.junit.jupiter.api.Assertions.assertThrows(NoSuchElementException.class, () ->
+                imageService.setCoverImage(attackerLandlordId, 101L, 202L));
+
+        // 3. Delete IDOR
+        org.junit.jupiter.api.Assertions.assertThrows(NoSuchElementException.class, () ->
+                imageService.deleteImage(attackerLandlordId, 101L, 202L));
     }
 }
 
