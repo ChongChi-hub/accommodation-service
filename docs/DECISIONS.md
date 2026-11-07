@@ -241,3 +241,53 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * Bảo mật dữ liệu người thuê: Thuộc tính `contactPhone` chỉ được trả về đầy đủ khi lịch hẹn ở trạng thái `CONFIRMED` hoặc `COMPLETED`.
 * Với các trạng thái `PENDING`, `DECLINED`, `CANCELLED`, `EXPIRED`: số điện thoại được che một phần tại tầng Application/DTO (ví dụ `090••••567`). Không bao giờ gửi số điện thoại thô qua mạng khi chưa xác nhận.
 * Nghiêm cấm ghi số điện thoại khách hàng vào log hệ thống.
+
+
+---
+
+## 12. Kiến trúc Hồ sơ Người dùng (USER-01) & Xác minh Danh tính Chủ trọ (KYC-01)
+
+> Ngày quyết định: 07/11/2026  
+> Áp dụng cho: `identity-service`, `listing-service`, `common`, `api-gateway`, và `accommodation-web`
+
+### 12.1 Thư viện Xử lý Ảnh Dùng chung (Shared Image Processing)
+* **Vấn đề**: Cả `listing-service` (ảnh phòng) và `identity-service` (avatar người dùng, ảnh CCCD KYC) đều cần kiểm tra an ninh hình ảnh nghiêm ngặt (magic bytes, chống file polyglot, chặn bom pixel $\le 8000$px, tẩy EXIF/GPS, nén sang WebP).
+* **Quyết định**: Di chuyển và đưa các thư viện `com.twelvemonkeys.imageio:imageio-webp:3.12.0` và `net.coobird:thumbnailator:0.4.20` vào module `common`.
+* Đóng gói tiện ích xử lý ảnh dùng chung trong `vn.toam.common.image.ImageProcessingHelper`:
+  * Xác thực magic bytes: JPEG (`FF D8 FF`), PNG (`89 50 4E 47 0D 0A 1A 0A`), WebP (Byte 0-3 `RIFF`, byte 8-11 `WEBP`).
+  * Tẩy sạch EXIF, dữ liệu định vị GPS và mã độc bằng cách vẽ lại hoàn toàn sang một `BufferedImage` kiểu `TYPE_INT_RGB` mới.
+  * Cắt ảnh vuông từ tâm (center square crop) tự động cho avatar người dùng.
+  * Xuất ảnh định dạng WebP tối ưu với các kích cỡ chuẩn: Avatar (64px, 256px), KYC CCCD ($\le 2000$px cạnh dài).
+
+### 12.2 Bảo mật Dữ liệu Nhạy cảm KYC & Mã hóa Lưu trữ
+* **Số Căn cước công dân (CCCD)**:
+  * `id_number_enc`: Mã hóa đối xứng AES-256-GCM với vector khởi tạo ngẫu nhiên (IV 12 bytes). Khóa mã hóa được cấu hình qua biến môi trường `APP_KYC_SECRET_KEY` (có khóa mặc định 256-bit cho môi trường dev/demo).
+  * `id_number_hash`: Băm HMAC-SHA256 sử dụng khóa pepper bí mật từ `APP_KYC_PEPPER`. Thiết lập ràng buộc UNIQUE đối với các hồ sơ có trạng thái `PENDING` hoặc `APPROVED`, đảm bảo một số CCCD chỉ có thể liên kết với một tài khoản duy nhất mà không lưu plaintext trong database.
+  * `id_number_last4`: Lưu trữ 4 chữ số cuối để hiển thị dạng che (`••••••••1234`) trên giao diện người dùng và drawer đối soát.
+* **Kho lưu trữ Ảnh Riêng tư (Private Storage)**:
+  * Ảnh CCCD mặt trước và mặt sau được lưu vào thư mục riêng tư độc lập (Private Storage), tuyệt đối KHÔNG nằm trong thư mục `/media` công khai hoặc thư mục static web.
+  * Xem ảnh CCCD yêu cầu xác thực và phân quyền nghiêm ngặt qua endpoint `/api/v1/landlord/kyc/images/{type}` (chính chủ) hoặc `/api/v1/moderation/kyc/{id}/images/{type}` (ADMIN/MODERATOR).
+  * Luôn gửi kèm header HTTP: `Cache-Control: no-store, private`, `X-Content-Type-Options: nosniff`. Không phát hành link ký sẵn (presigned URL) dài hạn.
+* **Nhật ký Truy cập Bất biến (`kyc_access_logs`)**:
+  * Mỗi lượt kiểm duyệt xem ảnh mặt trước (`VIEW_FRONT`), mặt sau (`VIEW_BACK`), xem chi tiết (`VIEW_DETAIL`), phê duyệt (`APPROVE`) hay từ chối (`REJECT`) đều được ghi vào bảng nhật ký `kyc_access_logs` (append-only) kèm `ip`, `actor_id`, `actor_role`.
+* **Quy định Không Ghi Log Dữ liệu Nhạy cảm**:
+  * Nghiêm cấm tuyệt đối in số CCCD, đường dẫn ảnh lưu trữ nội bộ vào log hệ thống, thông báo ngoại lệ (exception messages) hoặc phản hồi lỗi API.
+
+### 12.3 Chính sách Lưu giữ và Hủy Dữ liệu KYC Bị Từ chối (Retention & Cleanup Policy)
+* Khi hồ sơ KYC bị từ chối (`REJECTED`), ảnh CCCD nhạy cảm chỉ được lưu giữ tạm thời trong vòng 30 ngày (cấu hình qua `app.kyc.retention-days=30`) nhằm phục vụ việc đối soát và khiếu nại.
+* Sau thời hạn trên, một Scheduled Job (`KycImageCleanupScheduler`) định kỳ quét và xóa vĩnh viễn file vật lý của hồ sơ bị từ chối, cập nhật đường dẫn ảnh thành `PURGED`.
+
+### 12.4 Cổng Chặn Đăng Tin (Listing KYC Gate) & Inter-Service Token
+* **Quy định**: Chủ trọ chỉ được phép gửi duyệt phòng (`POST /api/v1/landlord/rooms/{id}/submit`) và xuất bản phòng khi KYC ở trạng thái `APPROVED`. Nếu chưa được duyệt, hệ thống từ chối với HTTP 403 và mã lỗi `ERR_KYC_REQUIRED` kèm trạng thái KYC hiện tại (`NONE`, `PENDING`, `REJECTED`). Thao tác lưu nháp (`DRAFT`) vẫn được cho phép.
+* **Cơ chế Xác minh Liên Dịch vụ (Inter-Service KYC Verification)**:
+  * `identity-service` cung cấp endpoint nội bộ `GET /internal/users/{id}/kyc-status`, không đi qua gateway công khai.
+  * Endpoint được bảo vệ bằng Service Token / Secret nội bộ truyền qua header `X-Internal-Service-Key`.
+  * `listing-service` gọi qua HTTP Client với thời gian chờ timeout 3 giây, bộ nhớ đệm ngắn $\le 60$ giây.
+  * Áp dụng chính sách **FAIL-CLOSED**: Nếu không kết nối được `identity-service` hoặc phản hồi lỗi/hết thời gian, hệ thống tự động từ chối yêu cầu gửi duyệt để bảo vệ an toàn nền tảng.
+* **Chính sách Phòng Đã Đăng Khi KYC Bị Thu hồi**:
+  * Các phòng đã được `PUBLISHED` trước đó sẽ không bị tự động ẩn để tránh gián đoạn hợp đồng và người thuê đang tìm kiếm, tuy nhiên mọi hành động đăng mới, gửi duyệt lại hoặc mở lại phòng ẩn đều bị chặn cho đến khi KYC được phê duyệt lại.
+
+### 12.5 Đổi Mật khẩu & Thu hồi Phiên Làm việc
+* Đổi mật khẩu yêu cầu nhập đúng mật khẩu hiện tại. Mật khẩu mới bắt buộc phải khác mật khẩu cũ và đáp ứng độ phức tạp tối thiểu.
+* Áp dụng Rate Limiting qua Redis: Nếu nhập sai mật khẩu cũ 5 lần liên tiếp trong 15 phút, tài khoản bị tạm khóa đổi mật khẩu để chống brute-force.
+* Khi đổi mật khẩu thành công: Hệ thống tự động thu hồi tất cả các `refresh_tokens` của các thiết bị khác, chỉ duy trì phiên đăng nhập hiện tại để người dùng không bị văng ra ngoài đột ngột. Đồng thời gửi email cảnh báo bảo mật tới người dùng.
