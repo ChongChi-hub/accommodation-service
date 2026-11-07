@@ -1,69 +1,71 @@
-# Tổ Ấm - Backend Microservices Architecture (`accommodation-service`)
+# To Am - Backend Microservices Architecture (`accommodation-service`)
 
-Hệ thống Backend Microservices cho nền tảng thuê trọ **Tổ Ấm**, thiết kế theo nguyên lý **Domain-Driven Design (DDD)** trên nền **Java 25 LTS & Spring Boot 4.1.2**.
+He thong Backend Microservices cho nen tang thue tro **To Am**, thiet ke theo nguyen ly **Domain-Driven Design (DDD)** tren nen **Java 25 LTS & Spring Boot 4.1.2**.
 
 ---
 
-## 🚀 Danh Sách Microservices & Cổng Port
+## Danh Sach Microservices & Cong Port
 
-| Service | Port | Database Schema | Chức Năng Chính |
+| Service | Port | Database Schema | Chuc Nang Chinh |
 |---|---|---|---|
-| **`api-gateway`** | `8080` | - | Định tuyến trung tâm, CORS, Rate Limit, gộp OpenAPI `/docs` |
-| **`identity-service`** | `8081` | `toam_identity` | Tài khoản, vai trò (RBAC), Đăng ký, Đăng nhập, JWT, Refresh Token, KYC |
-| **`listing-service`** | `8082` | `toam_listing` | Phòng trọ, loại phòng, địa giới DVHCVN, tiện nghi, ảnh, đánh giá |
-| **`booking-service`** | `8083` | `toam_booking` | Lịch hẹn xem phòng, yêu cầu thuê, hợp đồng điện tử |
-| **`billing-service`** | `8084` | `toam_billing` | Chỉ số điện nước (công tơ), hóa đơn hàng tháng, thanh toán |
-| **`communication-service`** | `8085` | `toam_communication` | Tin nhắn hội thoại thời gian thực, thông báo in-app |
-| **`admin-service`** | `8086` | `toam_admin` | Thống kê bảng điều khiển, kiểm duyệt tin/KYC, báo cáo vi phạm |
+| **`api-gateway`** | `8080` | - | Dinh tuyen trung tam, CORS, Rate Limit, gop OpenAPI `/docs` |
+| **`identity-service`** | `8081` | `toam_identity` | Tai khoan, vai tro (RBAC), Dang ky, Dang nhap, JWT, Refresh Token, KYC |
+| **`listing-service`** | `8082` | `toam_listing` | Phong tro, loai phong, dia gioi DVHCVN, tien nghi, anh, danh gia |
+| **`booking-service`** | `8083` | `toam_booking` | Lich hen xem phong, yeu cau thue, hop dong dien tu |
+| **`billing-service`** | `8084` | `toam_billing` | Chi so dien nuoc (cong to), hoa don hang thang, thanh toan |
+| **`communication-service`** | `8085` | `toam_communication` | Tin nhan hoi thoai thoi gian thuc, thong bao in-app |
+| **`admin-service`** | `8086` | `toam_admin` | Thong ke bang dieu khien, kiem duyet tin/KYC, bao cao vi pham |
 
 ---
 
-## 🔑 Tài Khoản Demo (Môi trường Dev)
+## Tai Khoan Demo (Moi truong Dev)
 
-| Vai trò | Email | Mật khẩu |
+| Vai tro | Email | Mat khau |
 |---|---|---|
-| **Người thuê (Tenant)** | `tenant@toam.vn` | `password123` |
-| **Chủ trọ (Landlord)** | `landlord@toam.vn` | `password123` |
-| **Kiểm duyệt viên (Moderator)** | `moderator@toam.vn` | `password123` |
-| **Quản trị viên (Admin)** | `admin@toam.vn` | `password123` |
+| **Nguoi thue (Tenant)** | `tenant@toam.vn` | `password123` |
+| **Chu tro (Landlord)** | `landlord@toam.vn` | `password123` |
+| **Kiem duyet vien (Moderator)** | `moderator@toam.vn` | `password123` |
+| **Quan tri vien (Admin)** | `admin@toam.vn` | `password123` |
 
 ---
 
-## ⚙️ Hướng Dẫn Cài Đặt & Khởi Chạy
+## Huong Dan Cai Dat & Khoi Chay
 
-### 1. Yêu cầu hệ thống
-* **Java:** Java 25 LTS (Gradle Toolchain sẽ tự động nhận diện hoặc tải Temurin 25).
-* **MySQL:** 9.7 LTS hoặc 8.0+ (Port `3306`).
+### 1. Yeu cau he thong
+* **Java:** Java 25 LTS (Gradle Toolchain se tu dong nhan dien hoac tai Temurin 25).
+* **MySQL:** 9.7 LTS hoac 8.0+ (Port `3306`).
 * **Redis:** 7.x (Port `6379`).
 
-### 2. Biên dịch & Kiểm thử kiến trúc DDD
+### 2. Bien dich & Kiem thu kien truc DDD
 ```bash
-# Biên dịch toàn bộ các service
+# Bien dich toan bo cac service
 ./gradlew clean build -x test
 
-# Chạy kiểm thử tự động (Unit Test & ArchUnit DDD)
+# Chay kiem thu tu dong (Unit Test & ArchUnit DDD)
 ./gradlew test
 ```
 
-### 3. Chạy từng service độc lập
+### 3. Chay tung service doc lap
 ```bash
-# Chạy API Gateway
+# Chay API Gateway
 ./gradlew :api-gateway:bootRun
 
-# Chạy Identity Service
+# Chay Identity Service
 ./gradlew :identity-service:bootRun
+
+# Chay Listing Service
+./gradlew :listing-service:bootRun
 ```
 
-### 4. Khởi chạy bằng Docker Compose
+### 4. Khoi chay bang Docker Compose
 ```bash
 docker compose up -d --build
 ```
 
 ---
 
-## 📑 Tài Liệu Kỹ Thuật
-* **Quy chuẩn phát triển:** Xem file [`AGENT.md`](./AGENT.md).
-* **Tài liệu đặc tả (SRS):** Xem tại [`docs/SRS.md`](./docs/SRS.md).
-* **Quyết định kiến trúc (ADR):** Xem tại [`docs/DECISIONS.md`](./docs/DECISIONS.md).
-* **Schema cũ tham chiếu:** Xem tại [`docs/legacy/schema.sql`](./docs/legacy/schema.sql).
-
+## Tai Lieu Ky Thuat
+* **Quy chuan phat trien:** Xem file [`AGENT.md`](./AGENT.md).
+* **Tai lieu dac ta (SRS):** Xem tai [`docs/SRS.md`](./docs/SRS.md).
+* **Quyet dinh kien truc (ADR):** Xem tai [`docs/DECISIONS.md`](./docs/DECISIONS.md).
+* **Schema cu tham chieu:** Xem tai [`docs/legacy/schema.sql`](./docs/legacy/schema.sql).
