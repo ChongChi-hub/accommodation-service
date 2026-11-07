@@ -131,3 +131,44 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 * **Giao diện Frontend:**
   * Loại bỏ dropdown Quận/Huyện trên bộ lọc tìm kiếm và form đăng tin. Chuyển thành quy trình chọn 2 bước: `Tỉnh/Thành phố` -> `Phường/Xã`.
   * Chuẩn hóa định dạng chuỗi địa chỉ hiển thị trên toàn bộ UI và email thông báo.
+
+---
+
+## 9. Cơ chế Xác thực Phiên, Quản lý Cookie & Xoay vòng Khóa RSA (Session Cookies & Key Rotation)
+
+### 9.1 Định danh và Bản chất Cookie `toam_token`
+* **Loại Token:** JWT ký mật mã bằng thuật toán bất đối xứng **RS256** (RSA Signature with SHA-256).
+* **Payload quy chuẩn:**
+  * `sub`: UUID v7 của người dùng (khóa chính `users.id` / `users.user_uuid`).
+  * `email`: Địa chỉ email xác thực.
+  * `roles`: Danh sách vai trò (`ROLE_TENANT`, `ROLE_LANDLORD`, `ROLE_MODERATOR`, `ROLE_ADMIN`).
+  * `iss`: `toam-identity` (được thẩm định bởi Resource Server).
+  * `exp`: Thời hạn sống của Access Token là **24 giờ** (86,400 giây).
+  * `kid`: Key ID tương ứng trong JWKS Keyset để phục vụ xác thực và xoay vòng khóa.
+* **Thời hạn sống của Refresh Token:** Token ngẫu nhiên bảo mật cao được lưu mã hóa SHA-256 trong bảng `refresh_tokens` có hạn **30 ngày** (2,592,000 giây) kèm cơ chế phát hiện tái sử dụng (Reuse Detection Revocation).
+
+### 9.2 Cơ chế Làm mới Token (Silent Refresh Flow)
+* **Kênh truyền:** Khi Access Token hết hạn (nhận mã HTTP 401 Unauthorized từ gateway hoặc backend), HTTP client tại frontend (`ApiClient`) chặn request và tự động gọi endpoint `/api/v1/auth/refresh-token` với `toam_refresh_token` từ `localStorage`.
+* **Cập nhật liền mạch:** Khi cấp thành công cặp token mới, `toam_token` trong cookie và `toam_refresh_token` trong `localStorage` được cập nhật đồng thời mà không bắt người dùng phải đăng nhập lại hoặc gián đoạn trải nghiệm người dùng.
+* **Xử lý tranh chấp (Race Condition):** `ApiClient` duy trì một `refreshPromise` singleton duy nhất để ghép các request đồng thời, ngăn chặn việc gọi refresh token nhiều lần làm kích hoạt cơ chế thu hồi do nghi ngờ tái sử dụng token.
+
+### 9.3 Chính sách An toàn Cookie ở Production
+* **Cờ `Secure`:** Tự động kích hoạt khi `process.env.NODE_ENV === 'production'`, bắt buộc cookie chỉ được truyền tải qua HTTPS.
+* **Cờ `SameSite=Lax`:** Ngăn chặn tấn công CSRF trên các request chéo domain trong khi vẫn cho phép chuyển hướng hợp lệ từ các liên kết bên ngoài.
+* **Đường dẫn `Path=/`:** Phạm vi hợp lệ trên toàn bộ ứng dụng web và các tuyến API rewrite.
+
+### 9.4 Nguồn Khóa Riêng RSA & Quản lý Bí mật
+* **Tuyệt đối không commit:** Khóa riêng tư RSA (`JWT_PRIVATE_KEY` / `private_key.pem`) không bao giờ được lưu trong kho mã nguồn git hay Docker image.
+* **Nạp từ biến môi trường/Secret Manager:** Khóa riêng được nạp qua biến môi trường `JWT_PRIVATE_KEY` (hoặc Kubernetes Secret / AWS Secrets Manager).
+* **Hướng dẫn tạo cặp khóa RSA 2048-bit cho môi trường phát triển (Dev/Demo):**
+  ```bash
+  # Sinh khóa riêng RSA 2048-bit PKCS#8
+  openssl genpkey -algorithm RSA -out rsa_private.pem -pkeyopt rsa_keygen_bits:2048
+  # Trích xuất khóa công khai tương ứng chuẩn X.509
+  openssl rsa -in rsa_private.pem -pubout -out rsa_public.pem
+  ```
+
+### 9.5 JWKS Caching và Cơ chế Xoay vòng Khóa (Key Rotation by `kid`)
+* Identity service công khai bộ khóa công khai tại endpoint tiêu chuẩn `/.well-known/jwks.json`.
+* Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `toam-key-2026-v1`).
+* Các Resource Server (`listing-service`, `billing-service`, `booking-service`, `admin-service`) cache JWKS trong bộ nhớ với thời gian sống TTL 24 giờ. Khi gặp token mang `kid` mới chưa có trong cache, Resource Server tự động fetch lại JWKS để cập nhật khóa mới mà không cần khởi động lại dịch vụ (Zero-downtime key rotation).
