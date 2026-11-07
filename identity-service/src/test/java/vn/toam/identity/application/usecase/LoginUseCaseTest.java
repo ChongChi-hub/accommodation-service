@@ -86,7 +86,7 @@ class LoginUseCaseTest {
     @Test
     @DisplayName("Should throw exception when account is temporarily blocked after too many attempts")
     void loginBlockedAfterFailedAttempts() {
-        when(loginAttemptPort.isBlocked("blocked@toam.vn")).thenReturn(true);
+        when(loginAttemptPort.isBlocked(eq("blocked@toam.vn"), any())).thenReturn(true);
 
         LoginCommand command = LoginCommand.builder()
                 .email("blocked@toam.vn")

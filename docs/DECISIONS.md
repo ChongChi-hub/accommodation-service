@@ -106,3 +106,138 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 * **Màn hình Đăng mới**: Quản lý ảnh cục bộ qua Object URLs (nhớ revoke khi unmount). Khi nhấn "Đăng tin", hệ thống tạo phòng -> upload file multipart -> cập nhật ảnh bìa và thứ tự -> gửi duyệt.
 * **Màn hình Chỉnh sửa**: Tương tác API trực tiếp cho các hành động đặt bìa (`PATCH .../cover`), xóa (`DELETE .../images/{id}`), và đổi thứ tự (`PUT .../images/order`) để đảm bảo tính nguyên tử và phản hồi tức thì.
 
+
+## 7. Quyết Định Về Cập Nhật Địa Giới Hành Chính Theo Mô Hình 2 Cấp (Từ 01/07/2025)
+
+* **Căn cứ pháp lý & Nguồn dữ liệu:**
+  * Nghị quyết số 202/2025/QH15 của Quốc hội về việc sắp xếp đơn vị hành chính cấp tỉnh và chuyển đổi sang mô hình hành chính 2 cấp (Tỉnh/Thành phố trực thuộc Trung ương -> Xã/Phường, bãi bỏ cấp quận/huyện từ 01/07/2025).
+  * Danh mục chuẩn hóa địa giới hành chính của Tổng cục Thống kê (GSO), tra cứu và đối soát ngày 07/11/2026.
+* **Cấu trúc 34 Đơn vị Hành chính Cấp Tỉnh (28 Tỉnh, 6 Thành phố trực thuộc Trung ương):**
+  * **6 Thành phố trực thuộc Trung ương:**
+    1. Thành phố Hà Nội (`HN`)
+    2. Thành phố Hồ Chí Minh (`HCM`)
+    3. Thành phố Hải Phòng (`HP`)
+    4. Thành phố Đà Nẵng (`DNG`)
+    5. Thành phố Cần Thơ (`CT`)
+    6. Thành phố Huế (`HUE`) (chính thức trực thuộc Trung ương)
+  * **28 Tỉnh:**
+    An Giang (`AG`), Bắc Giang (`BG`), Bắc Kạn (`BK`), Bạc Liêu (`BL`), Bắc Ninh (`BN`), Bến Tre (`BT`), Bình Định (`BD`), Bình Dương (`BDG`), Bình Phước (`BP`), Bình Thuận (`BTH`), Cà Mau (`CM`), Cao Bằng (`CB`), Đắk Lắk (`DL`), Đắk Nông (`DKN`), Điện Biên (`DB`), Đồng Nai (`DNA`), Đồng Tháp (`DT`), Gia Lai (`GL`), Hà Giang (`HG`), Hà Nam (`HNA`), Hà Tĩnh (`HT`), Hải Dương (`HD`), Hậu Giang (`HGI`), Hòa Bình (`HB`), Hưng Yên (`HY`), Khánh Hòa (`KH`), Kiên Giang (`KG`), Kon Tum (`KT`).
+* **Chiến lược Schema & Dữ liệu:**
+  * Cấp chính quy chuẩn: `provinces` (cấp tỉnh) và `wards` (cấp xã/phường).
+  * Bổ sung cột `province_code` vào bảng `wards` và index `idx_ward_province_code`. Cột `district_code` chuyển thành nullable (dữ liệu legacy tùy chọn).
+  * Bổ sung cột `ward_id` vào bảng `rooms` (FK tới `wards.id`). Cột `rooms.district_code` chuyển thành nullable.
+  * Seed đầy đủ xã/phường cho 6 thành phố trực thuộc Trung ương trọng điểm (Hà Nội, TP.HCM, Đà Nẵng, Hải Phòng, Cần Thơ, Huế); 28 tỉnh còn lại được quản lý ở cấp tỉnh và mở rộng xã/phường theo lộ trình.
+  * Toàn bộ 78 phòng demo trong seed được cập nhật địa chỉ chuẩn hóa theo định dạng 2 cấp: `"Số nhà, Tên đường, Phường/Xã, Tỉnh/Thành phố"`, gán đúng `ward_id` và giữ nguyên tọa độ định vị GPS chính xác.
+* **Giao diện Frontend:**
+  * Loại bỏ dropdown Quận/Huyện trên bộ lọc tìm kiếm và form đăng tin. Chuyển thành quy trình chọn 2 bước: `Tỉnh/Thành phố` -> `Phường/Xã`.
+  * Chuẩn hóa định dạng chuỗi địa chỉ hiển thị trên toàn bộ UI và email thông báo.
+
+---
+
+## 9. Cơ chế Xác thực Phiên, Quản lý Cookie & Xoay vòng Khóa RSA (Session Cookies & Key Rotation)
+
+### 9.1 Định danh và Bản chất Cookie `toam_token`
+* **Loại Token:** JWT ký mật mã bằng thuật toán bất đối xứng **RS256** (RSA Signature with SHA-256).
+* **Payload quy chuẩn:**
+  * `sub`: UUID v7 của người dùng (khóa chính `users.id` / `users.user_uuid`).
+  * `email`: Địa chỉ email xác thực.
+  * `roles`: Danh sách vai trò (`ROLE_TENANT`, `ROLE_LANDLORD`, `ROLE_MODERATOR`, `ROLE_ADMIN`).
+  * `iss`: `toam-identity` (được thẩm định bởi Resource Server).
+  * `exp`: Thời hạn sống của Access Token là **24 giờ** (86,400 giây).
+  * `kid`: Key ID tương ứng trong JWKS Keyset để phục vụ xác thực và xoay vòng khóa.
+* **Thời hạn sống của Refresh Token:** Token ngẫu nhiên bảo mật cao được lưu mã hóa SHA-256 trong bảng `refresh_tokens` có hạn **30 ngày** (2,592,000 giây) kèm cơ chế phát hiện tái sử dụng (Reuse Detection Revocation).
+
+### 9.2 Cơ chế Làm mới Token (Silent Refresh Flow)
+* **Kênh truyền:** Khi Access Token hết hạn (nhận mã HTTP 401 Unauthorized từ gateway hoặc backend), HTTP client tại frontend (`ApiClient`) chặn request và tự động gọi endpoint `/api/v1/auth/refresh-token` với `toam_refresh_token` từ `localStorage`.
+* **Cập nhật liền mạch:** Khi cấp thành công cặp token mới, `toam_token` trong cookie và `toam_refresh_token` trong `localStorage` được cập nhật đồng thời mà không bắt người dùng phải đăng nhập lại hoặc gián đoạn trải nghiệm người dùng.
+* **Xử lý tranh chấp (Race Condition):** `ApiClient` duy trì một `refreshPromise` singleton duy nhất để ghép các request đồng thời, ngăn chặn việc gọi refresh token nhiều lần làm kích hoạt cơ chế thu hồi do nghi ngờ tái sử dụng token.
+
+### 9.3 Chính sách An toàn Cookie ở Production
+* **Cờ `Secure`:** Tự động kích hoạt khi `process.env.NODE_ENV === 'production'`, bắt buộc cookie chỉ được truyền tải qua HTTPS.
+* **Cờ `SameSite=Lax`:** Ngăn chặn tấn công CSRF trên các request chéo domain trong khi vẫn cho phép chuyển hướng hợp lệ từ các liên kết bên ngoài.
+* **Đường dẫn `Path=/`:** Phạm vi hợp lệ trên toàn bộ ứng dụng web và các tuyến API rewrite.
+
+### 9.4 Nguồn Khóa Riêng RSA & Quản lý Bí mật
+* **Tuyệt đối không commit:** Khóa riêng tư RSA (`JWT_PRIVATE_KEY` / `private_key.pem`) không bao giờ được lưu trong kho mã nguồn git hay Docker image.
+* **Nạp từ biến môi trường/Secret Manager:** Khóa riêng được nạp qua biến môi trường `JWT_PRIVATE_KEY` (hoặc Kubernetes Secret / AWS Secrets Manager).
+* **Hướng dẫn tạo cặp khóa RSA 2048-bit cho môi trường phát triển (Dev/Demo):**
+  ```bash
+  # Sinh khóa riêng RSA 2048-bit PKCS#8
+  openssl genpkey -algorithm RSA -out rsa_private.pem -pkeyopt rsa_keygen_bits:2048
+  # Trích xuất khóa công khai tương ứng chuẩn X.509
+  openssl rsa -in rsa_private.pem -pubout -out rsa_public.pem
+  ```
+
+### 9.5 JWKS Caching và Cơ chế Xoay vòng Khóa (Key Rotation by `kid`)
+* Identity service công khai bộ khóa công khai tại endpoint tiêu chuẩn `/.well-known/jwks.json`.
+* Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `toam-key-2026-v1`).
+* Các Resource Server (`listing-service`, `billing-service`, `booking-service`, `admin-service`) cache JWKS trong bộ nhớ với thời gian sống TTL 24 giờ. Khi gặp token mang `kid` mới chưa có trong cache, Resource Server tự động fetch lại JWKS để cập nhật khóa mới mà không cần khởi động lại dịch vụ (Zero-downtime key rotation).
+
+---
+
+## 10. Chiến lược Định danh Thực thể: Rà soát UUID v7 và BIGINT, Trade-offs & Lộ trình Di chuyển
+
+### 10.1 Hiện trạng Rà soát Schema (`rooms`, `room_images`, `users`)
+* **Bảng `rooms`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa định danh ngoại vi (Public UUID): `room_uuid VARCHAR(36) NOT NULL UNIQUE` (lưu trữ chuỗi UUID v7).
+* **Bảng `room_images`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa ngoại quan hệ: `room_id BIGINT` (tham chiếu tới `rooms.id`).
+  * Khóa lưu trữ vật lý: `storage_key`, `thumb_key`, `medium_key`, `large_key` (được đặt tên có chứa UUID ngẫu nhiên tránh trùng lặp).
+* **Bảng `users`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa định danh ngoại vi (Public UUID): `user_uuid VARCHAR(36) NOT NULL UNIQUE`.
+  * Dữ liệu hạt giống dev/demo: Còn tồn tại bí danh chuỗi thân thiện con người (`u-landlord-01`, `u-tenant-01`, `u-admin-01`) dùng cho test fixture.
+
+### 10.2 Lý do Áp dụng Mô hình Khóa Kép (Dual-ID Pattern) & Trade-offs
+1. **Hiệu năng B-tree Clustered Index của InnoDB (MySQL):**
+   * *Ưu điểm của BIGINT PK:* InnoDB lưu trữ bảng theo chỉ mục phân cụm (Clustered Index B+Tree). Mọi chỉ mục phụ (Secondary Index) đều phải lưu trữ giá trị của PK làm con trỏ hàng. Khóa chính `BIGINT` (8 bytes) giúp kích thước node chỉ mục nhỏ gọn hơn 50-75% so với chuỗi UUID (36 bytes), giảm phân mảnh trang (page split) và tối ưu bộ nhớ đệm InnoDB Buffer Pool.
+   * *Nhược điểm của BIGINT đơn lẻ:* Dễ bị quét ID (ID Enumeration Attack), làm lộ tổng số lượng khách hàng hoặc số lượng phòng của nền tảng.
+2. **Bảo mật và Phân tán với UUID v7:**
+   * *Ưu điểm của UUID v7:* Có chứa 48-bit timestamp ở phần đầu (Time-ordered), giúp việc chèn mới không bị nhảy ngẫu nhiên khắp cây B-tree như UUID v4, giảm thiểu phân tán IOPS. Không thể đoán trước ID của người dùng hay bài đăng khác.
+   * *Trade-off:* Tốn 36 bytes dạng chuỗi (hoặc 16 bytes dạng `BINARY(16)`), chi phí join giữa các bảng đa dịch vụ cao hơn so với số nguyên 64-bit.
+3. **Đánh giá quyết định:** Mô hình kết hợp (`BIGINT AUTO_INCREMENT` làm PK nội bộ + `UUID v7` làm Public Resource ID ở URL và API) là giải pháp cân bằng tối ưu nhất cho hệ thống vừa đạt thông lượng xử lý cao, vừa bảo vệ tính riêng tư.
+
+### 10.3 Lộ trình Di chuyển Chuẩn hóa (Migration Roadmap)
+* **Giai đoạn 1 (Hiện tại):**
+  * Duy trì Dual-ID pattern trên toàn bộ các service.
+  * API công khai ưu tiên nhận dạng qua `room_uuid` và `user_uuid`. Các API nội bộ giữa các microservice có thể dùng surrogate `BIGINT` ID để join tốc độ cao.
+  * Các bí danh tiền tố demo như `u-landlord-01` được cô lập hoàn toàn trong hồ sơ test fixture/dev seed, không bao giờ xuất hiện ở môi trường production.
+* **Giai đoạn 2 (Tối ưu hóa Storage & Memory):**
+  * Chuyển đổi định dạng lưu trữ cột `room_uuid` và `user_uuid` từ `VARCHAR(36)` sang `BINARY(16)`.
+  * Áp dụng hàm tích hợp sẵn của MySQL 8+: `UUID_TO_BIN(uuid_str, 1)` (cờ 1 đổi vị trí byte thời gian lên đầu) và `BIN_TO_UUID(bin_uuid, 1)` khi truy vấn.
+* **Giai đoạn 3 (Pure Distributed Identity):**
+  * Khi mở rộng sang kiến trúc sharding đa trung tâm dữ liệu (multi-region database sharding), chuyển đổi khóa chính sang UUID v7 thuần túy (`BINARY(16) PRIMARY KEY`) với bộ sinh UUID v7 tập trung hoặc phân tán ở tầng Application (Java 25).
+
+
+---
+
+## 11. Kiến trúc Quản lý Lịch hẹn Xem phòng ([APPT-02])
+
+> Ngày quyết định: 07/11/2026  
+> Áp dụng cho: `booking-service` và `accommodation-web`
+
+### 11.1 Máy trạng thái (State Machine)
+Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy trạng thái trong domain model (không dùng setter công khai):
+* `PENDING` -> `CONFIRMED`: Chủ trọ chấp thuận lịch hẹn. Hệ thống kiểm tra trùng giờ; nếu trùng giờ với lịch đã `CONFIRMED` khác của cùng chủ trọ, trả về `ERR_APPT_TIME_CONFLICT` (HTTP 409). Chủ trọ có thể gửi kèm cờ `force: true` để chấp thuận đè.
+* `PENDING` -> `DECLINED`: Chủ trọ từ chối lịch hẹn, bắt buộc có lý do (`reasonCode`).
+* `CONFIRMED` -> `CANCELLED`: Hủy lịch hẹn đã xác nhận, bắt buộc có lý do (`reasonCode`).
+* `CONFIRMED` -> `COMPLETED`: Đánh dấu đã gặp khách thành công. Chỉ cho phép sau thời điểm `scheduled_start`.
+* `CONFIRMED` -> `NO_SHOW`: Đánh dấu khách không đến xem phòng. Chỉ cho phép sau thời điểm `scheduled_start`.
+* `PENDING` -> `EXPIRED`: Hệ thống định kỳ quét và đánh dấu hết hạn đối với các lịch chờ chưa được xử lý khi đã qua giờ hẹn.
+* Mọi chuyển đổi trạng thái trái phép trả về lỗi nghiệp vụ ổn định `ERR_APPT_INVALID_TRANSITION` (HTTP 409).
+
+### 11.2 Xử lý Trùng giờ (Time Conflict Policy)
+* Khi chủ trọ xác nhận lịch, `booking-service` quét các lịch `CONFIRMED` của cùng `landlord_id` trong khung giờ giao nhau `[scheduled_start, scheduled_end)`.
+* Nếu phát hiện trùng, trả về mã lỗi `ERR_APPT_TIME_CONFLICT` kèm danh sách lịch trùng.
+* Nếu client gửi cờ `force: true`, hệ thống cho phép xác nhận và ghi vết vào `appointment_status_history` với lý do "Xác nhận đè lịch trùng".
+
+### 11.3 Transactional Outbox Pattern & Event Publishing
+* Khi trạng thái thay đổi (`CONFIRMED`, `DECLINED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `EXPIRED`), một domain event tương ứng được ghi vào bảng `appointment_events_outbox` trong cùng giao dịch database (ACID transaction).
+* *TODO*: `communication-service` hiện chưa có API gửi SMS/Email thời gian thực; khi `communication-service` hoàn thiện, outbox worker hoặc Debezium CDC sẽ gửi event lên message broker (Kafka/RabbitMQ) để bắn thông báo cho khách thuê và chủ trọ.
+
+### 11.4 Bảo vệ Quyền riêng tư Số điện thoại (Phone Privacy Protection)
+* Bảo mật dữ liệu người thuê: Thuộc tính `contactPhone` chỉ được trả về đầy đủ khi lịch hẹn ở trạng thái `CONFIRMED` hoặc `COMPLETED`.
+* Với các trạng thái `PENDING`, `DECLINED`, `CANCELLED`, `EXPIRED`: số điện thoại được che một phần tại tầng Application/DTO (ví dụ `090••••567`). Không bao giờ gửi số điện thoại thô qua mạng khi chưa xác nhận.
+* Nghiêm cấm ghi số điện thoại khách hàng vào log hệ thống.

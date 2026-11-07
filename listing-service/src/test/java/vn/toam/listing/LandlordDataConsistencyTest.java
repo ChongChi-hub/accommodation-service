@@ -15,19 +15,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LandlordDataConsistencyTest {
 
-    private Path findMigrationFile(String filename) {
-        Path direct = Paths.get("src/main/resources/db/migration", filename);
-        if (Files.exists(direct)) return direct;
-        Path sub = Paths.get("listing-service/src/main/resources/db/migration", filename);
-        if (Files.exists(sub)) return sub;
-        throw new IllegalStateException("Could not find migration file: " + filename);
+    private Path findFile(String filename) {
+        Path[] candidates = new Path[]{
+                Paths.get("src/main/resources/db/migration", filename),
+                Paths.get("listing-service/src/main/resources/db/migration", filename),
+                Paths.get("src/main/resources/db/seed", filename),
+                Paths.get("listing-service/src/main/resources/db/seed", filename)
+        };
+        for (Path p : candidates) {
+            if (Files.exists(p)) return p;
+        }
+        throw new IllegalStateException("Could not find migration/seed file: " + filename);
     }
 
     @Test
-    @DisplayName("Verify V6 Seed: Every room has 3 to 10 images and exactly one cover image")
+    @DisplayName("Verify Repeatable Seed: Every room has 3 to 10 images and exactly one cover image")
     void testV6EveryRoomHasExactlyOneCoverImage() throws IOException {
-        Path v6Path = findMigrationFile("V6__seed_landlord_demo_rooms.sql");
-        String content = Files.readString(v6Path);
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
 
         // Pattern for room_images: (room_id, ..., is_cover, sort_order, ...)
         Pattern imgPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*(TRUE|FALSE),\\s*(\\d+)");
@@ -74,11 +79,11 @@ class LandlordDataConsistencyTest {
     @Test
     @DisplayName("Verify Landlord 1 has > 25 rooms and covers all 7 required statuses")
     void testLandlord1RoomCoverageAndPagination() throws IOException {
-        Path v6Path = findMigrationFile("V6__seed_landlord_demo_rooms.sql");
-        String content = Files.readString(v6Path);
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
 
-        // Count rooms inserted with landlord_id = 1
-        Pattern roomPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*1,\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*'([^']+)'");
+        // Count rooms inserted with landlord_id = 1 (supporting 2-tier admin units with ward_id)
+        Pattern roomPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*1,\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*(?:NULL|'[^']*'),\\s*'[^']+',\\s*(?:\\d+,\\s*)?[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*'([^']+)'");
         Matcher matcher = roomPattern.matcher(content);
 
         Set<String> statuses = new HashSet<>();
@@ -102,7 +107,7 @@ class LandlordDataConsistencyTest {
     @Test
     @DisplayName("Verify V5 schema defines unique cover generated column and status history table")
     void testV5SchemaDefinitions() throws IOException {
-        Path v5Path = findMigrationFile("V5__landlord_rooms_and_images_schema.sql");
+        Path v5Path = findFile("V5__landlord_rooms_and_images_schema.sql");
         String content = Files.readString(v5Path);
 
         assertThat(content).contains("cover_room_id BIGINT GENERATED ALWAYS AS (CASE WHEN is_cover = TRUE THEN room_id ELSE NULL END) STORED");
@@ -110,5 +115,41 @@ class LandlordDataConsistencyTest {
         assertThat(content).contains("CREATE TABLE IF NOT EXISTS room_status_history");
         assertThat(content).contains("idx_rooms_landlord_status_deleted");
         assertThat(content).contains("idx_rooms_title_search");
+    }
+
+    @Test
+    @DisplayName("Verify 2-Tier Model (Resolution 202/2025/QH15): Each ward belongs to exactly one province")
+    void testTwoTierWardsBelongToExactOneProvince() throws IOException {
+        Path v7Path = findFile("V7__administrative_units_two_tier.sql");
+        String content = Files.readString(v7Path);
+
+        // Pattern: (\d+,\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'([^']+)',\s*NULL)
+        Pattern wardPattern = Pattern.compile("\\((\\d+),\\s*'([^']+)',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'([^']+)',\\s*(?:NULL|'[^']*')\\)");
+        Matcher matcher = wardPattern.matcher(content);
+
+        Map<String, String> wardProvinceMap = new HashMap<>();
+        while (matcher.find()) {
+            String wardCode = matcher.group(2);
+            String provinceCode = matcher.group(3);
+            assertThat(wardProvinceMap).doesNotContainKey(wardCode);
+            assertThat(provinceCode).isNotBlank();
+            wardProvinceMap.put(wardCode, provinceCode);
+        }
+
+        // Must seed wards for the 6 centrally-governed cities
+        assertThat(wardProvinceMap).isNotEmpty();
+        assertThat(wardProvinceMap.values()).contains("HN", "HCM", "DNG", "HP", "CT", "HUE");
+    }
+
+    @Test
+    @DisplayName("Verify Seed Rooms: All rooms follow 2-tier administrative model (provinces -> wards)")
+    void testSeedRoomsFollowTwoTierModel() throws IOException {
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
+
+        // Verify that in R__03, district_code is set to NULL
+        assertThat(content).contains("'HN', NULL, 'HN_DVH'");
+        assertThat(content).contains("'HN', NULL, 'HN_LH'");
+        assertThat(content).contains("'HN', NULL, 'HN_OCD'");
     }
 }

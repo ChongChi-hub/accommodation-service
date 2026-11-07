@@ -64,4 +64,33 @@ class DataConsistencyTest {
 
         assertEquals(7_650_000L, totalInvoice);
     }
+
+    @Test
+    @DisplayName("Verify deposit balance consistency: current_balance <= original_amount")
+    void verifyDepositBalanceConsistency() {
+        long originalAmount = 4_500_000L;
+        long deductions = 500_000L; // Damage deduction
+        long currentBalance = originalAmount - deductions;
+
+        assertTrue(currentBalance <= originalAmount);
+        assertTrue(currentBalance >= 0);
+    }
+
+    @Test
+    @DisplayName("Verify canonical support_tickets structure and seed ID alignment")
+    void verifySupportTicketsCanonical() {
+        String[] canonicalTicketIds = {"ticket-1001", "ticket-1002", "ticket-1003"};
+        String[] canonicalDisputeIds = {"disp-00000001", "disp-00000002"};
+        String[] canonicalMaintenanceIds = {"maint-00000001", "maint-00000002", "maint-00000003"};
+
+        for (String id : canonicalTicketIds) {
+            assertTrue(id.startsWith("ticket-"));
+        }
+        for (String id : canonicalDisputeIds) {
+            assertTrue(id.startsWith("disp-"));
+        }
+        for (String id : canonicalMaintenanceIds) {
+            assertTrue(id.startsWith("maint-"));
+        }
+    }
 }

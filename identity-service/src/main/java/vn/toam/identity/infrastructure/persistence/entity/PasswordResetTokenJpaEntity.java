@@ -58,6 +58,9 @@ public class PasswordResetTokenJpaEntity {
 
     public void incrementAttempts() {
         this.attempts++;
+        if (this.attempts >= 5) {
+            this.usedAt = Instant.now();
+        }
     }
 
     public void markUsed() {

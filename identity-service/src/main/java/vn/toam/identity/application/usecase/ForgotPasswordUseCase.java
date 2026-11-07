@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.toam.identity.application.dto.ForgotPasswordCommand;
 import vn.toam.identity.application.port.EmailServicePort;
 import vn.toam.identity.application.port.PasswordEncoderPort;
+import vn.toam.identity.application.port.RateLimiterPort;
 import vn.toam.identity.domain.model.User;
 import vn.toam.identity.domain.repository.UserRepository;
 import vn.toam.identity.infrastructure.persistence.entity.PasswordResetTokenJpaEntity;
@@ -23,21 +24,27 @@ public class ForgotPasswordUseCase {
     private final SpringDataPasswordResetTokenRepository resetTokenRepository;
     private final PasswordEncoderPort passwordEncoder;
     private final EmailServicePort emailService;
+    private final RateLimiterPort rateLimiter;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public ForgotPasswordUseCase(
             UserRepository userRepository,
             SpringDataPasswordResetTokenRepository resetTokenRepository,
             PasswordEncoderPort passwordEncoder,
-            EmailServicePort emailService) {
+            EmailServicePort emailService,
+            RateLimiterPort rateLimiter) {
         this.userRepository = userRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
     public void execute(ForgotPasswordCommand command) {
+        // Enforce rate limiting by email and IP address
+        rateLimiter.checkForgotPasswordRateLimit(command.getEmail(), command.getIpAddress());
+
         Optional<User> userOpt = userRepository.findByEmail(command.getEmail().trim().toLowerCase());
         if (userOpt.isEmpty()) {
             // Anti-enumeration: Return silently without revealing user does not exist

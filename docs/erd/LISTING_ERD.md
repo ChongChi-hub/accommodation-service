@@ -2,8 +2,10 @@
 
 ```mermaid
 erDiagram
-    provinces ||--o{ districts : "has"
-    districts ||--o{ wards : "has"
+    provinces ||--o{ wards : "contains (2-tier NQ202/2025/QH15)"
+    provinces ||--o{ districts : "legacy (optional)"
+    districts ||--o{ wards : "legacy (optional)"
+    wards ||--o{ rooms : "locates"
     room_types ||--o{ rooms : "categorizes"
     rooms ||--o{ room_images : "has"
     rooms ||--o{ room_amenities : "has"
@@ -22,8 +24,9 @@ erDiagram
         varchar slug UK
         varchar address
         varchar province_code
-        varchar district_code
+        varchar district_code "legacy optional"
         varchar ward_code
+        bigint ward_id FK
         double area
         decimal price
         decimal deposit

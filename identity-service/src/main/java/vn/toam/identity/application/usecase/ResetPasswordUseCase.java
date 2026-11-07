@@ -49,7 +49,15 @@ public class ResetPasswordUseCase {
         if (!passwordEncoder.matches(command.getOtp().trim(), token.getOtpHash())) {
             token.incrementAttempts();
             resetTokenRepository.save(token);
+            if (token.getAttempts() >= 5) {
+                throw new IdentityDomainException("Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần liên tiếp. Vui lòng gửi lại yêu cầu khôi phục.", "ERR_AUTH_OTP_LOCKED");
+            }
             throw new IdentityDomainException("Mã xác thực OTP không chính xác", "ERR_AUTH_INVALID_OTP");
+        }
+
+        // Validate not reusing old password
+        if (passwordEncoder.matches(command.getNewPassword(), user.getPasswordHash())) {
+            throw new IdentityDomainException("Mật khẩu mới không được trùng với mật khẩu gần nhất", "ERR_AUTH_OLD_PASSWORD_REUSE");
         }
 
         // OTP is correct

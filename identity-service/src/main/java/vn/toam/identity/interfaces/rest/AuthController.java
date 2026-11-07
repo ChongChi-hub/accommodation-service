@@ -1,8 +1,11 @@
 package vn.toam.identity.interfaces.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +50,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResult>> login(@Valid @RequestBody LoginCommand command,
-                                                         HttpServletRequest request) {
+                                                         HttpServletRequest request,
+                                                         HttpServletResponse response) {
         if (command.getIpAddress() == null) {
             command.setIpAddress(request.getRemoteAddr());
         }
@@ -55,6 +59,16 @@ public class AuthController {
             command.setDeviceInfo(request.getHeader("User-Agent"));
         }
         AuthResult result = loginUseCase.execute(command);
+
+        ResponseCookie cookie = ResponseCookie.from("toam_token", result.getToken())
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(86400)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", result));
     }
 
@@ -87,7 +101,14 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("toam_token", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return ResponseEntity.ok(ApiResponse.message("Đăng xuất thành công"));
     }
 

@@ -27,6 +27,7 @@ public class CreateRoomRequest {
     private String provinceCode;
     private String districtCode;
     private String wardCode;
+    private Long wardId;
 
     private Long roomTypeId;
     private String roomTypeCode;

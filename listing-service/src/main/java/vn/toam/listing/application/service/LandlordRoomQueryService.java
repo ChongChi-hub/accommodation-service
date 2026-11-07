@@ -159,6 +159,7 @@ public class LandlordRoomQueryService {
                 .provinceCode(room.getProvinceCode())
                 .districtCode(room.getDistrictCode())
                 .wardCode(room.getWardCode())
+                .wardId(room.getWardId())
                 .latitude(room.getLatitude())
                 .longitude(room.getLongitude())
                 .area(room.getArea())

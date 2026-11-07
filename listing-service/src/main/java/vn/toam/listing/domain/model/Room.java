@@ -57,11 +57,14 @@ public class Room {
     @Column(name = "province_code", nullable = false, length = 20)
     private String provinceCode;
 
-    @Column(name = "district_code", nullable = false, length = 20)
+    @Column(name = "district_code", length = 20)
     private String districtCode;
 
     @Column(name = "ward_code", length = 20)
     private String wardCode;
+
+    @Column(name = "ward_id")
+    private Long wardId;
 
     private Double latitude;
     private Double longitude;

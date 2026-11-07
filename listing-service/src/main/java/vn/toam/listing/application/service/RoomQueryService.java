@@ -153,6 +153,7 @@ public class RoomQueryService {
                 .provinceCode(r.getProvinceCode())
                 .districtCode(r.getDistrictCode())
                 .wardCode(r.getWardCode())
+                .wardId(r.getWardId())
                 .latitude(r.getLatitude())
                 .longitude(r.getLongitude())
                 .area(r.getArea())

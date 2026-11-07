@@ -24,6 +24,10 @@ public class LandlordRoomManagementService {
     private final RoomRepository roomRepository;
     private final RoomStatusHistoryRepository roomStatusHistoryRepository;
     private final RoomUsagePort roomUsagePort;
+    private final vn.toam.listing.domain.repository.RoomImageRepository roomImageRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${toam.listing.min-images-for-review:3}")
+    private int minImagesForReview = 3;
 
     public Room toggleVisibility(Long landlordId, Long roomId, boolean visible, String actorId) {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
@@ -128,6 +132,7 @@ public class LandlordRoomManagementService {
         if (req.getProvinceCode() != null) room.setProvinceCode(req.getProvinceCode());
         if (req.getDistrictCode() != null) room.setDistrictCode(req.getDistrictCode());
         if (req.getWardCode() != null) room.setWardCode(req.getWardCode());
+        if (req.getWardId() != null) room.setWardId(req.getWardId());
 
         if (req.getRoomTypeId() != null) room.setRoomTypeId(req.getRoomTypeId());
         if (req.getRoomTypeCode() != null) room.setRoomTypeCode(req.getRoomTypeCode());
@@ -156,7 +161,8 @@ public class LandlordRoomManagementService {
                 .replaceAll("^-|-$", "")
                 + "-" + (System.currentTimeMillis() % 100000);
 
-        String initialStatus = Boolean.TRUE.equals(req.getSubmitForReview()) ? "PENDING_REVIEW" : "DRAFT";
+        // In new architecture, room creation always starts as DRAFT. Images must be uploaded before submitting.
+        String initialStatus = "DRAFT";
 
         Room room = Room.builder()
                 .roomUuid(java.util.UUID.randomUUID().toString())
@@ -171,8 +177,9 @@ public class LandlordRoomManagementService {
                 .description(req.getDescription())
                 .address(req.getAddress())
                 .provinceCode(req.getProvinceCode() != null ? req.getProvinceCode() : "HN")
-                .districtCode(req.getDistrictCode() != null ? req.getDistrictCode() : "HN-CG")
+                .districtCode(req.getDistrictCode())
                 .wardCode(req.getWardCode())
+                .wardId(req.getWardId())
                 .area(req.getArea())
                 .maxOccupants(req.getMaxOccupants() != null ? req.getMaxOccupants() : 2)
                 .price(req.getPrice())
@@ -200,12 +207,44 @@ public class LandlordRoomManagementService {
                 .toStatus(saved.getStatus())
                 .actorId(actorId)
                 .actorRole("LANDLORD")
-                .reason(Boolean.TRUE.equals(req.getSubmitForReview()) ? "Gửi duyệt bài đăng mới" : "Lưu bản nháp bài đăng mới")
+                .reason("Lưu bản nháp bài đăng mới")
                 .createdAt(LocalDateTime.now())
                 .build());
 
         log.info("Landlord {} created room #{} with status {}", landlordId, saved.getId(), saved.getStatus());
         return saved;
+    }
+
+    public Room submitForReview(Long landlordId, Long roomId, String actorId) {
+        Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
+
+        long imageCount = roomImageRepository.countByRoomId(roomId);
+        if (imageCount < minImagesForReview) {
+            throw new IllegalStateException("Bài đăng phải có ít nhất " + minImagesForReview + " hình ảnh trước khi gửi duyệt.");
+        }
+
+        boolean hasCover = roomImageRepository.findByRoomIdAndCoverTrue(roomId).isPresent();
+        if (!hasCover) {
+            throw new IllegalStateException("Bài đăng phải có đúng 1 ảnh bìa trước khi gửi duyệt.");
+        }
+
+        String fromStatus = room.getStatus();
+        room.setStatus("PENDING_REVIEW");
+        room.setUpdatedAt(LocalDateTime.now());
+
+        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
+                .roomId(room.getId())
+                .fromStatus(fromStatus)
+                .toStatus("PENDING_REVIEW")
+                .actorId(actorId)
+                .actorRole("LANDLORD")
+                .reason("Chủ trọ gửi duyệt bài đăng")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        log.info("Landlord {} submitted room {} for review (images: {}, hasCover: true)", landlordId, roomId, imageCount);
+        return roomRepository.save(room);
     }
 }
 

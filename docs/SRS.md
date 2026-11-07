@@ -23,8 +23,9 @@
 * Khóa tạm tài khoản nếu nhập sai mật khẩu quá 5 lần liên tiếp.
 
 ### 3.2. Quản lý Tin đăng & Tìm kiếm (Listing Service)
-* Quản lý danh mục địa giới hành chính chuẩn DVHCVN (Tỉnh/Thành -> Quận/Huyện -> Phường/Xã).
-* Tìm kiếm phòng trọ với bộ lọc đa tiêu chí: khoảng giá thuê, diện tích, vị trí địa lý, tiện nghi (wifi, máy lạnh, máy giặt...), nội quy (cho nuôi thú cưng, cho nấu ăn, không chung chủ, giờ tự do).
+* Quản lý danh mục địa giới hành chính chuẩn 2 cấp theo Nghị quyết 202/2025/QH15 (34 đơn vị cấp Tỉnh/Thành -> Xã/Phường, bãi bỏ cấp trung gian quận/huyện).
+* Định dạng địa chỉ chuẩn hóa: "Số nhà, đường, Phường/Xã, Tỉnh/Thành phố".
+* Tìm kiếm phòng trọ với bộ lọc đa tiêu chí: khoảng giá thuê, diện tích, vị trí địa lý 2 cấp, tiện nghi (wifi, máy lạnh, máy giặt...), nội quy (cho nuôi thú cưng, cho nấu ăn, không chung chủ, giờ tự do).
 * Đánh giá sao (1-5) và bình luận trải nghiệm thuê trọ.
 * Lưu danh sách phòng yêu thích (Bookmarks) và lưu bộ lọc tìm kiếm (Saved Searches).
 
