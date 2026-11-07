@@ -1,0 +1,37 @@
+name: Backend CI Pipeline
+
+on:
+  push:
+    branches: [main, master, develop, feat/*]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend-verification:
+    name: Verify Backend (Spring Boot & DDD ArchUnit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Cache Gradle Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build and Test Backend Services
+        run: |
+          chmod +x gradlew
+          ./gradlew clean build test
+

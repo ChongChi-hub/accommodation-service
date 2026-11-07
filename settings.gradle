@@ -1,1 +1,18 @@
-rootProject.name = 'service'
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+rootProject.name = 'accommodation-service'
+
+// Active Microservices & Shared Libraries
+include 'common'
+include 'api-gateway'
+include 'identity-service'
+include 'listing-service'
+
+// Phase 2 Services (Uncomment as implementation begins):
+// include 'booking-service'
+// include 'billing-service'
+// include 'communication-service'
+// include 'admin-service'
+
