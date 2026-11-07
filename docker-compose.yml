@@ -77,6 +77,23 @@ services:
     networks:
       - toam_network
 
+  web:
+    build:
+      context: ../accommodation-web
+      dockerfile: Dockerfile
+    container_name: toam_web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+    depends_on:
+      - api-gateway
+    networks:
+      - toam_network
+    profiles:
+      - full
+
 networks:
   toam_network:
     driver: bridge
