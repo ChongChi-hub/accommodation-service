@@ -43,3 +43,4 @@ public class JwksController {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
+

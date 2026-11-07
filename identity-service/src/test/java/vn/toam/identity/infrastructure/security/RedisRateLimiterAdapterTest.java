@@ -43,3 +43,4 @@ class RedisRateLimiterAdapterTest {
         assertEquals("ERR_RATE_LIMIT_COOLDOWN", ex.getErrorCode());
     }
 }
+
