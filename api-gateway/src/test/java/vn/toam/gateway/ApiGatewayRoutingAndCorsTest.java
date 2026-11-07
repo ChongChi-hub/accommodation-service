@@ -53,6 +53,19 @@ class ApiGatewayRoutingAndCorsTest {
         assertThat(allowedOrigin0).contains("http://localhost:3000");
         assertThat(allowCredentials).isEqualTo("true");
     }
+
+    @Test
+    @DisplayName("4. Verify /internal/** endpoints are strictly blocked from external API Gateway routing")
+    void testInternalEndpointsNotExposedToGateway() {
+        for (int i = 0; i < 10; i++) {
+            String predicates = env.getProperty("spring.cloud.gateway.routes[" + i + "].predicates[0]");
+            if (predicates != null) {
+                assertThat(predicates)
+                        .withFailMessage("Gateway route predicate %s must NOT expose /internal/**", predicates)
+                        .doesNotContain("/internal/**");
+            }
+        }
+    }
 }
 
 

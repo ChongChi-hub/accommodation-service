@@ -66,3 +66,4 @@ class ImageProcessingHelperTest {
         assertThat(square.getHeight()).isEqualTo(100);
     }
 }
+

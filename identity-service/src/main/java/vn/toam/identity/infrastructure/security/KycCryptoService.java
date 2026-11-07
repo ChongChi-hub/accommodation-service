@@ -25,9 +25,22 @@ public class KycCryptoService {
     private final byte[] pepperBytes;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    public KycCryptoService(String secretKey, String pepper) {
+        this(secretKey, pepper, null);
+    }
+
     public KycCryptoService(
             @Value("${app.kyc.secret-key:ToAmKycSecretKey2026DevEnvironment32B}") String secretKey,
-            @Value("${app.kyc.pepper:ToAmKycPepperSecret2026DevEnvKey!}") String pepper) {
+            @Value("${app.kyc.pepper:ToAmKycPepperSecret2026DevEnvKey!}") String pepper,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) org.springframework.core.env.Environment env) {
+        if (env != null && env.matchesProfiles("prod", "production")) {
+            String envSecret = System.getenv("KYC_SECRET_KEY");
+            String envPepper = System.getenv("KYC_PEPPER");
+            if (envSecret == null || envSecret.isBlank() || envPepper == null || envPepper.isBlank()
+                    || "ToAmKycSecretKey2026DevEnvironment32B".equals(secretKey)) {
+                throw new IllegalStateException("Production environment must explicitly configure KYC_SECRET_KEY and KYC_PEPPER via environment variables");
+            }
+        }
         byte[] keyRaw = secretKey.getBytes(StandardCharsets.UTF_8);
         if (keyRaw.length < 32) {
             byte[] padded = new byte[32];
