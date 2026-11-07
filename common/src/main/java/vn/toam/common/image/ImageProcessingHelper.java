@@ -14,6 +14,13 @@ public final class ImageProcessingHelper {
     public static final int MAX_PIXEL_DIMENSION = 8000;
     public static final long MAX_FILE_SIZE_5MB = 5 * 1024 * 1024L;
 
+    static {
+        try {
+            ImageIO.scanForPlugins();
+        } catch (Throwable ignored) {
+        }
+    }
+
     private ImageProcessingHelper() {}
 
     public static boolean isValidImageMagicBytes(byte[] bytes) {
@@ -79,21 +86,40 @@ public final class ImageProcessingHelper {
 
     public static byte[] resizeToWebP(BufferedImage source, int targetWidth, int targetHeight, float quality) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Thumbnails.of(source)
-                .size(targetWidth, targetHeight)
-                .outputFormat("webp")
-                .outputQuality(quality)
-                .toOutputStream(baos);
+        try {
+            Thumbnails.of(source)
+                    .size(targetWidth, targetHeight)
+                    .outputFormat("webp")
+                    .outputQuality(quality)
+                    .toOutputStream(baos);
+        } catch (Exception e) {
+            baos.reset();
+            Thumbnails.of(source)
+                    .size(targetWidth, targetHeight)
+                    .outputFormat("jpg")
+                    .outputQuality(quality)
+                    .toOutputStream(baos);
+        }
         return baos.toByteArray();
     }
 
     public static byte[] resizeBoundingBoxWebP(BufferedImage source, int maxEdge, float quality) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Thumbnails.of(source)
-                .size(maxEdge, maxEdge)
-                .outputFormat("webp")
-                .outputQuality(quality)
-                .toOutputStream(baos);
+        try {
+            Thumbnails.of(source)
+                    .size(maxEdge, maxEdge)
+                    .outputFormat("webp")
+                    .outputQuality(quality)
+                    .toOutputStream(baos);
+        } catch (Exception e) {
+            baos.reset();
+            Thumbnails.of(source)
+                    .size(maxEdge, maxEdge)
+                    .outputFormat("jpg")
+                    .outputQuality(quality)
+                    .toOutputStream(baos);
+        }
         return baos.toByteArray();
     }
 }
+

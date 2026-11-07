@@ -29,6 +29,10 @@ dependencies {
     runtimeOnly libs.jjwt.impl
     runtimeOnly libs.jjwt.jackson
 
+    // Image & WebP
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
+    implementation 'net.coobird:thumbnailator:0.4.20'
+
     testImplementation libs.testcontainers.mysql
 }
 
