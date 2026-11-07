@@ -76,3 +76,33 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
   * Đồng thời bổ sung service `web` với Docker Compose profile `full` trỏ tới `../accommodation-web`.
   * Khi phát triển độc lập: Backend chạy `./gradlew bootRun` hoặc `docker compose up` (cổng 8080/8081); Frontend chạy `npm run dev` (cổng 3000) gọi API qua `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1`.
   * Khi cần khởi chạy trọn gói cả hệ thống bằng một lệnh: `docker compose --profile full up --build`.
+
+---
+
+## 6. Quyết Định Thiết Kế LANDLORD-04 & LANDLORD-02
+
+### 6.1. Xử lý ảnh WebP và Bảo mật File Upload (Java 23/25)
+* **Thư viện**: Tích hợp `com.twelvemonkeys.imageio:imageio-webp:3.12.0` và `net.coobird:thumbnailator:0.4.20` vào `listing-service/build.gradle`.
+* **Quy trình xử lý an toàn**:
+  1. Kiểm tra kích thước file (< 5MB) và tổng số lượng ảnh của phòng (<= 10 ảnh).
+  2. Kiểm tra định dạng bằng Magic Bytes và `ImageIO.read()` (chỉ chấp nhận JPEG, PNG, WebP).
+  3. Giới hạn độ phân giải pixel tối đa 8000x8000px để chống tấn công Decompression Bomb.
+  4. Đọc lại pixel và vẽ sang canvas mới để triệt tiêu hoàn toàn mã độc Polyglot và siêu dữ liệu EXIF/GPS.
+  5. Xuất bản 3 kích cỡ WebP chuẩn hóa: Thumb (320px), Medium (960px), Large (1600px).
+* **Lưu trữ**: Port `ImageStoragePort`, adapter `FileSystemImageStorageAdapter` lưu file vào thư mục ngoài web (`./storage/media/{key}`), phục vụ qua endpoint `/api/v1/media/{key}` kèm header `Cache-Control: public, max-age=31536000, immutable` và `X-Content-Type-Options: nosniff`.
+
+### 6.2. Ràng buộc duy nhất 1 ảnh bìa ở Database
+* MySQL không hỗ trợ partial index `WHERE is_cover = TRUE`. Do đó, sử dụng giải pháp Generated Stored Column:
+  `cover_room_id BIGINT GENERATED ALWAYS AS (CASE WHEN is_cover = 1 THEN room_id ELSE NULL END) STORED`
+  kèm `UNIQUE KEY uq_room_images_cover_per_room (cover_room_id)`.
+* Khi `is_cover = 0`, giá trị là `NULL` (MySQL cho phép nhiều NULL trong UNIQUE index). Khi `is_cover = 1`, giá trị là `room_id`, do đó chỉ duy nhất 1 ảnh của mỗi phòng được phép có `is_cover = 1`.
+
+### 6.3. Bảo vệ phòng RENTED & Toàn vẹn dữ liệu
+* Xóa phòng là Xóa mềm (`deleted_at = NOW()`).
+* Tạo interface `RoomUsagePort`. Adapter tạm thời kiểm tra trạng thái phòng (`status == 'RENTED'`), nếu đang cho thuê thì chặn xóa với lỗi nghiệp vụ `ROOM_CURRENTLY_RENTED` (HTTP 400).
+* Ẩn/Hiện phòng: Tin bị kiểm duyệt/Admin ẩn (`hidden_by IN ('MODERATOR', 'ADMIN')`) thì chủ trọ không có quyền tự hiện lại, phải liên hệ hỗ trợ hoặc sửa theo yêu cầu.
+
+### 6.4. Chiến lược quản lý ảnh ở Frontend
+* **Màn hình Đăng mới**: Quản lý ảnh cục bộ qua Object URLs (nhớ revoke khi unmount). Khi nhấn "Đăng tin", hệ thống tạo phòng -> upload file multipart -> cập nhật ảnh bìa và thứ tự -> gửi duyệt.
+* **Màn hình Chỉnh sửa**: Tương tác API trực tiếp cho các hành động đặt bìa (`PATCH .../cover`), xóa (`DELETE .../images/{id}`), và đổi thứ tự (`PUT .../images/order`) để đảm bảo tính nguyên tử và phản hồi tức thì.
+
