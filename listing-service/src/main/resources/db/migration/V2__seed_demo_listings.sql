@@ -88,3 +88,4 @@ INSERT INTO reviews (id, room_id, tenant_id, tenant_name, rating, comment, landl
 (2, 1, 3, 'Lê Thị Mai', 5, 'Khu phố an ninh, yên tĩnh, đi bộ ra chợ và bến xe buýt rất gần. Phòng cách âm tốt, điều hòa mát rượi.', NULL),
 (3, 2, 1, 'Nguyễn Văn Thuê', 4, 'Phòng thoáng mát nhiều ánh sáng, ban công ngắm hoàng hôn rất chill. Chỉ có ngõ vào hơi nhỏ một chút.', 'Cảm ơn em đã đóng góp ý kiến, bên anh đã lắp thêm đèn chiếu sáng ngõ để đi lại an toàn hơn rồi nhé.')
 ON DUPLICATE KEY UPDATE rating=VALUES(rating);
+

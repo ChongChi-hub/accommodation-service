@@ -25,3 +25,4 @@ public interface LocationRepositories {
         List<Ward> findByDistrictCodeOrderByNameAsc(String districtCode);
     }
 }
+

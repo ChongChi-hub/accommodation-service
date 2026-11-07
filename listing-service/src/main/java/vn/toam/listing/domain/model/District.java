@@ -34,3 +34,4 @@ public class District {
     @Column(name = "province_code", nullable = false, length = 20)
     private String provinceCode;
 }
+

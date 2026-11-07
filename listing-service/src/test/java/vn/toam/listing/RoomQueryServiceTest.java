@@ -55,3 +55,4 @@ class RoomQueryServiceTest {
         verify(roomRepository, times(1)).findById(1L);
     }
 }
+

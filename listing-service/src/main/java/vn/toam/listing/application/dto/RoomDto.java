@@ -44,3 +44,4 @@ public class RoomDto {
     private List<String> imageUrls;
     private List<AmenityDto> amenities;
 }
+

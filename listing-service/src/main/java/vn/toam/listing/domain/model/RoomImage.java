@@ -28,3 +28,4 @@ public class RoomImage {
     @Column(name = "display_order")
     private Integer displayOrder;
 }
+

@@ -25,3 +25,4 @@ public class AmenityController {
         return ResponseEntity.ok(ApiResponse.success(roomQueryService.getAllAmenities()));
     }
 }
+

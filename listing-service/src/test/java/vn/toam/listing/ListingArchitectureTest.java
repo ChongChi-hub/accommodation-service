@@ -20,3 +20,4 @@ public class ListingArchitectureTest {
             noClasses().that().resideInAPackage("..application..")
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 }
+

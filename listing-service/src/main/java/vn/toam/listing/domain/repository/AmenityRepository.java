@@ -7,3 +7,4 @@ import vn.toam.listing.domain.model.Amenity;
 @Repository
 public interface AmenityRepository extends JpaRepository<Amenity, Long> {
 }
+

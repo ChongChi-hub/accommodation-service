@@ -53,3 +53,4 @@ public class LocationService {
                 .collect(Collectors.toList());
     }
 }
+

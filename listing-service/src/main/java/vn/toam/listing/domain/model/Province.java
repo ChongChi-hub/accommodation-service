@@ -31,3 +31,4 @@ public class Province {
     @Column(name = "full_name_en", length = 150)
     private String fullNameEn;
 }
+

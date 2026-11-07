@@ -16,3 +16,4 @@ public class AmenityDto {
     private String icon;
     private String category;
 }
+

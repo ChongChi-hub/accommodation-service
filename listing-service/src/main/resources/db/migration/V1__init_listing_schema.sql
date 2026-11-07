@@ -115,3 +115,4 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_user_room (user_id, room_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

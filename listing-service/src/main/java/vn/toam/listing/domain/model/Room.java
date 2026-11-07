@@ -119,3 +119,4 @@ public class Room {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
+

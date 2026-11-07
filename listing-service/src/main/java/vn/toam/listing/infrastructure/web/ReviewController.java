@@ -25,3 +25,4 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(roomQueryService.getReviewsByRoom(roomId)));
     }
 }
+

@@ -42,3 +42,4 @@ public class LocationDto {
         private String districtCode;
     }
 }
+

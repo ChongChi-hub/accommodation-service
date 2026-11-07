@@ -34,3 +34,4 @@ public class Ward {
     @Column(name = "district_code", nullable = false, length = 20)
     private String districtCode;
 }
+

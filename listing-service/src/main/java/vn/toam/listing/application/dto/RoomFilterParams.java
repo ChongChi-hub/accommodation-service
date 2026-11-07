@@ -28,3 +28,4 @@ public class RoomFilterParams {
     private Integer page;
     private Integer size;
 }
+

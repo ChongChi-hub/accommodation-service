@@ -21,3 +21,4 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
 
     Page<Room> findByLandlordId(Long landlordId, Pageable pageable);
 }
+

@@ -37,3 +37,4 @@ public class LocationController {
         return ResponseEntity.ok(ApiResponse.success(locationService.getWards(districtCode)));
     }
 }
+

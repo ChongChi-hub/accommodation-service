@@ -28,3 +28,4 @@ public class Amenity {
     @Column(length = 50)
     private String category;
 }
+
