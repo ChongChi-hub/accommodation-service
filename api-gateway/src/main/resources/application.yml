@@ -36,22 +36,22 @@ spring:
         - id: booking-service
           uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/v1/appointments/**, /api/v1/rental-requests/**, /api/v1/contracts/**
+            - Path=/api/v1/booking/**, /api/v1/appointments/**, /api/v1/rental-requests/**, /api/v1/contracts/**, /api/v1/maintenance/**
 
         - id: billing-service
           uri: ${BILLING_SERVICE_URL:http://localhost:8084}
           predicates:
-            - Path=/api/v1/payments/**, /api/v1/invoices/**
+            - Path=/api/v1/billing/**, /api/v1/payments/**, /api/v1/invoices/**
 
         - id: communication-service
           uri: ${COMMUNICATION_SERVICE_URL:http://localhost:8085}
           predicates:
-            - Path=/api/v1/notifications/**, /api/v1/chat/**
+            - Path=/api/v1/communication/**, /api/v1/notifications/**, /api/v1/chat/**
 
         - id: admin-service
           uri: ${ADMIN_SERVICE_URL:http://localhost:8086}
           predicates:
-            - Path=/api/v1/admin/**, /api/v1/reports/**
+            - Path=/api/v1/admin-service/**, /api/v1/admin/**, /api/v1/reports/**, /api/v1/disputes/**
 
 management:
   endpoints:
