@@ -13,9 +13,12 @@ build/
 logs/
 .tmp/
 
-# Uploads directory
+# Uploads & storage directory
 uploads/
 /uploads
+storage/
+/storage
+listing-service/storage/
 
 # IDE & OS
 .idea/
