@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:9.1
+    container_name: toam_mysql
+    restart: always
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - toam_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - toam_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: toam_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - toam_redis_data:/data
+    networks:
+      - toam_network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: toam_gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      LISTING_SERVICE_URL: http://listing-service:8082
+      BOOKING_SERVICE_URL: http://booking-service:8083
+      BILLING_SERVICE_URL: http://billing-service:8084
+      COMMUNICATION_SERVICE_URL: http://communication-service:8085
+      ADMIN_SERVICE_URL: http://admin-service:8086
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - toam_network
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: identity-service/Dockerfile
+    container_name: toam_identity
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: toam_identity
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+      JWT_SECRET: ${JWT_SECRET:-toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - toam_network
+
+networks:
+  toam_network:
+    driver: bridge
+
+volumes:
+  toam_mysql_data:
+  toam_redis_data:

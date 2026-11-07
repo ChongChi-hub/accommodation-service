@@ -1,0 +1,25 @@
+# Gradle build & cache
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Environment & Secrets
+.env
+.env.local
+*.env
+
+# Logs & temp
+*.log
+logs/
+.tmp/
+
+# Uploads directory
+uploads/
+/uploads
+
+# IDE & OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

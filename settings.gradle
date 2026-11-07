@@ -1,0 +1,15 @@
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+rootProject.name = 'accommodation-service'
+
+include 'common'
+include 'api-gateway'
+include 'identity-service'
+include 'listing-service'
+include 'booking-service'
+include 'billing-service'
+include 'communication-service'
+include 'admin-service'
+
