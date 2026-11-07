@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import vn.toam.listing.domain.model.Room;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificationExecutor<Room> {
@@ -20,5 +21,24 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     List<Room> findRecommendations(@Param("provinceCode") String provinceCode, @Param("roomId") Long roomId, Pageable pageable);
 
     Page<Room> findByLandlordId(Long landlordId, Pageable pageable);
-}
 
+    Optional<Room> findByIdAndLandlordIdAndDeletedAtIsNull(Long id, Long landlordId);
+
+    @Query("""
+        SELECT r FROM Room r
+        WHERE r.landlordId = :landlordId
+          AND r.deletedAt IS NULL
+          AND (:status IS NULL OR r.status = :status)
+          AND (:search IS NULL OR LOWER(r.titleSearch) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(r.title) LIKE LOWER(CONCAT('%', :search, '%')))
+    """)
+    Page<Room> findLandlordRooms(
+        @Param("landlordId") Long landlordId,
+        @Param("status") String status,
+        @Param("search") String search,
+        Pageable pageable
+    );
+
+    long countByLandlordIdAndDeletedAtIsNull(Long landlordId);
+
+    long countByLandlordIdAndDeletedAtIsNullAndStatus(Long landlordId, String status);
+}

@@ -85,3 +85,4 @@
    * Adapter `FileSystemImageStorageAdapter` lưu file vào thư mục ngoài web root (ví dụ `./storage/media/`) được mount qua Docker volume.
 3. **Bảo vệ phòng RENTED**:
    * Tạo cổng `RoomUsagePort`. Adapter tạm thời kiểm tra trạng thái phòng, nếu `status == 'RENTED'` thì từ chối xóa kèm mã lỗi `ROOM_CURRENTLY_RENTED`. Ghi chú sẵn sàng kết nối Feign Client tới `booking-service` khi có API hợp đồng.
+
