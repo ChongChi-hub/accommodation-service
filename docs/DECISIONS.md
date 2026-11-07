@@ -172,3 +172,40 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 * Identity service công khai bộ khóa công khai tại endpoint tiêu chuẩn `/.well-known/jwks.json`.
 * Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `toam-key-2026-v1`).
 * Các Resource Server (`listing-service`, `billing-service`, `booking-service`, `admin-service`) cache JWKS trong bộ nhớ với thời gian sống TTL 24 giờ. Khi gặp token mang `kid` mới chưa có trong cache, Resource Server tự động fetch lại JWKS để cập nhật khóa mới mà không cần khởi động lại dịch vụ (Zero-downtime key rotation).
+
+---
+
+## 10. Chiến lược Định danh Thực thể: Rà soát UUID v7 và BIGINT, Trade-offs & Lộ trình Di chuyển
+
+### 10.1 Hiện trạng Rà soát Schema (`rooms`, `room_images`, `users`)
+* **Bảng `rooms`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa định danh ngoại vi (Public UUID): `room_uuid VARCHAR(36) NOT NULL UNIQUE` (lưu trữ chuỗi UUID v7).
+* **Bảng `room_images`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa ngoại quan hệ: `room_id BIGINT` (tham chiếu tới `rooms.id`).
+  * Khóa lưu trữ vật lý: `storage_key`, `thumb_key`, `medium_key`, `large_key` (được đặt tên có chứa UUID ngẫu nhiên tránh trùng lặp).
+* **Bảng `users`:**
+  * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
+  * Khóa định danh ngoại vi (Public UUID): `user_uuid VARCHAR(36) NOT NULL UNIQUE`.
+  * Dữ liệu hạt giống dev/demo: Còn tồn tại bí danh chuỗi thân thiện con người (`u-landlord-01`, `u-tenant-01`, `u-admin-01`) dùng cho test fixture.
+
+### 10.2 Lý do Áp dụng Mô hình Khóa Kép (Dual-ID Pattern) & Trade-offs
+1. **Hiệu năng B-tree Clustered Index của InnoDB (MySQL):**
+   * *Ưu điểm của BIGINT PK:* InnoDB lưu trữ bảng theo chỉ mục phân cụm (Clustered Index B+Tree). Mọi chỉ mục phụ (Secondary Index) đều phải lưu trữ giá trị của PK làm con trỏ hàng. Khóa chính `BIGINT` (8 bytes) giúp kích thước node chỉ mục nhỏ gọn hơn 50-75% so với chuỗi UUID (36 bytes), giảm phân mảnh trang (page split) và tối ưu bộ nhớ đệm InnoDB Buffer Pool.
+   * *Nhược điểm của BIGINT đơn lẻ:* Dễ bị quét ID (ID Enumeration Attack), làm lộ tổng số lượng khách hàng hoặc số lượng phòng của nền tảng.
+2. **Bảo mật và Phân tán với UUID v7:**
+   * *Ưu điểm của UUID v7:* Có chứa 48-bit timestamp ở phần đầu (Time-ordered), giúp việc chèn mới không bị nhảy ngẫu nhiên khắp cây B-tree như UUID v4, giảm thiểu phân tán IOPS. Không thể đoán trước ID của người dùng hay bài đăng khác.
+   * *Trade-off:* Tốn 36 bytes dạng chuỗi (hoặc 16 bytes dạng `BINARY(16)`), chi phí join giữa các bảng đa dịch vụ cao hơn so với số nguyên 64-bit.
+3. **Đánh giá quyết định:** Mô hình kết hợp (`BIGINT AUTO_INCREMENT` làm PK nội bộ + `UUID v7` làm Public Resource ID ở URL và API) là giải pháp cân bằng tối ưu nhất cho hệ thống vừa đạt thông lượng xử lý cao, vừa bảo vệ tính riêng tư.
+
+### 10.3 Lộ trình Di chuyển Chuẩn hóa (Migration Roadmap)
+* **Giai đoạn 1 (Hiện tại):**
+  * Duy trì Dual-ID pattern trên toàn bộ các service.
+  * API công khai ưu tiên nhận dạng qua `room_uuid` và `user_uuid`. Các API nội bộ giữa các microservice có thể dùng surrogate `BIGINT` ID để join tốc độ cao.
+  * Các bí danh tiền tố demo như `u-landlord-01` được cô lập hoàn toàn trong hồ sơ test fixture/dev seed, không bao giờ xuất hiện ở môi trường production.
+* **Giai đoạn 2 (Tối ưu hóa Storage & Memory):**
+  * Chuyển đổi định dạng lưu trữ cột `room_uuid` và `user_uuid` từ `VARCHAR(36)` sang `BINARY(16)`.
+  * Áp dụng hàm tích hợp sẵn của MySQL 8+: `UUID_TO_BIN(uuid_str, 1)` (cờ 1 đổi vị trí byte thời gian lên đầu) và `BIN_TO_UUID(bin_uuid, 1)` khi truy vấn.
+* **Giai đoạn 3 (Pure Distributed Identity):**
+  * Khi mở rộng sang kiến trúc sharding đa trung tâm dữ liệu (multi-region database sharding), chuyển đổi khóa chính sang UUID v7 thuần túy (`BINARY(16) PRIMARY KEY`) với bộ sinh UUID v7 tập trung hoặc phân tán ở tầng Application (Java 25).
