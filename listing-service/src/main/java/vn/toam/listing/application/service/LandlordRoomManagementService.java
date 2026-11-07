@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.toam.listing.application.dto.CreateRoomRequest;
 import vn.toam.listing.application.dto.UpdateRoomRequest;
 import vn.toam.listing.domain.model.Room;
 import vn.toam.listing.domain.model.RoomStatusHistory;
@@ -147,6 +148,64 @@ public class LandlordRoomManagementService {
 
         log.info("Landlord {} updated room {}", landlordId, roomId);
         return roomRepository.save(room);
+    }
+
+    public Room createRoom(Long landlordId, CreateRoomRequest req, String actorId, String landlordName, String landlordPhone) {
+        String slug = LandlordRoomQueryService.removeAccents(req.getTitle().toLowerCase())
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-|-$", "")
+                + "-" + (System.currentTimeMillis() % 100000);
+
+        String initialStatus = Boolean.TRUE.equals(req.getSubmitForReview()) ? "PENDING_REVIEW" : "DRAFT";
+
+        Room room = Room.builder()
+                .roomUuid(java.util.UUID.randomUUID().toString())
+                .landlordId(landlordId)
+                .landlordName(landlordName != null ? landlordName : "Chủ trọ #" + landlordId)
+                .landlordPhone(landlordPhone != null ? landlordPhone : "0901234567")
+                .roomTypeId(req.getRoomTypeId() != null ? req.getRoomTypeId() : 1L)
+                .roomTypeCode(req.getRoomTypeCode() != null ? req.getRoomTypeCode() : "MINI_APARTMENT")
+                .title(req.getTitle())
+                .titleSearch(LandlordRoomQueryService.removeAccents(req.getTitle().toLowerCase()))
+                .slug(slug)
+                .description(req.getDescription())
+                .address(req.getAddress())
+                .provinceCode(req.getProvinceCode() != null ? req.getProvinceCode() : "HN")
+                .districtCode(req.getDistrictCode() != null ? req.getDistrictCode() : "HN-CG")
+                .wardCode(req.getWardCode())
+                .area(req.getArea())
+                .maxOccupants(req.getMaxOccupants() != null ? req.getMaxOccupants() : 2)
+                .price(req.getPrice())
+                .deposit(req.getDeposit() != null ? req.getDeposit() : java.math.BigDecimal.ZERO)
+                .electricityCost(req.getElectricityCost())
+                .waterCost(req.getWaterCost())
+                .internetCost(req.getInternetCost())
+                .serviceCost(req.getServiceCost())
+                .status(initialStatus)
+                .approved(false)
+                .allowPets(Boolean.TRUE.equals(req.getAllowPets()))
+                .allowCooking(Boolean.TRUE.equals(req.getAllowCooking()))
+                .viewCount(0)
+                .ratingAvg(0.0)
+                .reviewCount(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        Room saved = roomRepository.save(room);
+
+        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
+                .roomId(saved.getId())
+                .fromStatus(null)
+                .toStatus(saved.getStatus())
+                .actorId(actorId)
+                .actorRole("LANDLORD")
+                .reason(Boolean.TRUE.equals(req.getSubmitForReview()) ? "Gửi duyệt bài đăng mới" : "Lưu bản nháp bài đăng mới")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        log.info("Landlord {} created room #{} with status {}", landlordId, saved.getId(), saved.getStatus());
+        return saved;
     }
 }
 

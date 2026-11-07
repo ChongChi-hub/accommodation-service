@@ -97,6 +97,32 @@ public class LandlordRoomController {
         return ResponseEntity.ok(ApiResponse.success(msg, msg));
     }
 
+    @PostMapping
+    @Operation(summary = "Tạo mới bài đăng phòng trọ (bản nháp hoặc gửi duyệt)")
+    public ResponseEntity<ApiResponse<LandlordRoomListItemDto>> createRoom(
+            @Valid @RequestBody CreateRoomRequest request
+    ) {
+        Long landlordId = getRequiredLandlordId();
+        String actorId = contextResolver.getCurrentActorId();
+        Room created = managementService.createRoom(landlordId, request, actorId, "Chủ trọ " + landlordId, "0901234567");
+        LandlordRoomListItemDto dto = LandlordRoomListItemDto.builder()
+                .id(created.getId())
+                .roomUuid(created.getRoomUuid())
+                .title(created.getTitle())
+                .address(created.getAddress())
+                .price(created.getPrice())
+                .deposit(created.getDeposit())
+                .area(created.getArea())
+                .status(created.getStatus())
+                .publishedAt(created.getPublishedAt())
+                .createdAt(created.getCreatedAt())
+                .viewCount(created.getViewCount())
+                .ratingAvg(created.getRatingAvg())
+                .reviewCount(created.getReviewCount())
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa mềm bài đăng phòng trọ")
     public ResponseEntity<ApiResponse<String>> deleteRoom(@PathVariable Long id) {
