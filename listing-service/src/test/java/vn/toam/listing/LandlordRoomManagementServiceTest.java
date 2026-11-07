@@ -35,6 +35,9 @@ class LandlordRoomManagementServiceTest {
     @Mock
     private RoomUsagePort roomUsagePort;
 
+    @Mock
+    private vn.toam.listing.domain.repository.RoomImageRepository roomImageRepository;
+
     @InjectMocks
     private LandlordRoomManagementService service;
 
@@ -154,6 +157,75 @@ class LandlordRoomManagementServiceTest {
         });
 
         assertThat(ex.getMessage()).contains("Không thể xóa phòng đang có khách thuê");
+    }
+
+    @Test
+    @DisplayName("Submit room for review fails when room has less than 3 images")
+    void testSubmitFailsWithLessThanThreeImages() {
+        Room draftRoom = Room.builder().id(201L).landlordId(1L).status("DRAFT").build();
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(201L, 1L)).thenReturn(Optional.of(draftRoom));
+        when(roomImageRepository.countByRoomId(201L)).thenReturn(2L);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            service.submitForReview(1L, 201L, "u-landlord-01");
+        });
+
+        assertThat(ex.getMessage()).contains("phải có ít nhất 3 hình ảnh");
+    }
+
+    @Test
+    @DisplayName("Submit room for review fails when room has no cover image")
+    void testSubmitFailsWithoutCoverImage() {
+        Room draftRoom = Room.builder().id(202L).landlordId(1L).status("DRAFT").build();
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(202L, 1L)).thenReturn(Optional.of(draftRoom));
+        when(roomImageRepository.countByRoomId(202L)).thenReturn(3L);
+        when(roomImageRepository.findByRoomIdAndCoverTrue(202L)).thenReturn(Optional.empty());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            service.submitForReview(1L, 202L, "u-landlord-01");
+        });
+
+        assertThat(ex.getMessage()).contains("phải có đúng 1 ảnh bìa");
+    }
+
+    @Test
+    @DisplayName("Submit room for review succeeds when >= 3 images and cover present")
+    void testSubmitSucceeds() {
+        Room draftRoom = Room.builder().id(203L).landlordId(1L).status("DRAFT").build();
+        vn.toam.listing.domain.model.RoomImage coverImage = vn.toam.listing.domain.model.RoomImage.builder()
+                .id(1L).roomId(203L).cover(true).build();
+
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(203L, 1L)).thenReturn(Optional.of(draftRoom));
+        when(roomImageRepository.countByRoomId(203L)).thenReturn(4L);
+        when(roomImageRepository.findByRoomIdAndCoverTrue(203L)).thenReturn(Optional.of(coverImage));
+        when(roomRepository.save(any(Room.class))).thenAnswer(i -> i.getArgument(0));
+
+        Room submitted = service.submitForReview(1L, 203L, "u-landlord-01");
+
+        assertThat(submitted.getStatus()).isEqualTo("PENDING_REVIEW");
+        verify(roomStatusHistoryRepository, times(1)).save(any(RoomStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("Creating room always starts in DRAFT status regardless of request flag")
+    void testCreateRoomAlwaysStartsInDraft() {
+        vn.toam.listing.application.dto.CreateRoomRequest req = vn.toam.listing.application.dto.CreateRoomRequest.builder()
+                .title("Phòng Mới Tạo")
+                .address("123 Cầu Giấy")
+                .area(25.0)
+                .price(java.math.BigDecimal.valueOf(3500000))
+                .submitForReview(true)
+                .build();
+
+        when(roomRepository.save(any(Room.class))).thenAnswer(i -> {
+            Room r = i.getArgument(0);
+            r.setId(301L);
+            return r;
+        });
+
+        Room created = service.createRoom(1L, req, "u-landlord-01", "Chủ trọ", "0901234567");
+
+        assertThat(created.getStatus()).isEqualTo("DRAFT");
     }
 }
 

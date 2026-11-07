@@ -123,6 +123,15 @@ public class LandlordRoomController {
         return ResponseEntity.ok(ApiResponse.success(dto));
     }
 
+    @PostMapping("/{id}/submit")
+    @Operation(summary = "Gửi bài đăng phòng trọ lên ban quản trị phê duyệt (yêu cầu tối thiểu 3 ảnh và 1 ảnh bìa)")
+    public ResponseEntity<ApiResponse<String>> submitForReview(@PathVariable Long id) {
+        Long landlordId = getRequiredLandlordId();
+        String actorId = contextResolver.getCurrentActorId();
+        managementService.submitForReview(landlordId, id, actorId);
+        return ResponseEntity.ok(ApiResponse.message("Gửi yêu cầu duyệt bài đăng thành công"));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa mềm bài đăng phòng trọ")
     public ResponseEntity<ApiResponse<String>> deleteRoom(@PathVariable Long id) {
