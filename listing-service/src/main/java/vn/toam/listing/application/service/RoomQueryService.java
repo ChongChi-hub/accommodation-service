@@ -41,7 +41,9 @@ public class RoomQueryService {
         Specification<Room> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("approved"), true));
-            predicates.add(cb.equal(root.get("status"), "AVAILABLE"));
+            predicates.add(cb.or(cb.equal(root.get("status"), "AVAILABLE"), cb.equal(root.get("status"), "PUBLISHED")));
+            predicates.add(cb.isNull(root.get("deletedAt")));
+            predicates.add(cb.isNull(root.get("hiddenAt")));
 
             if (params.getProvinceCode() != null && !params.getProvinceCode().isBlank()) {
                 predicates.add(cb.equal(root.get("provinceCode"), params.getProvinceCode()));
@@ -80,6 +82,9 @@ public class RoomQueryService {
     public RoomDto getRoomById(Long id) {
         Room room = roomRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng với id: " + id));
+        if (room.isDeleted() || room.isHidden() || (!room.isPublished() && !"AVAILABLE".equalsIgnoreCase(room.getStatus()))) {
+            throw new NoSuchElementException("Phòng không tồn tại hoặc đã tạm dừng hiển thị: " + id);
+        }
         return toDto(room);
     }
 
