@@ -274,8 +274,13 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
   * Nghiêm cấm tuyệt đối in số CCCD, đường dẫn ảnh lưu trữ nội bộ vào log hệ thống, thông báo ngoại lệ (exception messages) hoặc phản hồi lỗi API.
 
 ### 12.3 Chính sách Lưu giữ và Hủy Dữ liệu KYC Bị Từ chối (Retention & Cleanup Policy)
-* Khi hồ sơ KYC bị từ chối (`REJECTED`), ảnh CCCD nhạy cảm chỉ được lưu giữ tạm thời trong vòng 30 ngày (cấu hình qua `app.kyc.retention-days=30`) nhằm phục vụ việc đối soát và khiếu nại.
-* Sau thời hạn trên, một Scheduled Job (`KycImageCleanupScheduler`) định kỳ quét và xóa vĩnh viễn file vật lý của hồ sơ bị từ chối, cập nhật đường dẫn ảnh thành `PURGED`.
+* **Thời hạn lưu trữ và Cấp quyết định**:
+  * Thời hạn lưu trữ hiện dùng là **30 ngày** (cấu hình qua `app.kyc.retention-days=30`).
+  * Thời hạn này do **Bộ phận Pháp chế & Tuân thủ (Legal & Compliance) phối hợp với Cán bộ Bảo vệ Dữ liệu Cá nhân (Data Protection Officer - DPO)** quyết định, căn cứ theo Nghị định số 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân và quy định khiếu nại dân sự của Việt Nam (cho phép người dùng có 30 ngày để khiếu nại quyết định từ chối trước khi dữ liệu nhạy cảm bị tiêu hủy hoàn toàn).
+* **Cơ chế An toàn của Scheduled Job (`KycImageCleanupScheduler`)**:
+  * Cờ kích hoạt `app.kyc.cleanup-enabled`: **MẶC ĐỊNH LÀ FALSE (TẮT)**. Chỉ khi quản trị viên chủ động bật qua biến môi trường hoặc cấu hình hệ thống, tác vụ mới chạy.
+  * **Tuyệt đối KHÔNG xóa hồ sơ PENDING hoặc APPROVED**: Truy vấn cơ sở dữ liệu (`findRejectedBefore(cutoff)`) được lọc chặt chẽ chỉ lấy các bản ghi có trạng thái `REJECTED` và thời điểm bị từ chối cũ hơn 30 ngày. Các hồ sơ đang chờ duyệt (`PENDING`) và hồ sơ đã xác thực thành công (`APPROVED`) không bao giờ bị scheduler chạm tới hay xóa ảnh.
+  * Khi quét và xóa file vật lý trên đĩa, đường dẫn ảnh được cập nhật thành giá trị đại diện `PURGED` để đánh dấu hồ sơ đã được thanh tẩy dữ liệu.
 
 ### 12.4 Cổng Chặn Đăng Tin (Listing KYC Gate) & Inter-Service Token
 * **Quy định**: Chủ trọ chỉ được phép gửi duyệt phòng (`POST /api/v1/landlord/rooms/{id}/submit`) và xuất bản phòng khi KYC ở trạng thái `APPROVED`. Nếu chưa được duyệt, hệ thống từ chối với HTTP 403 và mã lỗi `ERR_KYC_REQUIRED` kèm trạng thái KYC hiện tại (`NONE`, `PENDING`, `REJECTED`). Thao tác lưu nháp (`DRAFT`) vẫn được cho phép.
