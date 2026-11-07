@@ -16,6 +16,17 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -23,7 +34,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
-  expiration-ms: 86400000        # 24 hours
+  expiration-ms: 900000          # 15 minutes
   refresh-expiration-ms: 2592000000 # 30 days
 
 springdoc:

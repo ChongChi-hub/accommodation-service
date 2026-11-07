@@ -45,6 +45,9 @@ public class RegisterUseCase {
 
         String passwordHash = passwordEncoder.encode(command.getPassword());
         UserRoleType role = UserRoleType.fromString(command.getRole());
+        if (role != UserRoleType.TENANT && role != UserRoleType.LANDLORD) {
+            throw new IdentityDomainException("Không được phép tự đăng ký vai trò này", "ERR_AUTH_FORBIDDEN_ROLE");
+        }
         User newUser = User.createNew(command.getEmail(), command.getPhone(), passwordHash, command.getFullName(), role);
         User savedUser = userRepository.save(newUser);
 

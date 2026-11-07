@@ -33,12 +33,14 @@ class LoginUseCaseTest {
     private PasswordEncoderPort passwordEncoder;
     @Mock
     private TokenProviderPort tokenProvider;
+    @Mock
+    private vn.toam.identity.application.port.LoginAttemptPort loginAttemptPort;
 
     private LoginUseCase loginUseCase;
 
     @BeforeEach
     void setUp() {
-        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, passwordEncoder, tokenProvider);
+        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, passwordEncoder, tokenProvider, loginAttemptPort);
     }
 
     @Test
@@ -79,6 +81,20 @@ class LoginUseCaseTest {
 
         IdentityDomainException exception = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
         assertEquals("ERR_AUTH_INVALID_CREDENTIALS", exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Should throw exception when account is temporarily blocked after too many attempts")
+    void loginBlockedAfterFailedAttempts() {
+        when(loginAttemptPort.isBlocked("blocked@toam.vn")).thenReturn(true);
+
+        LoginCommand command = LoginCommand.builder()
+                .email("blocked@toam.vn")
+                .password("anyPassword")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_AUTH_TEMPORARY_LOCKED", ex.getErrorCode());
     }
 }
 

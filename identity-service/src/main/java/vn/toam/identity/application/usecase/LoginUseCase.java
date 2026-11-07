@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.toam.identity.application.dto.AuthResult;
 import vn.toam.identity.application.dto.LoginCommand;
 import vn.toam.identity.application.dto.UserDto;
+import vn.toam.identity.application.port.LoginAttemptPort;
 import vn.toam.identity.application.port.PasswordEncoderPort;
 import vn.toam.identity.application.port.TokenProviderPort;
 import vn.toam.identity.domain.exception.IdentityDomainException;
@@ -23,29 +24,42 @@ public class LoginUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoderPort passwordEncoder;
     private final TokenProviderPort tokenProvider;
+    private final LoginAttemptPort loginAttemptPort;
 
     public LoginUseCase(UserRepository userRepository,
                         RefreshTokenRepository refreshTokenRepository,
                         PasswordEncoderPort passwordEncoder,
-                        TokenProviderPort tokenProvider) {
+                        TokenProviderPort tokenProvider,
+                        LoginAttemptPort loginAttemptPort) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.loginAttemptPort = loginAttemptPort;
     }
 
     @Transactional
     public AuthResult execute(LoginCommand command) {
+        if (loginAttemptPort.isBlocked(command.getEmail())) {
+            throw new IdentityDomainException("Tài khoản đã bị tạm khóa do nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
+        }
+
         User user = userRepository.findByEmail(command.getEmail())
-                .orElseThrow(() -> new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS"));
+                .orElseThrow(() -> {
+                    loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
+                    return new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
+                });
 
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new IdentityDomainException("Tài khoản của bạn đã bị khóa", "ERR_AUTH_ACCOUNT_LOCKED");
         }
 
         if (!passwordEncoder.matches(command.getPassword(), user.getPasswordHash())) {
+            loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
             throw new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
         }
+
+        loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), true);
 
         user.recordLogin();
         userRepository.save(user);
