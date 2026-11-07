@@ -15,19 +15,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LandlordDataConsistencyTest {
 
-    private Path findMigrationFile(String filename) {
-        Path direct = Paths.get("src/main/resources/db/migration", filename);
-        if (Files.exists(direct)) return direct;
-        Path sub = Paths.get("listing-service/src/main/resources/db/migration", filename);
-        if (Files.exists(sub)) return sub;
-        throw new IllegalStateException("Could not find migration file: " + filename);
+    private Path findFile(String filename) {
+        Path[] candidates = new Path[]{
+                Paths.get("src/main/resources/db/migration", filename),
+                Paths.get("listing-service/src/main/resources/db/migration", filename),
+                Paths.get("src/main/resources/db/seed", filename),
+                Paths.get("listing-service/src/main/resources/db/seed", filename)
+        };
+        for (Path p : candidates) {
+            if (Files.exists(p)) return p;
+        }
+        throw new IllegalStateException("Could not find migration/seed file: " + filename);
     }
 
     @Test
-    @DisplayName("Verify V6 Seed: Every room has 3 to 10 images and exactly one cover image")
+    @DisplayName("Verify Repeatable Seed: Every room has 3 to 10 images and exactly one cover image")
     void testV6EveryRoomHasExactlyOneCoverImage() throws IOException {
-        Path v6Path = findMigrationFile("V6__seed_landlord_demo_rooms.sql");
-        String content = Files.readString(v6Path);
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
 
         // Pattern for room_images: (room_id, ..., is_cover, sort_order, ...)
         Pattern imgPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*(TRUE|FALSE),\\s*(\\d+)");
@@ -74,8 +79,8 @@ class LandlordDataConsistencyTest {
     @Test
     @DisplayName("Verify Landlord 1 has > 25 rooms and covers all 7 required statuses")
     void testLandlord1RoomCoverageAndPagination() throws IOException {
-        Path v6Path = findMigrationFile("V6__seed_landlord_demo_rooms.sql");
-        String content = Files.readString(v6Path);
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
 
         // Count rooms inserted with landlord_id = 1
         Pattern roomPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*1,\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*'([^']+)'");
@@ -102,7 +107,7 @@ class LandlordDataConsistencyTest {
     @Test
     @DisplayName("Verify V5 schema defines unique cover generated column and status history table")
     void testV5SchemaDefinitions() throws IOException {
-        Path v5Path = findMigrationFile("V5__landlord_rooms_and_images_schema.sql");
+        Path v5Path = findFile("V5__landlord_rooms_and_images_schema.sql");
         String content = Files.readString(v5Path);
 
         assertThat(content).contains("cover_room_id BIGINT GENERATED ALWAYS AS (CASE WHEN is_cover = TRUE THEN room_id ELSE NULL END) STORED");
