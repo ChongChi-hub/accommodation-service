@@ -50,9 +50,32 @@ public final class ImageProcessingHelper {
         return isJpeg || isPng || isWebP;
     }
 
+    public static Dimension getImageDimensions(byte[] rawBytes) throws IOException {
+        try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(rawBytes))) {
+            if (in == null) throw new IllegalArgumentException("Khong the tao luong doc hinh anh");
+            java.util.Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
+            if (readers.hasNext()) {
+                javax.imageio.ImageReader reader = readers.next();
+                try {
+                    reader.setInput(in);
+                    return new Dimension(reader.getWidth(0), reader.getHeight(0));
+                } finally {
+                    reader.dispose();
+                }
+            }
+        }
+        throw new IllegalArgumentException("Khong the doc header tep hinh anh");
+    }
+
     public static BufferedImage decodeAndSanitize(byte[] rawBytes) throws IOException {
         if (!isValidImageMagicBytes(rawBytes)) {
             throw new IllegalArgumentException("Dinh dang anh khong hop le (chi ho tro JPG, PNG, WebP)");
+        }
+
+        // Fast Header Inspection: read dimensions WITHOUT full image raster decompression
+        Dimension dim = getImageDimensions(rawBytes);
+        if (dim.width > MAX_PIXEL_DIMENSION || dim.height > MAX_PIXEL_DIMENSION || dim.width <= 0 || dim.height <= 0) {
+            throw new IllegalArgumentException("Kich thuoc anh vuot qua gioi han 8000x8000 pixel");
         }
 
         BufferedImage original = ImageIO.read(new ByteArrayInputStream(rawBytes));
@@ -60,14 +83,12 @@ public final class ImageProcessingHelper {
             throw new IllegalArgumentException("Khong the giai ma tep hinh anh");
         }
 
-        if (original.getWidth() > MAX_PIXEL_DIMENSION || original.getHeight() > MAX_PIXEL_DIMENSION) {
-            throw new IllegalArgumentException("Kich thuoc anh vuot qua gioi han 8000x8000 pixel");
-        }
-
-        // Redraw onto a clean canvas to strip EXIF, GPS and metadata polyglots
+        // Redraw onto clean canvas with pure white background (sanitizes EXIF and renders transparent PNG properly)
         BufferedImage sanitized = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g = sanitized.createGraphics();
-        g.drawImage(original, 0, 0, Color.WHITE, null);
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, original.getWidth(), original.getHeight());
+        g.drawImage(original, 0, 0, null);
         g.dispose();
 
         return sanitized;

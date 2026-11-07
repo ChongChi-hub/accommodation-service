@@ -239,6 +239,10 @@ class LandlordImageServiceTest {
         // 3. Delete IDOR
         org.junit.jupiter.api.Assertions.assertThrows(NoSuchElementException.class, () ->
                 imageService.deleteImage(attackerLandlordId, 101L, 202L));
+
+        // 4. Reorder IDOR
+        org.junit.jupiter.api.Assertions.assertThrows(NoSuchElementException.class, () ->
+                imageService.reorderImages(attackerLandlordId, 101L, List.of(201L, 202L)));
     }
 }
 
