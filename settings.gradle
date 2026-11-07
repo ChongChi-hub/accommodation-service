@@ -4,12 +4,15 @@ plugins {
 
 rootProject.name = 'accommodation-service'
 
+// Active Microservices & Shared Libraries
 include 'common'
 include 'api-gateway'
 include 'identity-service'
 include 'listing-service'
-include 'booking-service'
-include 'billing-service'
-include 'communication-service'
-include 'admin-service'
+
+// Phase 2 Services (Uncomment as implementation begins):
+// include 'booking-service'
+// include 'billing-service'
+// include 'communication-service'
+// include 'admin-service'
 
