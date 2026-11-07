@@ -279,21 +279,7 @@ public class LandlordImageService {
     }
 
     private boolean isValidImageMagicBytes(byte[] bytes) {
-        if (bytes == null || bytes.length < 12) return false;
-        // JPEG: FF D8 FF
-        if ((bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8 && (bytes[2] & 0xFF) == 0xFF) {
-            return true;
-        }
-        // PNG: 89 50 4E 47 0D 0A 1A 0A
-        if ((bytes[0] & 0xFF) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G') {
-            return true;
-        }
-        // WebP: RIFF ... WEBP
-        if (bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F' &&
-                bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
-            return true;
-        }
-        return false;
+        return vn.toam.common.image.ImageProcessingHelper.isValidImageMagicBytes(bytes);
     }
 
     private byte[] resizeImage(BufferedImage src, int targetWidth) throws IOException {

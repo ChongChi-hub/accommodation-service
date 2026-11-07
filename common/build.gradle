@@ -7,6 +7,8 @@ dependencies {
     api 'tools.jackson.core:jackson-databind'
     api 'com.fasterxml.jackson.core:jackson-annotations'
     api libs.jjwt.api
+    api 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
+    api 'net.coobird:thumbnailator:0.4.20'
     runtimeOnly libs.jjwt.impl
     runtimeOnly libs.jjwt.jackson
 }
