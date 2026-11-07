@@ -209,3 +209,35 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
   * Áp dụng hàm tích hợp sẵn của MySQL 8+: `UUID_TO_BIN(uuid_str, 1)` (cờ 1 đổi vị trí byte thời gian lên đầu) và `BIN_TO_UUID(bin_uuid, 1)` khi truy vấn.
 * **Giai đoạn 3 (Pure Distributed Identity):**
   * Khi mở rộng sang kiến trúc sharding đa trung tâm dữ liệu (multi-region database sharding), chuyển đổi khóa chính sang UUID v7 thuần túy (`BINARY(16) PRIMARY KEY`) với bộ sinh UUID v7 tập trung hoặc phân tán ở tầng Application (Java 25).
+
+
+---
+
+## 11. Kiến trúc Quản lý Lịch hẹn Xem phòng ([APPT-02])
+
+> Ngày quyết định: 07/11/2026  
+> Áp dụng cho: `booking-service` và `accommodation-web`
+
+### 11.1 Máy trạng thái (State Machine)
+Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy trạng thái trong domain model (không dùng setter công khai):
+* `PENDING` -> `CONFIRMED`: Chủ trọ chấp thuận lịch hẹn. Hệ thống kiểm tra trùng giờ; nếu trùng giờ với lịch đã `CONFIRMED` khác của cùng chủ trọ, trả về `ERR_APPT_TIME_CONFLICT` (HTTP 409). Chủ trọ có thể gửi kèm cờ `force: true` để chấp thuận đè.
+* `PENDING` -> `DECLINED`: Chủ trọ từ chối lịch hẹn, bắt buộc có lý do (`reasonCode`).
+* `CONFIRMED` -> `CANCELLED`: Hủy lịch hẹn đã xác nhận, bắt buộc có lý do (`reasonCode`).
+* `CONFIRMED` -> `COMPLETED`: Đánh dấu đã gặp khách thành công. Chỉ cho phép sau thời điểm `scheduled_start`.
+* `CONFIRMED` -> `NO_SHOW`: Đánh dấu khách không đến xem phòng. Chỉ cho phép sau thời điểm `scheduled_start`.
+* `PENDING` -> `EXPIRED`: Hệ thống định kỳ quét và đánh dấu hết hạn đối với các lịch chờ chưa được xử lý khi đã qua giờ hẹn.
+* Mọi chuyển đổi trạng thái trái phép trả về lỗi nghiệp vụ ổn định `ERR_APPT_INVALID_TRANSITION` (HTTP 409).
+
+### 11.2 Xử lý Trùng giờ (Time Conflict Policy)
+* Khi chủ trọ xác nhận lịch, `booking-service` quét các lịch `CONFIRMED` của cùng `landlord_id` trong khung giờ giao nhau `[scheduled_start, scheduled_end)`.
+* Nếu phát hiện trùng, trả về mã lỗi `ERR_APPT_TIME_CONFLICT` kèm danh sách lịch trùng.
+* Nếu client gửi cờ `force: true`, hệ thống cho phép xác nhận và ghi vết vào `appointment_status_history` với lý do "Xác nhận đè lịch trùng".
+
+### 11.3 Transactional Outbox Pattern & Event Publishing
+* Khi trạng thái thay đổi (`CONFIRMED`, `DECLINED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `EXPIRED`), một domain event tương ứng được ghi vào bảng `appointment_events_outbox` trong cùng giao dịch database (ACID transaction).
+* *TODO*: `communication-service` hiện chưa có API gửi SMS/Email thời gian thực; khi `communication-service` hoàn thiện, outbox worker hoặc Debezium CDC sẽ gửi event lên message broker (Kafka/RabbitMQ) để bắn thông báo cho khách thuê và chủ trọ.
+
+### 11.4 Bảo vệ Quyền riêng tư Số điện thoại (Phone Privacy Protection)
+* Bảo mật dữ liệu người thuê: Thuộc tính `contactPhone` chỉ được trả về đầy đủ khi lịch hẹn ở trạng thái `CONFIRMED` hoặc `COMPLETED`.
+* Với các trạng thái `PENDING`, `DECLINED`, `CANCELLED`, `EXPIRED`: số điện thoại được che một phần tại tầng Application/DTO (ví dụ `090••••567`). Không bao giờ gửi số điện thoại thô qua mạng khi chưa xác nhận.
+* Nghiêm cấm ghi số điện thoại khách hàng vào log hệ thống.
