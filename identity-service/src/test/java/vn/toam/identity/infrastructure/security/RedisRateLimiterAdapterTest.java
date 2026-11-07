@@ -3,6 +3,7 @@ package vn.toam.identity.infrastructure.security;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import vn.toam.identity.domain.exception.IdentityDomainException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -13,7 +14,9 @@ class RedisRateLimiterAdapterTest {
 
     @BeforeEach
     void setUp() {
-        rateLimiter = new RedisRateLimiterAdapter(null); // in-memory fallback
+        MockEnvironment devEnv = new MockEnvironment();
+        devEnv.setActiveProfiles("dev");
+        rateLimiter = new RedisRateLimiterAdapter(null, devEnv); // in-memory fallback allowed in dev
         rateLimiter.clearAll();
     }
 
@@ -41,6 +44,19 @@ class RedisRateLimiterAdapterTest {
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () ->
                 rateLimiter.checkForgotPasswordRateLimit("user2@toam.vn", "1.1.1.1"));
         assertEquals("ERR_RATE_LIMIT_COOLDOWN", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("In production profile, in-memory fallback is disabled and throws exception when Redis is missing")
+    void productionProfileDisablesInMemoryFallback() {
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.setActiveProfiles("production");
+
+        RedisRateLimiterAdapter prodRateLimiter = new RedisRateLimiterAdapter(null, prodEnv);
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () ->
+                prodRateLimiter.checkForgotPasswordRateLimit("user@toam.vn", "1.2.3.4"));
+        assertEquals("ERR_RATE_LIMIT_UNAVAILABLE", ex.getErrorCode());
     }
 }
 

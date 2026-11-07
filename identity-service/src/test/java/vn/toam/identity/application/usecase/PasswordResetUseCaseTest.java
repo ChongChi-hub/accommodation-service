@@ -191,4 +191,61 @@ class PasswordResetUseCaseTest {
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> forgotPasswordUseCase.execute(command));
         assertEquals("ERR_RATE_LIMIT_COOLDOWN", ex.getErrorCode());
     }
+
+    @Test
+    @DisplayName("Reset password rejects reuse of the current/old password")
+    void resetPasswordRejectsOldPasswordReuse() {
+        User user = User.createNew("tenant@toam.vn", "0901234567", "current_encoded_pass", "Nguyen Van Thue", UserRoleType.TENANT);
+        when(userRepository.findByEmail("tenant@toam.vn")).thenReturn(Optional.of(user));
+
+        PasswordResetTokenJpaEntity token = PasswordResetTokenJpaEntity.builder()
+                .id("tok-reuse")
+                .userId(user.getId())
+                .otpHash("hashed_otp")
+                .expiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
+                .attempts(0)
+                .build();
+
+        when(resetTokenRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(Optional.of(token));
+        when(passwordEncoder.matches("123456", "hashed_otp")).thenReturn(true);
+        when(passwordEncoder.matches("samePassword123", "current_encoded_pass")).thenReturn(true);
+
+        ResetPasswordCommand command = ResetPasswordCommand.builder()
+                .email("tenant@toam.vn")
+                .otp("123456")
+                .newPassword("samePassword123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> resetPasswordUseCase.execute(command));
+        assertEquals("ERR_AUTH_OLD_PASSWORD_REUSE", ex.getErrorCode());
+        assertFalse(token.isUsed());
+    }
+
+    @Test
+    @DisplayName("Reset password rejects expired OTP token")
+    void resetPasswordRejectsExpiredOtp() {
+        User user = User.createNew("tenant@toam.vn", "0901234567", "old_hash", "Nguyen Van Thue", UserRoleType.TENANT);
+        when(userRepository.findByEmail("tenant@toam.vn")).thenReturn(Optional.of(user));
+
+        PasswordResetTokenJpaEntity token = PasswordResetTokenJpaEntity.builder()
+                .id("tok-expired")
+                .userId(user.getId())
+                .otpHash("hashed_otp")
+                .expiresAt(Instant.now().minus(5, ChronoUnit.MINUTES)) // expired
+                .attempts(0)
+                .build();
+
+        when(resetTokenRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(Optional.of(token));
+
+        ResetPasswordCommand command = ResetPasswordCommand.builder()
+                .email("tenant@toam.vn")
+                .otp("123456")
+                .newPassword("BrandNewPassword123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> resetPasswordUseCase.execute(command));
+        assertEquals("ERR_AUTH_OTP_EXPIRED", ex.getErrorCode());
+    }
 }

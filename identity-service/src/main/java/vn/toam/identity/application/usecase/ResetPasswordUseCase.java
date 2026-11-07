@@ -55,6 +55,11 @@ public class ResetPasswordUseCase {
             throw new IdentityDomainException("Mã xác thực OTP không chính xác", "ERR_AUTH_INVALID_OTP");
         }
 
+        // Validate not reusing old password
+        if (passwordEncoder.matches(command.getNewPassword(), user.getPasswordHash())) {
+            throw new IdentityDomainException("Mật khẩu mới không được trùng với mật khẩu gần nhất", "ERR_AUTH_OLD_PASSWORD_REUSE");
+        }
+
         // OTP is correct
         token.markUsed();
         resetTokenRepository.save(token);

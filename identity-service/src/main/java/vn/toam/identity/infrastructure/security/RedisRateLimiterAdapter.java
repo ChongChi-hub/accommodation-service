@@ -3,6 +3,7 @@ package vn.toam.identity.infrastructure.security;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import vn.toam.identity.application.port.RateLimiterPort;
@@ -19,6 +20,7 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
     private static final Logger log = LoggerFactory.getLogger(RedisRateLimiterAdapter.class);
 
     private final StringRedisTemplate redisTemplate;
+    private final Environment environment;
 
     private static final int COOLDOWN_SECONDS = 60;
     private static final int MAX_HOURLY_REQUESTS = 5;
@@ -28,8 +30,15 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
     private final Map<String, Instant> inMemoryCooldowns = new ConcurrentHashMap<>();
     private final Map<String, RequestCounter> inMemoryCounters = new ConcurrentHashMap<>();
 
-    public RedisRateLimiterAdapter(@Autowired(required = false) StringRedisTemplate redisTemplate) {
+    public RedisRateLimiterAdapter(
+            @Autowired(required = false) StringRedisTemplate redisTemplate,
+            @Autowired(required = false) Environment environment) {
         this.redisTemplate = redisTemplate;
+        this.environment = environment;
+    }
+
+    private boolean isProductionEnvironment() {
+        return environment != null && environment.matchesProfiles("prod", "production");
     }
 
     @Override
@@ -37,13 +46,26 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
         String cleanEmail = email != null ? email.trim().toLowerCase() : "unknown";
         String cleanIp = (ipAddress != null && !ipAddress.isBlank()) ? ipAddress.trim() : "127.0.0.1";
 
+        boolean isProd = isProductionEnvironment();
+
         try {
             if (redisTemplate != null && isRedisAlive()) {
                 checkWithRedis(cleanEmail, cleanIp);
                 return;
             }
+        } catch (IdentityDomainException e) {
+            throw e;
         } catch (Exception ex) {
+            if (isProd) {
+                log.error("Redis rate limiter failed in production: {}", ex.getMessage());
+                throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng. Vui lòng thử lại sau.", "ERR_RATE_LIMIT_UNAVAILABLE");
+            }
             log.warn("Redis unavailable, falling back to in-memory rate limiting: {}", ex.getMessage());
+        }
+
+        if (isProd) {
+            log.error("Redis not configured/alive in production profile. In-memory fallback is disabled.");
+            throw new IdentityDomainException("Hệ thống kiểm soát tần suất không khả dụng trên môi trường production.", "ERR_RATE_LIMIT_UNAVAILABLE");
         }
 
         checkWithInMemory(cleanEmail, cleanIp);
