@@ -21,6 +21,9 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "room_uuid", unique = true, length = 36)
+    private String roomUuid;
+
     @Column(name = "landlord_id", nullable = false)
     private Long landlordId;
 
@@ -38,6 +41,12 @@ public class Room {
 
     @Column(nullable = false, length = 255)
     private String title;
+
+    @Column(name = "title_search", length = 255)
+    private String titleSearch;
+
+    @Column(unique = true, length = 300)
+    private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -99,6 +108,33 @@ public class Room {
     @Column(name = "review_count")
     private Integer reviewCount;
 
+    @Column(name = "view_count", nullable = false)
+    @Builder.Default
+    private Integer viewCount = 0;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @Column(name = "hidden_at")
+    private LocalDateTime hiddenAt;
+
+    @Column(name = "hidden_by", length = 20)
+    private String hiddenBy;
+
+    @Column(name = "hidden_reason", length = 500)
+    private String hiddenReason;
+
+    @Column(name = "rejected_reason", length = 500)
+    private String rejectedReason;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @ManyToMany
     @JoinTable(
         name = "room_amenities",
@@ -118,5 +154,20 @@ public class Room {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-}
 
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public boolean isHidden() {
+        return "HIDDEN".equalsIgnoreCase(status) || hiddenAt != null;
+    }
+
+    public boolean isPublished() {
+        return "PUBLISHED".equalsIgnoreCase(status);
+    }
+
+    public boolean isRented() {
+        return "RENTED".equalsIgnoreCase(status);
+    }
+}

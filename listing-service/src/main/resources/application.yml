@@ -20,6 +20,17 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 50MB
+
+storage:
+  media-dir: ${STORAGE_MEDIA_DIR:./storage/media}
+
+jwt:
+  secret: ${JWT_SECRET:toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
 
 springdoc:
   api-docs:

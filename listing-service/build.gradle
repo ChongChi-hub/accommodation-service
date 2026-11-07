@@ -8,6 +8,7 @@ dependencies {
     implementation project(':common')
     implementation libs.spring.boot.starter.webmvc
     implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.boot.starter.security
     implementation libs.spring.boot.starter.validation
     implementation libs.spring.boot.starter.actuator
 
@@ -21,6 +22,11 @@ dependencies {
     implementation libs.mapstruct
     annotationProcessor libs.mapstruct.processor
 
+    // Image Processing & WebP
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
+    implementation 'net.coobird:thumbnailator:0.4.20'
+
+    testImplementation libs.spring.boot.starter.test
     testImplementation libs.testcontainers.mysql
 }
 

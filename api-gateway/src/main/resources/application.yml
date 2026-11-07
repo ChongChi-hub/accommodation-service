@@ -31,7 +31,7 @@ spring:
         - id: listing-service
           uri: ${LISTING_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/rooms/**, /api/v1/locations/**, /api/v1/amenities/**, /api/v1/reviews/**, /api/v1/bookmarks/**, /api/v1/upload/**, /uploads/**
+            - Path=/api/v1/rooms/**, /api/v1/locations/**, /api/v1/amenities/**, /api/v1/reviews/**, /api/v1/bookmarks/**, /api/v1/upload/**, /uploads/**, /api/v1/landlord/**, /api/v1/media/**
 
         - id: booking-service
           uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
