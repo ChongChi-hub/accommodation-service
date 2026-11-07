@@ -16,5 +16,9 @@ public interface SpringDataRefreshTokenRepository extends JpaRepository<RefreshT
     @Modifying
     @Query("UPDATE RefreshTokenJpaEntity r SET r.revokedAt = :now WHERE r.userId = :userId AND r.revokedAt IS NULL")
     void revokeAllByUserId(String userId, Instant now);
+
+    @Modifying
+    @Query("UPDATE RefreshTokenJpaEntity r SET r.revokedAt = :now WHERE r.userId = :userId AND r.revokedAt IS NULL AND (:keepTokenHash IS NULL OR r.tokenHash <> :keepTokenHash)")
+    void revokeAllExceptByUserId(String userId, String keepTokenHash, Instant now);
 }
 

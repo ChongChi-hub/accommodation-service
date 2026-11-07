@@ -238,12 +238,8 @@ class PasswordResetUseCaseTest {
 
         when(resetTokenRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(user.getId()))
                 .thenReturn(Optional.of(token));
-
         ResetPasswordCommand command = ResetPasswordCommand.builder()
-                .email("tenant@toam.vn")
-                .otp("123456")
-                .newPassword("BrandNewPassword123")
-                .build();
+                .email("tenant@toam.vn").otp("123456").newPassword("BrandNewPassword123").build();
 
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> resetPasswordUseCase.execute(command));
         assertEquals("ERR_AUTH_OTP_EXPIRED", ex.getErrorCode());

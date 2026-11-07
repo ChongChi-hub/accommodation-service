@@ -34,6 +34,11 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
         springDataRefreshTokenRepository.revokeAllByUserId(userId, Instant.now());
     }
 
+    @Override
+    public void revokeAllExceptByUserId(String userId, String keepTokenHash) {
+        springDataRefreshTokenRepository.revokeAllExceptByUserId(userId, keepTokenHash, Instant.now());
+    }
+
     private RefreshToken toDomain(RefreshTokenJpaEntity entity) {
         return new RefreshToken(
                 entity.getId(),

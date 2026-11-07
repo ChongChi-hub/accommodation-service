@@ -2,13 +2,17 @@ package vn.toam.listing.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.toam.listing.application.dto.CreateRoomRequest;
 import vn.toam.listing.application.dto.UpdateRoomRequest;
+import vn.toam.listing.domain.exception.KycRequiredException;
 import vn.toam.listing.domain.model.Room;
 import vn.toam.listing.domain.model.RoomStatusHistory;
+import vn.toam.listing.domain.port.KycVerificationPort;
 import vn.toam.listing.domain.port.RoomUsagePort;
+import vn.toam.listing.domain.repository.RoomImageRepository;
 import vn.toam.listing.domain.repository.RoomRepository;
 import vn.toam.listing.domain.repository.RoomStatusHistoryRepository;
 
@@ -24,9 +28,10 @@ public class LandlordRoomManagementService {
     private final RoomRepository roomRepository;
     private final RoomStatusHistoryRepository roomStatusHistoryRepository;
     private final RoomUsagePort roomUsagePort;
-    private final vn.toam.listing.domain.repository.RoomImageRepository roomImageRepository;
+    private final RoomImageRepository roomImageRepository;
+    private final KycVerificationPort kycVerificationPort;
 
-    @org.springframework.beans.factory.annotation.Value("${toam.listing.min-images-for-review:3}")
+    @Value("${toam.listing.min-images-for-review:3}")
     private int minImagesForReview = 3;
 
     public Room toggleVisibility(Long landlordId, Long roomId, boolean visible, String actorId) {
@@ -36,7 +41,6 @@ public class LandlordRoomManagementService {
         String fromStatus = room.getStatus();
 
         if (!visible) {
-            // Hiding the room: only allowed if currently PUBLISHED
             if (!"PUBLISHED".equalsIgnoreCase(fromStatus)) {
                 throw new IllegalStateException("Chỉ có thể tạm ẩn bài đăng khi phòng đang ở trạng thái đã duyệt (PUBLISHED).");
             }
@@ -44,45 +48,30 @@ public class LandlordRoomManagementService {
             room.setHiddenAt(LocalDateTime.now());
             room.setHiddenBy("OWNER");
             room.setHiddenReason("Chủ trọ chủ động tạm ẩn bài đăng");
-
-            roomStatusHistoryRepository.save(RoomStatusHistory.builder()
-                    .roomId(room.getId())
-                    .fromStatus(fromStatus)
-                    .toStatus("HIDDEN")
-                    .actorId(actorId)
-                    .actorRole("LANDLORD")
-                    .reason("Chủ trọ chủ động tạm ẩn bài đăng")
-                    .createdAt(LocalDateTime.now())
-                    .build());
-
+            recordHistory(room.getId(), fromStatus, "HIDDEN", actorId, "Chủ trọ chủ động tạm ẩn bài đăng", LocalDateTime.now());
             log.info("Landlord {} hid room {}", landlordId, roomId);
         } else {
-            // Un-hiding the room: only allowed if currently HIDDEN by OWNER and was previously published
             if (!"HIDDEN".equalsIgnoreCase(fromStatus)) {
                 throw new IllegalStateException("Phòng không ở trạng thái bị ẩn để mở hiển thị.");
             }
             if ("MODERATOR".equalsIgnoreCase(room.getHiddenBy()) || "ADMIN".equalsIgnoreCase(room.getHiddenBy())) {
-                throw new IllegalStateException("Bài đăng bị kiểm duyệt viên ẩn do vi phạm quy chuẩn (" + room.getHiddenReason() + "). Bạn không thể tự mở lại.");
+                throw new IllegalStateException("Bài đăng bị kiểm duyệt viên ẩn do vi phạm quy chuẩn. Bạn không thể tự mở lại.");
             }
             if (room.getPublishedAt() == null) {
                 throw new IllegalStateException("Phòng trọ chưa từng được kiểm duyệt duyệt xuất bản.");
+            }
+
+            // KYC gate check
+            KycVerificationPort.KycVerificationStatus kyc = kycVerificationPort.checkLandlordKyc(actorId, landlordId);
+            if (!kyc.isApproved()) {
+                throw new KycRequiredException("Chủ trọ cần hoàn tất xác minh danh tính (KYC) để mở lại hiển thị phòng.", kyc.status());
             }
 
             room.setStatus("PUBLISHED");
             room.setHiddenAt(null);
             room.setHiddenBy(null);
             room.setHiddenReason(null);
-
-            roomStatusHistoryRepository.save(RoomStatusHistory.builder()
-                    .roomId(room.getId())
-                    .fromStatus(fromStatus)
-                    .toStatus("PUBLISHED")
-                    .actorId(actorId)
-                    .actorRole("LANDLORD")
-                    .reason("Chủ trọ mở lại bài đăng")
-                    .createdAt(LocalDateTime.now())
-                    .build());
-
+            recordHistory(room.getId(), fromStatus, "PUBLISHED", actorId, "Chủ trọ mở lại bài đăng", LocalDateTime.now());
             log.info("Landlord {} un-hid room {}", landlordId, roomId);
         }
 
@@ -93,30 +82,19 @@ public class LandlordRoomManagementService {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 
-        // Safeguard: Do not delete room if in active use (RENTED or active contracts)
         if (roomUsagePort.isRoomInActiveUse(roomId)) {
             throw new IllegalStateException("Không thể xóa phòng đang có khách thuê (RENTED) hoặc đang có hợp đồng còn hiệu lực.");
         }
 
-        String fromStatus = room.getStatus();
         LocalDateTime now = LocalDateTime.now();
-
+        String fromStatus = room.getStatus();
         room.setDeletedAt(now);
         room.setStatus("HIDDEN");
         room.setHiddenAt(now);
         room.setHiddenBy("OWNER");
         room.setHiddenReason("Chủ trọ đã xóa bài đăng");
 
-        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
-                .roomId(room.getId())
-                .fromStatus(fromStatus)
-                .toStatus("DELETED")
-                .actorId(actorId)
-                .actorRole("LANDLORD")
-                .reason("Chủ trọ xóa bài đăng")
-                .createdAt(now)
-                .build());
-
+        recordHistory(room.getId(), fromStatus, "DELETED", actorId, "Chủ trọ xóa bài đăng", now);
         roomRepository.save(room);
         log.info("Landlord {} soft-deleted room {}", landlordId, roomId);
     }
@@ -133,10 +111,8 @@ public class LandlordRoomManagementService {
         if (req.getDistrictCode() != null) room.setDistrictCode(req.getDistrictCode());
         if (req.getWardCode() != null) room.setWardCode(req.getWardCode());
         if (req.getWardId() != null) room.setWardId(req.getWardId());
-
         if (req.getRoomTypeId() != null) room.setRoomTypeId(req.getRoomTypeId());
         if (req.getRoomTypeCode() != null) room.setRoomTypeCode(req.getRoomTypeCode());
-
         room.setArea(req.getArea());
         if (req.getMaxOccupants() != null) room.setMaxOccupants(req.getMaxOccupants());
         room.setPrice(req.getPrice());
@@ -145,10 +121,8 @@ public class LandlordRoomManagementService {
         if (req.getWaterCost() != null) room.setWaterCost(req.getWaterCost());
         if (req.getInternetCost() != null) room.setInternetCost(req.getInternetCost());
         if (req.getServiceCost() != null) room.setServiceCost(req.getServiceCost());
-
         if (req.getAllowPets() != null) room.setAllowPets(req.getAllowPets());
         if (req.getAllowCooking() != null) room.setAllowCooking(req.getAllowCooking());
-
         room.setUpdatedAt(LocalDateTime.now());
 
         log.info("Landlord {} updated room {}", landlordId, roomId);
@@ -160,9 +134,6 @@ public class LandlordRoomManagementService {
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-|-$", "")
                 + "-" + (System.currentTimeMillis() % 100000);
-
-        // In new architecture, room creation always starts as DRAFT. Images must be uploaded before submitting.
-        String initialStatus = "DRAFT";
 
         Room room = Room.builder()
                 .roomUuid(java.util.UUID.randomUUID().toString())
@@ -188,7 +159,7 @@ public class LandlordRoomManagementService {
                 .waterCost(req.getWaterCost())
                 .internetCost(req.getInternetCost())
                 .serviceCost(req.getServiceCost())
-                .status(initialStatus)
+                .status("DRAFT")
                 .approved(false)
                 .allowPets(Boolean.TRUE.equals(req.getAllowPets()))
                 .allowCooking(Boolean.TRUE.equals(req.getAllowCooking()))
@@ -200,17 +171,7 @@ public class LandlordRoomManagementService {
                 .build();
 
         Room saved = roomRepository.save(room);
-
-        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
-                .roomId(saved.getId())
-                .fromStatus(null)
-                .toStatus(saved.getStatus())
-                .actorId(actorId)
-                .actorRole("LANDLORD")
-                .reason("Lưu bản nháp bài đăng mới")
-                .createdAt(LocalDateTime.now())
-                .build());
-
+        recordHistory(saved.getId(), null, saved.getStatus(), actorId, "Lưu bản nháp bài đăng mới", LocalDateTime.now());
         log.info("Landlord {} created room #{} with status {}", landlordId, saved.getId(), saved.getStatus());
         return saved;
     }
@@ -218,6 +179,12 @@ public class LandlordRoomManagementService {
     public Room submitForReview(Long landlordId, Long roomId, String actorId) {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
+
+        // KYC Gate check
+        KycVerificationPort.KycVerificationStatus kyc = kycVerificationPort.checkLandlordKyc(actorId, landlordId);
+        if (!kyc.isApproved()) {
+            throw new KycRequiredException("Bạn cần hoàn tất xác minh danh tính chủ trọ (KYC) để gửi duyệt bài đăng.", kyc.status());
+        }
 
         long imageCount = roomImageRepository.countByRoomId(roomId);
         if (imageCount < minImagesForReview) {
@@ -233,18 +200,20 @@ public class LandlordRoomManagementService {
         room.setStatus("PENDING_REVIEW");
         room.setUpdatedAt(LocalDateTime.now());
 
-        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
-                .roomId(room.getId())
-                .fromStatus(fromStatus)
-                .toStatus("PENDING_REVIEW")
-                .actorId(actorId)
-                .actorRole("LANDLORD")
-                .reason("Chủ trọ gửi duyệt bài đăng")
-                .createdAt(LocalDateTime.now())
-                .build());
-
+        recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId, "Chủ trọ gửi duyệt bài đăng", LocalDateTime.now());
         log.info("Landlord {} submitted room {} for review (images: {}, hasCover: true)", landlordId, roomId, imageCount);
         return roomRepository.save(room);
     }
-}
 
+    private void recordHistory(Long roomId, String from, String to, String actorId, String reason, LocalDateTime time) {
+        roomStatusHistoryRepository.save(RoomStatusHistory.builder()
+                .roomId(roomId)
+                .fromStatus(from)
+                .toStatus(to)
+                .actorId(actorId)
+                .actorRole("LANDLORD")
+                .reason(reason)
+                .createdAt(time)
+                .build());
+    }
+}

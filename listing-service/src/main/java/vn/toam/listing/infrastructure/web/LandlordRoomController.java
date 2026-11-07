@@ -208,4 +208,10 @@ public class LandlordRoomController {
     public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
         return ResponseEntity.status(400).body(ApiResponse.error(ex.getMessage(), "BUSINESS_RULE_VIOLATION"));
     }
+
+    @ExceptionHandler(vn.toam.listing.domain.exception.KycRequiredException.class)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> handleKycRequired(vn.toam.listing.domain.exception.KycRequiredException ex) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_KYC_REQUIRED", java.util.Map.of("kycStatus", ex.getKycStatus())));
+    }
 }

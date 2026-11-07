@@ -38,6 +38,9 @@ class LandlordRoomManagementServiceTest {
     @Mock
     private vn.toam.listing.domain.repository.RoomImageRepository roomImageRepository;
 
+    @Mock
+    private vn.toam.listing.domain.port.KycVerificationPort kycVerificationPort;
+
     @InjectMocks
     private LandlordRoomManagementService service;
 
@@ -48,40 +51,12 @@ class LandlordRoomManagementServiceTest {
 
     @BeforeEach
     void setup() {
-        publishedRoom = Room.builder()
-                .id(101L)
-                .landlordId(1L)
-                .title("Phòng Cầu Giấy")
-                .status("PUBLISHED")
-                .publishedAt(LocalDateTime.now().minusDays(5))
-                .build();
-
-        hiddenByOwnerRoom = Room.builder()
-                .id(103L)
-                .landlordId(1L)
-                .title("Phòng tạm ẩn")
-                .status("HIDDEN")
-                .hiddenBy("OWNER")
-                .publishedAt(LocalDateTime.now().minusDays(10))
-                .build();
-
-        hiddenByModRoom = Room.builder()
-                .id(104L)
-                .landlordId(1L)
-                .title("Phòng bị mod ẩn")
-                .status("HIDDEN")
-                .hiddenBy("MODERATOR")
-                .hiddenReason("Vi phạm an toàn PCCC")
-                .publishedAt(LocalDateTime.now().minusDays(20))
-                .build();
-
-        rentedRoom = Room.builder()
-                .id(108L)
-                .landlordId(1L)
-                .title("Phòng đang thuê")
-                .status("RENTED")
-                .publishedAt(LocalDateTime.now().minusDays(30))
-                .build();
+        publishedRoom = Room.builder().id(101L).landlordId(1L).title("Phòng Cầu Giấy").status("PUBLISHED").publishedAt(LocalDateTime.now().minusDays(5)).build();
+        hiddenByOwnerRoom = Room.builder().id(103L).landlordId(1L).title("Phòng tạm ẩn").status("HIDDEN").hiddenBy("OWNER").publishedAt(LocalDateTime.now().minusDays(10)).build();
+        hiddenByModRoom = Room.builder().id(104L).landlordId(1L).title("Phòng bị mod ẩn").status("HIDDEN").hiddenBy("MODERATOR").hiddenReason("Vi phạm an toàn PCCC").publishedAt(LocalDateTime.now().minusDays(20)).build();
+        rentedRoom = Room.builder().id(108L).landlordId(1L).title("Phòng đang thuê").status("RENTED").publishedAt(LocalDateTime.now().minusDays(30)).build();
+        lenient().when(kycVerificationPort.checkLandlordKyc(any(), any()))
+                .thenReturn(vn.toam.listing.domain.port.KycVerificationPort.KycVerificationStatus.of("APPROVED", true));
     }
 
     @Test
@@ -102,6 +77,8 @@ class LandlordRoomManagementServiceTest {
     @DisplayName("Unhiding a room hidden by OWNER succeeds")
     void testUnhideOwnerRoom() {
         when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(103L, 1L)).thenReturn(Optional.of(hiddenByOwnerRoom));
+        when(kycVerificationPort.checkLandlordKyc(any(), any()))
+                .thenReturn(vn.toam.listing.domain.port.KycVerificationPort.KycVerificationStatus.of("APPROVED", true));
         when(roomRepository.save(any(Room.class))).thenAnswer(i -> i.getArgument(0));
 
         Room result = service.toggleVisibility(1L, 103L, true, "u-landlord-01");
@@ -189,6 +166,23 @@ class LandlordRoomManagementServiceTest {
     }
 
     @Test
+    @DisplayName("Submit room for review fails when landlord KYC is not approved")
+    void testSubmitFailsWhenKycNotApproved() {
+        Room draftRoom = Room.builder().id(204L).landlordId(1L).status("DRAFT").build();
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(204L, 1L)).thenReturn(Optional.of(draftRoom));
+        when(kycVerificationPort.checkLandlordKyc(any(), any()))
+                .thenReturn(vn.toam.listing.domain.port.KycVerificationPort.KycVerificationStatus.of("PENDING", false));
+
+        vn.toam.listing.domain.exception.KycRequiredException ex = assertThrows(
+                vn.toam.listing.domain.exception.KycRequiredException.class,
+                () -> service.submitForReview(1L, 204L, "u-landlord-01")
+        );
+
+        assertThat(ex.getKycStatus()).isEqualTo("PENDING");
+        assertThat(ex.getMessage()).contains("xác minh danh tính");
+    }
+
+    @Test
     @DisplayName("Submit room for review succeeds when >= 3 images and cover present")
     void testSubmitSucceeds() {
         Room draftRoom = Room.builder().id(203L).landlordId(1L).status("DRAFT").build();
@@ -196,6 +190,8 @@ class LandlordRoomManagementServiceTest {
                 .id(1L).roomId(203L).cover(true).build();
 
         when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(203L, 1L)).thenReturn(Optional.of(draftRoom));
+        when(kycVerificationPort.checkLandlordKyc(any(), any()))
+                .thenReturn(vn.toam.listing.domain.port.KycVerificationPort.KycVerificationStatus.of("APPROVED", true));
         when(roomImageRepository.countByRoomId(203L)).thenReturn(4L);
         when(roomImageRepository.findByRoomIdAndCoverTrue(203L)).thenReturn(Optional.of(coverImage));
         when(roomRepository.save(any(Room.class))).thenAnswer(i -> i.getArgument(0));

@@ -8,5 +8,6 @@ public interface RefreshTokenRepository {
     Optional<RefreshToken> findByTokenHash(String tokenHash);
     RefreshToken save(RefreshToken refreshToken);
     void revokeAllByUserId(String userId);
+    void revokeAllExceptByUserId(String userId, String keepTokenHash);
 }
 

@@ -59,3 +59,4 @@
 | `/dashboard/landlord/kyc` | Giao diện mockup cứng, `setTimeout` và `isVerified=true` | Viết lại hoàn chỉnh với 4 trạng thái (`NONE`, `PENDING`, `APPROVED`, `REJECTED`), upload 2 mặt CCCD, form 12 số CCCD, checkbox cam kết, xem lại hồ sơ có CCCD che và ảnh stream bảo mật. |
 | Cổng chặn đăng tin trên UI | Chưa có | Thêm cảnh báo banner trên Landlord Dashboard và Rooms list khi KYC chưa APPROVED. Nút "Gửi duyệt" bị vô hiệu kèm tooltip giải thích và liên kết KYC. |
 | Quản lý duyệt KYC Admin/Moderator | Dùng `StaticAdminRepository` | Nối API kiểm duyệt thật `/api/v1/moderation/kyc/**`, hiển thị ảnh đối chiếu hai mặt có zoom, cảnh báo ghi nhật ký xem, modal phê duyệt / từ chối với lý do chuẩn. |
+

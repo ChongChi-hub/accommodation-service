@@ -2,10 +2,10 @@ package vn.toam.listing.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import vn.toam.common.image.ImageProcessingHelper;
 import vn.toam.listing.application.dto.ImageUploadResponse;
 import vn.toam.listing.domain.model.Room;
 import vn.toam.listing.domain.model.RoomImage;
@@ -13,16 +13,11 @@ import vn.toam.listing.domain.port.ImageStoragePort;
 import vn.toam.listing.domain.repository.RoomImageRepository;
 import vn.toam.listing.domain.repository.RoomRepository;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -81,22 +76,14 @@ public class LandlordImageService {
 
             // 1. Check max room images limit
             if (currentCount + successful >= MAX_ROOM_IMAGES) {
-                results.add(ImageUploadResponse.ImageUploadItemResult.builder()
-                        .originalFilename(filename)
-                        .success(false)
-                        .errorMessage("Phòng đã đạt giới hạn tối đa " + MAX_ROOM_IMAGES + " hình ảnh")
-                        .build());
+                results.add(ImageUploadResponse.ImageUploadItemResult.builder().originalFilename(filename).success(false).errorMessage("Phòng đã đạt giới hạn tối đa " + MAX_ROOM_IMAGES + " hình ảnh").build());
                 failed++;
                 continue;
             }
 
             // 2. Check individual file size (< 5MB)
             if (file.getSize() > MAX_FILE_SIZE) {
-                results.add(ImageUploadResponse.ImageUploadItemResult.builder()
-                        .originalFilename(filename)
-                        .success(false)
-                        .errorMessage("Dung lượng file vượt quá giới hạn 5MB (" + (file.getSize() / 1024 / 1024) + "MB)")
-                        .build());
+                results.add(ImageUploadResponse.ImageUploadItemResult.builder().originalFilename(filename).success(false).errorMessage("Dung lượng file vượt quá giới hạn 5MB (" + (file.getSize() / 1024 / 1024) + "MB)").build());
                 failed++;
                 continue;
             }
@@ -105,48 +92,27 @@ public class LandlordImageService {
                 byte[] rawBytes = file.getBytes();
 
                 // 3. Inspect Magic Bytes
-                if (!isValidImageMagicBytes(rawBytes)) {
-                    results.add(ImageUploadResponse.ImageUploadItemResult.builder()
-                            .originalFilename(filename)
-                            .success(false)
-                            .errorMessage("Định dạng file không được hỗ trợ (chỉ chấp nhận JPG, PNG, WebP)")
-                            .build());
+                if (!ImageProcessingHelper.isValidImageMagicBytes(rawBytes)) {
+                    results.add(ImageUploadResponse.ImageUploadItemResult.builder().originalFilename(filename).success(false).errorMessage("Định dạng file không được hỗ trợ (chỉ chấp nhận JPG, PNG, WebP)").build());
                     failed++;
                     continue;
                 }
 
-                // 4. Decode image & verify dimension bounds
-                BufferedImage original = ImageIO.read(new ByteArrayInputStream(rawBytes));
-                if (original == null) {
+                // 4. Decode and sanitize (EXIF strip, bounds check)
+                BufferedImage sanitized = vn.toam.common.image.ImageProcessingHelper.decodeAndSanitize(rawBytes);
+                if (sanitized.getWidth() > MAX_DIMENSION || sanitized.getHeight() > MAX_DIMENSION) {
                     results.add(ImageUploadResponse.ImageUploadItemResult.builder()
-                            .originalFilename(filename)
-                            .success(false)
-                            .errorMessage("Không thể giải mã dữ liệu hình ảnh")
-                            .build());
-                    failed++;
-                    continue;
-                }
-
-                if (original.getWidth() > MAX_DIMENSION || original.getHeight() > MAX_DIMENSION) {
-                    results.add(ImageUploadResponse.ImageUploadItemResult.builder()
-                            .originalFilename(filename)
-                            .success(false)
+                            .originalFilename(filename).success(false)
                             .errorMessage("Kích thước ảnh quá lớn (vượt quá 8000x8000px)")
                             .build());
                     failed++;
                     continue;
                 }
 
-                // 5. Redraw image onto a fresh canvas to strip EXIF, GPS, and Polyglot code
-                BufferedImage sanitized = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
-                Graphics2D g = sanitized.createGraphics();
-                g.drawImage(original, 0, 0, Color.WHITE, null);
-                g.dispose();
-
-                // 6. Generate 3 WebP sizes
-                byte[] largeBytes = resizeImage(sanitized, 1600);
-                byte[] mediumBytes = resizeImage(sanitized, 960);
-                byte[] thumbBytes = resizeImage(sanitized, 320);
+                // 5. Generate 3 WebP sizes
+                byte[] largeBytes = vn.toam.common.image.ImageProcessingHelper.resizeBoundingBoxWebP(sanitized, 1600, 0.85f);
+                byte[] mediumBytes = vn.toam.common.image.ImageProcessingHelper.resizeBoundingBoxWebP(sanitized, 960, 0.85f);
+                byte[] thumbBytes = vn.toam.common.image.ImageProcessingHelper.resizeBoundingBoxWebP(sanitized, 320, 0.85f);
 
                 String fileUuid = UUID.randomUUID().toString();
                 String largeKey = "rooms/" + roomId + "/" + fileUuid + "_large.webp";
@@ -276,33 +242,6 @@ public class LandlordImageService {
             }
         }
         log.info("Landlord {} reordered images for room {}", landlordId, roomId);
-    }
-
-    private boolean isValidImageMagicBytes(byte[] bytes) {
-        return vn.toam.common.image.ImageProcessingHelper.isValidImageMagicBytes(bytes);
-    }
-
-    private byte[] resizeImage(BufferedImage src, int targetWidth) throws IOException {
-        int width = Math.min(src.getWidth(), targetWidth);
-        int height = Math.max(1, (int) Math.round((double) src.getHeight() * width / src.getWidth()));
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-        try {
-            Thumbnails.of(src)
-                    .size(width, height)
-                    .outputFormat("webp")
-                    .outputQuality(0.85)
-                    .toOutputStream(baos);
-        } catch (Exception e) {
-            baos.reset();
-            Thumbnails.of(src)
-                    .size(width, height)
-                    .outputFormat("jpg")
-                    .outputQuality(0.85)
-                    .toOutputStream(baos);
-        }
-
-        return baos.toByteArray();
     }
 }
 

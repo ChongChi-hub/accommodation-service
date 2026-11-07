@@ -94,8 +94,12 @@ public class AuthController {
 
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(Authentication authentication,
-                                                           @Valid @RequestBody ChangePasswordCommand command) {
+                                                           @Valid @RequestBody ChangePasswordCommand command,
+                                                           HttpServletRequest request) {
         String userId = (String) authentication.getPrincipal();
+        if (command.getIpAddress() == null) {
+            command.setIpAddress(request.getRemoteAddr());
+        }
         changePasswordUseCase.execute(userId, command);
         return ResponseEntity.ok(ApiResponse.message("Đổi mật khẩu thành công"));
     }

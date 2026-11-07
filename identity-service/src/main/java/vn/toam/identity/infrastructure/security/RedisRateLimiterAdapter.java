@@ -152,9 +152,71 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
         ipCounter.count++;
     }
 
+    private static final int MAX_FAILED_PASSWORD_ATTEMPTS = 5;
+    private static final int PASSWORD_LOCKOUT_SECONDS = 900;
+    private final Map<String, Integer> inMemoryPasswordAttempts = new ConcurrentHashMap<>();
+    private final Map<String, Instant> inMemoryPasswordLocks = new ConcurrentHashMap<>();
+
+    @Override
+    public void checkPasswordChangeAllowed(String userId, String ipAddress) {
+        String cleanUser = userId != null ? userId : "unknown";
+        Instant now = Instant.now();
+        if (redisTemplate != null && isRedisAlive()) {
+            try {
+                if (Boolean.TRUE.equals(redisTemplate.hasKey("rate:pwd:lock:user:" + cleanUser))) {
+                    throw new IdentityDomainException("Ban da nhap sai mat khau qua 5 lan. Vui long thu lai sau 15 phut.", "ERR_AUTH_PASSWORD_CHANGE_LOCKED");
+                }
+                return;
+            } catch (IdentityDomainException e) { throw e; } catch (Exception ignored) {}
+        }
+        Instant lockedUntil = inMemoryPasswordLocks.get(cleanUser);
+        if (lockedUntil != null && now.isBefore(lockedUntil)) {
+            throw new IdentityDomainException("Ban da nhap sai mat khau qua 5 lan. Vui long thu lai sau 15 phut.", "ERR_AUTH_PASSWORD_CHANGE_LOCKED");
+        }
+    }
+
+    @Override
+    public void recordFailedPasswordChange(String userId, String ipAddress) {
+        String cleanUser = userId != null ? userId : "unknown";
+        Instant now = Instant.now();
+        if (redisTemplate != null && isRedisAlive()) {
+            try {
+                Long attempts = redisTemplate.opsForValue().increment("rate:pwd:cnt:user:" + cleanUser);
+                if (attempts != null && attempts == 1) redisTemplate.expire("rate:pwd:cnt:user:" + cleanUser, Duration.ofSeconds(PASSWORD_LOCKOUT_SECONDS));
+                if (attempts != null && attempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
+                    redisTemplate.opsForValue().set("rate:pwd:lock:user:" + cleanUser, "LOCKED", Duration.ofSeconds(PASSWORD_LOCKOUT_SECONDS));
+                    redisTemplate.delete("rate:pwd:cnt:user:" + cleanUser);
+                }
+                return;
+            } catch (Exception ignored) {}
+        }
+        int attempts = inMemoryPasswordAttempts.getOrDefault(cleanUser, 0) + 1;
+        if (attempts >= MAX_FAILED_PASSWORD_ATTEMPTS) {
+            inMemoryPasswordLocks.put(cleanUser, now.plusSeconds(PASSWORD_LOCKOUT_SECONDS));
+            inMemoryPasswordAttempts.remove(cleanUser);
+        } else {
+            inMemoryPasswordAttempts.put(cleanUser, attempts);
+        }
+    }
+
+    @Override
+    public void clearPasswordChangeAttempts(String userId, String ipAddress) {
+        String cleanUser = userId != null ? userId : "unknown";
+        if (redisTemplate != null && isRedisAlive()) {
+            try {
+                redisTemplate.delete("rate:pwd:cnt:user:" + cleanUser);
+                redisTemplate.delete("rate:pwd:lock:user:" + cleanUser);
+            } catch (Exception ignored) {}
+        }
+        inMemoryPasswordAttempts.remove(cleanUser);
+        inMemoryPasswordLocks.remove(cleanUser);
+    }
+
     public void clearAll() {
         inMemoryCooldowns.clear();
         inMemoryCounters.clear();
+        inMemoryPasswordAttempts.clear();
+        inMemoryPasswordLocks.clear();
     }
 
     private static class RequestCounter {

@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/jwks",
                                 "/.well-known/jwks.json",
+                                "/internal/**",
                                 "/actuator/health",
                                 "/docs/**",
                                 "/api-docs/**",
