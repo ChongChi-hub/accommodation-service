@@ -182,8 +182,8 @@ INSERT INTO user_verifications (
     '67281ddb7e4ca3fd9447ea34765686a4eaf679b568573bcd2f690f8577e222d9',
     '0001', '2021-06-10', 'Cục Cảnh sát QLHC về TTXH',
     'kyc/private/landlord-01_front.webp', 'kyc/private/landlord-01_back.webp', NULL,
-    'APPROVED', '2026-01-10 08:30:00', 'v1.0', '2026-01-10 08:30:00', '2026-01-10 14:00:00', 'u-admin-01',
-    NULL, NULL, 1, '2026-01-10 08:30:00', '2026-01-10 14:00:00'
+    'APPROVED', CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, 'v1.0', CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY, 'u-admin-01',
+    NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY
 );
 
 -- Landlord 02 (landlord2@toam.vn) -> PENDING (Chờ duyệt để kiểm tra quy trình Moderator)
@@ -242,8 +242,8 @@ INSERT INTO user_verifications (
 DELETE FROM kyc_status_history WHERE verification_id IN ('uv-l01', 'uv-l02', 'uv-l03', 'uv-l06');
 
 INSERT INTO kyc_status_history (id, verification_id, from_status, to_status, actor_id, reason, created_at) VALUES
-('ksh-001', 'uv-l01', 'NONE', 'PENDING', 'u-landlord-01', 'Chủ trọ nộp hồ sơ xác minh danh tính', '2026-01-10 08:30:00'),
-('ksh-002', 'uv-l01', 'PENDING', 'APPROVED', 'u-admin-01', 'Hồ sơ đầy đủ, CCCD rõ nét và trùng khớp dữ liệu', '2026-01-10 14:00:00'),
+('ksh-001', 'uv-l01', 'NONE', 'PENDING', 'u-landlord-01', 'Chủ trọ nộp hồ sơ xác minh danh tính', CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY),
+('ksh-002', 'uv-l01', 'PENDING', 'APPROVED', 'u-admin-01', 'Hồ sơ đầy đủ, CCCD rõ nét và trùng khớp dữ liệu', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY),
 ('ksh-003', 'uv-l02', 'NONE', 'PENDING', 'u-landlord-02', 'Chủ trọ nộp hồ sơ xác minh danh tính', CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR),
 ('ksh-004', 'uv-l03', 'NONE', 'PENDING', 'u-landlord-03', 'Chủ trọ nộp hồ sơ xác minh danh tính', CURRENT_TIMESTAMP(3) - INTERVAL 1 DAY),
 ('ksh-005', 'uv-l03', 'PENDING', 'REJECTED', 'u-mod-03', 'Ảnh chụp mặt sau bị lóa sáng, mất góc trên bên phải, không đọc được số CCCD', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR),
@@ -254,10 +254,10 @@ INSERT INTO kyc_status_history (id, verification_id, from_status, to_status, act
 DELETE FROM kyc_access_logs WHERE verification_id IN ('uv-l01', 'uv-l02', 'uv-l03', 'uv-l06');
 
 INSERT INTO kyc_access_logs (id, verification_id, actor_id, actor_role, action, ip, created_at) VALUES
-('kal-001', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_DETAIL', '127.0.0.1', '2026-01-10 13:50:00'),
-('kal-002', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_FRONT', '127.0.0.1', '2026-01-10 13:52:00'),
-('kal-003', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_BACK', '127.0.0.1', '2026-01-10 13:53:00'),
-('kal-004', 'uv-l01', 'u-admin-01', 'ADMIN', 'APPROVE', '127.0.0.1', '2026-01-10 14:00:00'),
+('kal-001', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_DETAIL', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY - INTERVAL 10 MINUTE),
+('kal-002', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_FRONT', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY - INTERVAL 8 MINUTE),
+('kal-003', 'uv-l01', 'u-admin-01', 'ADMIN', 'VIEW_BACK', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY - INTERVAL 7 MINUTE),
+('kal-004', 'uv-l01', 'u-admin-01', 'ADMIN', 'APPROVE', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY),
 ('kal-005', 'uv-l03', 'u-mod-03', 'MODERATOR', 'VIEW_DETAIL', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR),
 ('kal-006', 'uv-l03', 'u-mod-03', 'MODERATOR', 'VIEW_BACK', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR),
 ('kal-007', 'uv-l03', 'u-mod-03', 'MODERATOR', 'REJECT', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR);
