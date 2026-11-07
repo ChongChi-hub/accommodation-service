@@ -41,6 +41,19 @@ public class LocationService {
                 .collect(Collectors.toList());
     }
 
+    public List<WardDto> getWardsByProvince(String provinceCode) {
+        return wardRepository.findByProvinceCodeOrderByNameAsc(provinceCode).stream()
+                .map(w -> WardDto.builder()
+                        .id(w.getId())
+                        .code(w.getCode())
+                        .name(w.getName())
+                        .fullName(w.getFullName())
+                        .provinceCode(w.getProvinceCode())
+                        .districtCode(w.getDistrictCode())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     public List<WardDto> getWards(String districtCode) {
         return wardRepository.findByDistrictCodeOrderByNameAsc(districtCode).stream()
                 .map(w -> WardDto.builder()
@@ -48,6 +61,7 @@ public class LocationService {
                         .code(w.getCode())
                         .name(w.getName())
                         .fullName(w.getFullName())
+                        .provinceCode(w.getProvinceCode())
                         .districtCode(w.getDistrictCode())
                         .build())
                 .collect(Collectors.toList());

@@ -32,9 +32,18 @@ public class LocationController {
     }
 
     @GetMapping("/wards")
-    @Operation(summary = "Lấy danh sách phường/xã theo mã quận")
-    public ResponseEntity<ApiResponse<List<WardDto>>> getWards(@RequestParam String districtCode) {
-        return ResponseEntity.ok(ApiResponse.success(locationService.getWards(districtCode)));
+    @Operation(summary = "Lấy danh sách phường/xã theo tỉnh/thành (mô hình 2 cấp) hoặc quận/huyện (legacy)")
+    public ResponseEntity<ApiResponse<List<WardDto>>> getWards(
+            @RequestParam(required = false) String provinceCode,
+            @RequestParam(required = false) String districtCode
+    ) {
+        if (provinceCode != null && !provinceCode.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.success(locationService.getWardsByProvince(provinceCode)));
+        }
+        if (districtCode != null && !districtCode.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.success(locationService.getWards(districtCode)));
+        }
+        return ResponseEntity.ok(ApiResponse.success(List.of()));
     }
 }
 

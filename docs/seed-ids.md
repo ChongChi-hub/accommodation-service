@@ -34,17 +34,17 @@
 
 ## 2. Phòng Trọ Tiêu Biểu (`toam_listing`)
 
-| Mã số (ID) | UUID Tham chiếu | Tiêu đề tóm tắt | Chủ trọ sở hữu | Trạng thái tin đăng |
+| Mã số (ID) | UUID Tham chiếu | Tiêu đề tóm tắt (Mô hình 2 cấp: Xã/Phường, Tỉnh/Thành) | Chủ trọ sở hữu | Trạng thái tin đăng |
 | :---: | :--- | :--- | :--- | :--- |
-| **1** | `room-00000001-0000-0000-0000-000000000001` | Phòng studio ban công thoáng Cầu Giấy | `u-landlord-01` | `RENTED` |
-| **2** | `room-00000001-0000-0000-0000-000000000002` | Căn hộ dịch vụ 1N1K trung tâm Quận 1 | `u-landlord-01` | `RENTED` |
-| **3** | `room-00000001-0000-0000-0000-000000000003` | Phòng trọ gác lửng giá rẻ Gò Vấp | `u-landlord-02` | `PUBLISHED` |
-| **4** | `room-00000001-0000-0000-0000-000000000004` | Căn hộ mini đầy đủ nội thất Thanh Xuân | `u-landlord-02` | `PUBLISHED` |
-| **5** | `room-00000001-0000-0000-0000-000000000005` | Phòng khép kín Bách Khoa Hai Bà Trưng | `u-landlord-03` | `PUBLISHED` |
-| **6** | `room-00000001-0000-0000-0000-000000000006` | Chung cư mini cao cấp Đống Đa | `u-landlord-03` | `PUBLISHED` |
-| **7** | `room-00000001-0000-0000-0000-000000000007` | Phòng trọ sinh viên gần ĐH Quốc Gia HN | `u-landlord-04` | `PENDING_REVIEW` |
-| **8** | `room-00000001-0000-0000-0000-000000000008` | Studio view Landmark 81 Bình Thạnh | `u-landlord-01` | `RENTED` |
-| ... | ... | *(Tổng cộng 75 phòng phủ khắp 5 thành phố lớn)* | ... | ... |
+| **1** | `room-00000001-0000-0000-0000-000000000001` | Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội | `u-landlord-01` | `RENTED` |
+| **2** | `room-00000001-0000-0000-0000-000000000002` | Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM | `u-landlord-01` | `RENTED` |
+| **3** | `room-00000001-0000-0000-0000-000000000003` | Phòng trọ gác lửng giá rẻ Phường 1, TP.HCM | `u-landlord-02` | `PUBLISHED` |
+| **4** | `room-00000001-0000-0000-0000-000000000004` | Căn hộ mini đầy đủ nội thất Láng Hạ, Hà Nội | `u-landlord-02` | `PUBLISHED` |
+| **5** | `room-00000001-0000-0000-0000-000000000005` | Phòng khép kín Bách Khoa, Hà Nội | `u-landlord-03` | `PUBLISHED` |
+| **6** | `room-00000001-0000-0000-0000-000000000006` | Chung cư mini cao cấp Ô Chợ Dừa, Hà Nội | `u-landlord-03` | `PUBLISHED` |
+| **7** | `room-00000001-0000-0000-0000-000000000007` | Phòng trọ sinh viên gần ĐH Quốc Gia HN, Dịch Vọng Hậu | `u-landlord-04` | `PENDING_REVIEW` |
+| **8** | `room-00000001-0000-0000-0000-000000000008` | Studio view Landmark 81, Phường 5, TP.HCM | `u-landlord-01` | `RENTED` |
+| ... | ... | *(Tổng cộng 78 phòng phủ khắp 6 thành phố trực thuộc Trung ương theo Nghị quyết 202/2025/QH15)* | ... | ... |
 
 ---
 

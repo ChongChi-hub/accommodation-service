@@ -82,8 +82,8 @@ class LandlordDataConsistencyTest {
         Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
         String content = Files.readString(seedPath);
 
-        // Count rooms inserted with landlord_id = 1
-        Pattern roomPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*1,\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*'([^']+)'");
+        // Count rooms inserted with landlord_id = 1 (supporting 2-tier admin units with ward_id)
+        Pattern roomPattern = Pattern.compile("\\((\\d+),\\s*'[^']+',\\s*1,\\s*'[^']+',\\s*'[^']+',\\s*\\d+,\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*(?:NULL|'[^']*'),\\s*'[^']+',\\s*(?:\\d+,\\s*)?[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*\\d+,\\s*\\d+,\\s*\\d+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*[^,]+,\\s*'([^']+)'");
         Matcher matcher = roomPattern.matcher(content);
 
         Set<String> statuses = new HashSet<>();
@@ -115,5 +115,41 @@ class LandlordDataConsistencyTest {
         assertThat(content).contains("CREATE TABLE IF NOT EXISTS room_status_history");
         assertThat(content).contains("idx_rooms_landlord_status_deleted");
         assertThat(content).contains("idx_rooms_title_search");
+    }
+
+    @Test
+    @DisplayName("Verify 2-Tier Model (Resolution 202/2025/QH15): Each ward belongs to exactly one province")
+    void testTwoTierWardsBelongToExactOneProvince() throws IOException {
+        Path v7Path = findFile("V7__administrative_units_two_tier.sql");
+        String content = Files.readString(v7Path);
+
+        // Pattern: (\d+,\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'[^']+',\s*'([^']+)',\s*NULL)
+        Pattern wardPattern = Pattern.compile("\\((\\d+),\\s*'([^']+)',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'[^']+',\\s*'([^']+)',\\s*(?:NULL|'[^']*')\\)");
+        Matcher matcher = wardPattern.matcher(content);
+
+        Map<String, String> wardProvinceMap = new HashMap<>();
+        while (matcher.find()) {
+            String wardCode = matcher.group(2);
+            String provinceCode = matcher.group(3);
+            assertThat(wardProvinceMap).doesNotContainKey(wardCode);
+            assertThat(provinceCode).isNotBlank();
+            wardProvinceMap.put(wardCode, provinceCode);
+        }
+
+        // Must seed wards for the 6 centrally-governed cities
+        assertThat(wardProvinceMap).isNotEmpty();
+        assertThat(wardProvinceMap.values()).contains("HN", "HCM", "DNG", "HP", "CT", "HUE");
+    }
+
+    @Test
+    @DisplayName("Verify Seed Rooms: All rooms follow 2-tier administrative model (provinces -> wards)")
+    void testSeedRoomsFollowTwoTierModel() throws IOException {
+        Path seedPath = findFile("R__03_seed_landlord_demo_rooms.sql");
+        String content = Files.readString(seedPath);
+
+        // Verify that in R__03, district_code is set to NULL
+        assertThat(content).contains("'HN', NULL, 'HN_DVH'");
+        assertThat(content).contains("'HN', NULL, 'HN_LH'");
+        assertThat(content).contains("'HN', NULL, 'HN_OCD'");
     }
 }

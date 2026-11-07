@@ -128,6 +128,7 @@ public class LandlordRoomManagementService {
         if (req.getProvinceCode() != null) room.setProvinceCode(req.getProvinceCode());
         if (req.getDistrictCode() != null) room.setDistrictCode(req.getDistrictCode());
         if (req.getWardCode() != null) room.setWardCode(req.getWardCode());
+        if (req.getWardId() != null) room.setWardId(req.getWardId());
 
         if (req.getRoomTypeId() != null) room.setRoomTypeId(req.getRoomTypeId());
         if (req.getRoomTypeCode() != null) room.setRoomTypeCode(req.getRoomTypeCode());
@@ -171,8 +172,9 @@ public class LandlordRoomManagementService {
                 .description(req.getDescription())
                 .address(req.getAddress())
                 .provinceCode(req.getProvinceCode() != null ? req.getProvinceCode() : "HN")
-                .districtCode(req.getDistrictCode() != null ? req.getDistrictCode() : "HN-CG")
+                .districtCode(req.getDistrictCode())
                 .wardCode(req.getWardCode())
+                .wardId(req.getWardId())
                 .area(req.getArea())
                 .maxOccupants(req.getMaxOccupants() != null ? req.getMaxOccupants() : 2)
                 .price(req.getPrice())

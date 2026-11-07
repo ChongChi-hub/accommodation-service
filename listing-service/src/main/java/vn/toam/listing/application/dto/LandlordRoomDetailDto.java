@@ -29,6 +29,7 @@ public class LandlordRoomDetailDto {
     private String provinceCode;
     private String districtCode;
     private String wardCode;
+    private Long wardId;
     private Double latitude;
     private Double longitude;
     private Double area;

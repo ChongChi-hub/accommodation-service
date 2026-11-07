@@ -22,6 +22,7 @@ public interface LocationRepositories {
 
     @Repository
     interface WardRepository extends JpaRepository<Ward, Long> {
+        List<Ward> findByProvinceCodeOrderByNameAsc(String provinceCode);
         List<Ward> findByDistrictCodeOrderByNameAsc(String districtCode);
     }
 }

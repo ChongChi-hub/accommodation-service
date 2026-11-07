@@ -39,6 +39,7 @@ public class LocationDto {
         private String code;
         private String name;
         private String fullName;
+        private String provinceCode;
         private String districtCode;
     }
 }

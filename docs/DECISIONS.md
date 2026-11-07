@@ -106,3 +106,28 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 * **Màn hình Đăng mới**: Quản lý ảnh cục bộ qua Object URLs (nhớ revoke khi unmount). Khi nhấn "Đăng tin", hệ thống tạo phòng -> upload file multipart -> cập nhật ảnh bìa và thứ tự -> gửi duyệt.
 * **Màn hình Chỉnh sửa**: Tương tác API trực tiếp cho các hành động đặt bìa (`PATCH .../cover`), xóa (`DELETE .../images/{id}`), và đổi thứ tự (`PUT .../images/order`) để đảm bảo tính nguyên tử và phản hồi tức thì.
 
+
+## 7. Quyết Định Về Cập Nhật Địa Giới Hành Chính Theo Mô Hình 2 Cấp (Từ 01/07/2025)
+
+* **Căn cứ pháp lý & Nguồn dữ liệu:**
+  * Nghị quyết số 202/2025/QH15 của Quốc hội về việc sắp xếp đơn vị hành chính cấp tỉnh và chuyển đổi sang mô hình hành chính 2 cấp (Tỉnh/Thành phố trực thuộc Trung ương -> Xã/Phường, bãi bỏ cấp quận/huyện từ 01/07/2025).
+  * Danh mục chuẩn hóa địa giới hành chính của Tổng cục Thống kê (GSO), tra cứu và đối soát ngày 07/11/2026.
+* **Cấu trúc 34 Đơn vị Hành chính Cấp Tỉnh (28 Tỉnh, 6 Thành phố trực thuộc Trung ương):**
+  * **6 Thành phố trực thuộc Trung ương:**
+    1. Thành phố Hà Nội (`HN`)
+    2. Thành phố Hồ Chí Minh (`HCM`)
+    3. Thành phố Hải Phòng (`HP`)
+    4. Thành phố Đà Nẵng (`DNG`)
+    5. Thành phố Cần Thơ (`CT`)
+    6. Thành phố Huế (`HUE`) (chính thức trực thuộc Trung ương)
+  * **28 Tỉnh:**
+    An Giang (`AG`), Bắc Giang (`BG`), Bắc Kạn (`BK`), Bạc Liêu (`BL`), Bắc Ninh (`BN`), Bến Tre (`BT`), Bình Định (`BD`), Bình Dương (`BDG`), Bình Phước (`BP`), Bình Thuận (`BTH`), Cà Mau (`CM`), Cao Bằng (`CB`), Đắk Lắk (`DL`), Đắk Nông (`DKN`), Điện Biên (`DB`), Đồng Nai (`DNA`), Đồng Tháp (`DT`), Gia Lai (`GL`), Hà Giang (`HG`), Hà Nam (`HNA`), Hà Tĩnh (`HT`), Hải Dương (`HD`), Hậu Giang (`HGI`), Hòa Bình (`HB`), Hưng Yên (`HY`), Khánh Hòa (`KH`), Kiên Giang (`KG`), Kon Tum (`KT`).
+* **Chiến lược Schema & Dữ liệu:**
+  * Cấp chính quy chuẩn: `provinces` (cấp tỉnh) và `wards` (cấp xã/phường).
+  * Bổ sung cột `province_code` vào bảng `wards` và index `idx_ward_province_code`. Cột `district_code` chuyển thành nullable (dữ liệu legacy tùy chọn).
+  * Bổ sung cột `ward_id` vào bảng `rooms` (FK tới `wards.id`). Cột `rooms.district_code` chuyển thành nullable.
+  * Seed đầy đủ xã/phường cho 6 thành phố trực thuộc Trung ương trọng điểm (Hà Nội, TP.HCM, Đà Nẵng, Hải Phòng, Cần Thơ, Huế); 28 tỉnh còn lại được quản lý ở cấp tỉnh và mở rộng xã/phường theo lộ trình.
+  * Toàn bộ 78 phòng demo trong seed được cập nhật địa chỉ chuẩn hóa theo định dạng 2 cấp: `"Số nhà, Tên đường, Phường/Xã, Tỉnh/Thành phố"`, gán đúng `ward_id` và giữ nguyên tọa độ định vị GPS chính xác.
+* **Giao diện Frontend:**
+  * Loại bỏ dropdown Quận/Huyện trên bộ lọc tìm kiếm và form đăng tin. Chuyển thành quy trình chọn 2 bước: `Tỉnh/Thành phố` -> `Phường/Xã`.
+  * Chuẩn hóa định dạng chuỗi địa chỉ hiển thị trên toàn bộ UI và email thông báo.

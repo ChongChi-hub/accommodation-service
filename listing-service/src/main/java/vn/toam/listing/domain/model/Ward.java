@@ -31,7 +31,10 @@ public class Ward {
     @Column(name = "full_name_en", length = 150)
     private String fullNameEn;
 
-    @Column(name = "district_code", nullable = false, length = 20)
+    @Column(name = "province_code", length = 20)
+    private String provinceCode;
+
+    @Column(name = "district_code", length = 20)
     private String districtCode;
 }
 
