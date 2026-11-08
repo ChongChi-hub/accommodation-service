@@ -27,6 +27,7 @@ public class AuthController {
     private final ChangePasswordUseCase changePasswordUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
+    private final VerifyEmailUseCase verifyEmailUseCase;
     private final GoogleAuthUseCase googleAuthUseCase;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TokenProviderPort tokenProvider;
@@ -39,6 +40,7 @@ public class AuthController {
                           ChangePasswordUseCase changePasswordUseCase,
                           ForgotPasswordUseCase forgotPasswordUseCase,
                           ResetPasswordUseCase resetPasswordUseCase,
+                          VerifyEmailUseCase verifyEmailUseCase,
                           GoogleAuthUseCase googleAuthUseCase,
                           RefreshTokenRepository refreshTokenRepository,
                           TokenProviderPort tokenProvider,
@@ -50,6 +52,7 @@ public class AuthController {
         this.changePasswordUseCase = changePasswordUseCase;
         this.forgotPasswordUseCase = forgotPasswordUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
+        this.verifyEmailUseCase = verifyEmailUseCase;
         this.googleAuthUseCase = googleAuthUseCase;
         this.refreshTokenRepository = refreshTokenRepository;
         this.tokenProvider = tokenProvider;
@@ -164,6 +167,18 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordCommand command) {
         resetPasswordUseCase.execute(command);
         return ResponseEntity.ok(ApiResponse.message("Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailCommand command) {
+        verifyEmailUseCase.verifyEmail(command);
+        return ResponseEntity.ok(ApiResponse.message("Xác thực địa chỉ email thành công."));
+    }
+
+    @PostMapping("/verify-email/resend")
+    public ResponseEntity<ApiResponse<Void>> resendVerifyEmail(@Valid @RequestBody ResendVerifyEmailCommand command) {
+        verifyEmailUseCase.sendVerificationOtp(command.getEmail());
+        return ResponseEntity.ok(ApiResponse.message("Mã xác thực OTP đã được gửi đến email của bạn."));
     }
 
     @GetMapping("/google/status")

@@ -358,3 +358,35 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * **Lý do**: Cho phép Frontend phát hiện ngay lập tức tình trạng cấu hình lệch giữa `.env.local` của Frontend và cấu hình backend trên môi trường dev/staging mà tuyệt đối không để lộ toàn bộ Client ID qua API public.
 
 
+
+
+---
+
+## 11. Quyết định Nghiệp vụ và Luồng Xác thực Phê duyệt Chủ Trọ (AUTH-FLOW-A: Quy tắc R1 - R9)
+
+### 11.1. Bối cảnh
+Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đăng ký nếu người dùng chọn vai trò "Chủ cho thuê", dẫn đến việc người dùng chưa qua xác minh danh tính (KYC) vẫn có thể truy cập dashboard quản lý phòng và đăng tin. Đồng thời luồng Google Auth bị nhầm lẫn điều hướng giữa người thuê và chủ trọ.
+
+### 11.2. Các quy tắc cốt lõi (R1 - R9)
+1. **R1 (Quyền mặc định an toàn):** Mọi tài khoản tự đăng ký (qua email/mật khẩu hoặc Google) chỉ nhận vai trò `TENANT` và có thể hoạt động như người thuê phòng ngay lập tức.
+2. **R2 (Không cấp LANDLORD tức thì):** Lựa chọn "Chủ cho thuê" khi đăng ký không cấp vai trò `LANDLORD`. Thay vào đó, hệ thống tạo bản ghi hồ sơ chủ trọ trong bảng `landlord_profiles` với trạng thái `AWAITING_KYC`. Chỉ khi hồ sơ KYC tổng thể được nhân sự có quyền `kyc:review` (`ADMIN`, `MODERATOR`) phê duyệt, hệ thống mới cấp thêm vai trò `LANDLORD` (giữ nguyên vai trò `TENANT`) trong CÙNG một giao dịch cơ sở dữ liệu, cập nhật `landlord_profiles.approval_status = APPROVED`, và phát sự kiện `LandlordApproved` qua outbox.
+3. **R3 (Máy trạng thái hồ sơ thuần Domain):**
+   - Vòng đời: `AWAITING_KYC` -> `PENDING_REVIEW` (khi nộp KYC) -> `APPROVED` | `REJECTED`.
+   - Nộp lại: `REJECTED` -> `PENDING_REVIEW` (khi nộp bổ sung giấy tờ hợp lệ).
+   - Mọi chuyển đổi trạng thái không hợp lệ khác bị từ chối bằng ngoại lệ Domain `ERR_LANDLORD_INVALID_STATE_TRANSITION` (HTTP 409 Conflict).
+4. **R4 (Nguồn sự thật duy nhất - Single Source of Truth):**
+   - Trạng thái phê duyệt chủ trọ được lưu tại `landlord_profiles.approval_status`. Bảng `user_verifications` (KYC) đóng vai trò là bằng chứng pháp lý và hồ sơ đính kèm.
+   - Việc phê duyệt KYC đồng nghĩa với việc phê duyệt tư cách chủ trọ vì theo quy định pháp luật và chính sách Tổ Ấm, chủ nhà bắt buộc phải xác thực CCCD chính chủ trước khi kinh doanh lưu trú.
+   - Tính nhất quán được đảm bảo tuyệt đối bằng việc cập nhật cả 2 bảng trong cùng một `@Transactional` và cơ chế khóa lạc quan (`@Version` trên `landlord_profiles` và `user_verifications`).
+5. **R5 (Đăng ký sau cho Người thuê hiện tại):**
+   - Người dùng đã có tài khoản `TENANT` có thể nộp đơn xin làm chủ trọ qua `POST /api/v1/me/landlord-application` (yêu cầu email đã xác minh, hành động idempotent) và tra cứu tiến độ qua `GET /api/v1/me/landlord-application`.
+6. **R6 (Phân quyền và Ngoại lệ có chủ đích):**
+   - Mọi endpoint `/api/v1/landlord/**` thuộc các nghiệp vụ quản lý phòng, đặt lịch, tài chính đòi hỏi vai trò `LANDLORD` trong JWT. Nếu người dùng chưa có vai trò này, hệ thống trả về mã lỗi 403 `ERR_LANDLORD_NOT_APPROVED` để Frontend tự động điều hướng sang trang KYC onboarding.
+   - Ngoại lệ: Endpoint nộp và theo dõi KYC của chính mình (`/api/v1/landlord/kyc`, `/api/v1/landlord/kyc/face`, `/api/v1/me/**`) mở quyền cho cả `TENANT` và `LANDLORD`.
+7. **R7 (Cập nhật quyền qua Refresh Token):**
+   - JWT access token là bất biến trong thời gian sống (15 phút). Sau khi hồ sơ được duyệt, khi người dùng gọi `POST /api/v1/auth/refresh-token`, hệ thống tải lại vai trò tươi mới nhất từ bảng `user_roles` trong DB và cấp token mới chứa đầy đủ `["TENANT", "LANDLORD"]`.
+8. **R8 (Tài khoản nhân sự và Chống tự duyệt):**
+   - Tài khoản `ADMIN`, `MODERATOR` chỉ mang vai trò nhân sự, không có `TENANT`.
+   - Kiểm duyệt viên bị cấm tuyệt đối việc tự duyệt hoặc tự từ chối hồ sơ của chính mình (`ERR_KYC_SELF_REVIEW_FORBIDDEN`, HTTP 403/409).
+9. **R9 (Toàn vẹn dữ liệu mẫu - Seed Integrity):**
+   - Tất cả chủ trọ sở hữu phòng trong seed data (`u-landlord-01` đến `u-landlord-06`) đều ở trạng thái `APPROVED` và sở hữu đồng thời cả 2 vai trò `TENANT` và `LANDLORD`.

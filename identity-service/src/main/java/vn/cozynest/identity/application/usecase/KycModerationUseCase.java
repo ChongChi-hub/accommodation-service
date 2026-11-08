@@ -20,6 +20,7 @@ public class KycModerationUseCase {
 
     private final UserVerificationRepository verificationRepository;
     private final UserRepository userRepository;
+    private final LandlordProfileRepository landlordProfileRepository;
     private final KycStatusHistoryRepository historyRepository;
     private final KycAccessLogRepository accessLogRepository;
     private final KycEventOutboxRepository outboxRepository;
@@ -29,6 +30,7 @@ public class KycModerationUseCase {
     public KycModerationUseCase(
             UserVerificationRepository verificationRepository,
             UserRepository userRepository,
+            LandlordProfileRepository landlordProfileRepository,
             KycStatusHistoryRepository historyRepository,
             KycAccessLogRepository accessLogRepository,
             KycEventOutboxRepository outboxRepository,
@@ -36,6 +38,7 @@ public class KycModerationUseCase {
             KycCryptoService cryptoService) {
         this.verificationRepository = verificationRepository;
         this.userRepository = userRepository;
+        this.landlordProfileRepository = landlordProfileRepository;
         this.historyRepository = historyRepository;
         this.accessLogRepository = accessLogRepository;
         this.outboxRepository = outboxRepository;
@@ -79,23 +82,13 @@ public class KycModerationUseCase {
         List<KycModerationDetailDto.StatusHistoryItem> history = historyRepository.findByVerificationIdOrderByCreatedAtAsc(v.getId())
                 .stream()
                 .map(h -> KycModerationDetailDto.StatusHistoryItem.builder()
-                        .fromStatus(h.getFromStatus())
-                        .toStatus(h.getToStatus())
-                        .actorId(h.getActorId())
-                        .reason(h.getReason())
-                        .createdAt(h.getCreatedAt())
-                        .build())
+                        .fromStatus(h.getFromStatus()).toStatus(h.getToStatus()).actorId(h.getActorId()).reason(h.getReason()).createdAt(h.getCreatedAt()).build())
                 .toList();
 
         List<KycModerationDetailDto.AccessLogItem> logs = accessLogRepository.findByVerificationIdOrderByCreatedAtDesc(v.getId())
                 .stream()
                 .map(l -> KycModerationDetailDto.AccessLogItem.builder()
-                        .actorId(l.getActorId())
-                        .actorRole(l.getActorRole())
-                        .action(l.getAction().name())
-                        .ip(l.getIp())
-                        .createdAt(l.getCreatedAt())
-                        .build())
+                        .actorId(l.getActorId()).actorRole(l.getActorRole()).action(l.getAction().name()).ip(l.getIp()).createdAt(l.getCreatedAt()).build())
                 .toList();
 
         return KycModerationDetailDto.builder()
@@ -149,6 +142,11 @@ public class KycModerationUseCase {
         UserVerification v = verificationRepository.findById(kycId)
                 .orElseThrow(() -> new IdentityDomainException("Khong tim thay ho so xac minh", "ERR_KYC_NOT_FOUND"));
 
+        // R8: Reviewer cannot approve their own application
+        if (reviewerId != null && reviewerId.equals(v.getUserId())) {
+            throw new IdentityDomainException("Kiểm duyệt viên không được tự duyệt hồ sơ của chính mình", "ERR_KYC_SELF_REVIEW_FORBIDDEN");
+        }
+
         if (expectedVersion != null && !expectedVersion.equals(v.getVersion())) {
             throw new IdentityDomainException("Ho so da duoc thay doi boi kiem duyet vien khac", "ERR_KYC_VERSION_CONFLICT");
         }
@@ -156,18 +154,38 @@ public class KycModerationUseCase {
         v.approve(reviewerId);
         UserVerification saved = verificationRepository.save(v);
 
+        // R2: Grant LANDLORD role in the SAME transaction
+        User user = userRepository.findById(v.getUserId())
+                .orElseThrow(() -> new IdentityDomainException("Người dùng không tồn tại", "ERR_AUTH_USER_NOT_FOUND"));
+        user.addRole(UserRoleType.LANDLORD);
+        userRepository.save(user);
+
+        // Update LandlordProfile to APPROVED
+        LandlordProfile profile = landlordProfileRepository.findByUserId(v.getUserId())
+                .orElseGet(() -> LandlordProfile.createNew(v.getUserId()));
+        if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+            profile.submitKyc();
+        }
+        profile.approve(reviewerId);
+        landlordProfileRepository.save(profile);
+
         historyRepository.save(KycStatusHistory.record(
                 saved.getId(), KycStatus.PENDING.name(), KycStatus.APPROVED.name(), reviewerId, "Phe duyet ho so thanh cong"
         ));
         accessLogRepository.save(KycAccessLog.record(saved.getId(), reviewerId, reviewerRole, KycAccessAction.APPROVE, clientIp));
 
-        String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\"}";
-        outboxRepository.save(KycEventOutbox.create(saved.getId(), "KycApproved", outboxPayload));
+        String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"APPROVED\"}";
+        outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordApproved", outboxPayload));
     }
 
     public void rejectKyc(String reviewerId, String reviewerRole, String kycId, RejectKycRequest request, Long expectedVersion, String clientIp) {
         UserVerification v = verificationRepository.findById(kycId)
                 .orElseThrow(() -> new IdentityDomainException("Khong tim thay ho so xac minh", "ERR_KYC_NOT_FOUND"));
+
+        // R8: Reviewer cannot reject their own application
+        if (reviewerId != null && reviewerId.equals(v.getUserId())) {
+            throw new IdentityDomainException("Kiểm duyệt viên không được tự từ chối hồ sơ của chính mình", "ERR_KYC_SELF_REVIEW_FORBIDDEN");
+        }
 
         if (expectedVersion != null && !expectedVersion.equals(v.getVersion())) {
             throw new IdentityDomainException("Ho so da duoc thay doi boi kiem duyet vien khac", "ERR_KYC_VERSION_CONFLICT");
@@ -176,14 +194,22 @@ public class KycModerationUseCase {
         v.reject(reviewerId, request.getReasonCode(), request.getReasonNote());
         UserVerification saved = verificationRepository.save(v);
 
+        // Update LandlordProfile to REJECTED
+        LandlordProfile profile = landlordProfileRepository.findByUserId(v.getUserId())
+                .orElseGet(() -> LandlordProfile.createNew(v.getUserId()));
+        if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+            profile.submitKyc();
+        }
+        profile.reject(reviewerId, request.getReasonCode() != null ? request.getReasonCode().name() : "REJECTED", request.getReasonNote());
+        landlordProfileRepository.save(profile);
+
         historyRepository.save(KycStatusHistory.record(
                 saved.getId(), KycStatus.PENDING.name(), KycStatus.REJECTED.name(), reviewerId,
                 request.getReasonNote() != null ? request.getReasonNote() : request.getReasonCode().name()
         ));
         accessLogRepository.save(KycAccessLog.record(saved.getId(), reviewerId, reviewerRole, KycAccessAction.REJECT, clientIp));
 
-        String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\"}";
-        outboxRepository.save(KycEventOutbox.create(saved.getId(), "KycRejected", outboxPayload));
+        String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"REJECTED\",\"reasonCode\":\"" + request.getReasonCode() + "\"}";
+        outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordRejected", outboxPayload));
     }
 }
-

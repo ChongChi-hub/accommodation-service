@@ -2,6 +2,7 @@ package vn.cozynest.identity.application.usecase;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.mock.web.MockMultipartFile;
 import vn.cozynest.identity.application.dto.LandlordKycStatusResponse;
 import vn.cozynest.identity.domain.model.KycEventOutbox;
@@ -141,12 +142,13 @@ class LandlordKycIntegrationTest {
         InMemoryStatusHistoryRepository historyRepo = new InMemoryStatusHistoryRepository();
         InMemoryOutboxRepository outboxRepo = new InMemoryOutboxRepository();
         InMemoryPrivateStorage storage = new InMemoryPrivateStorage();
+        vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepo = Mockito.mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         KycCryptoService cryptoService = new KycCryptoService(
                 "CozyNestKycSecretKey2026DevEnvironment32B", "CozyNestKycPepperSecret2026DevEnvKey!", null
         );
 
         LandlordKycUseCase useCase = new LandlordKycUseCase(
-                verificationRepo, historyRepo, outboxRepo, storage, cryptoService
+                verificationRepo, historyRepo, outboxRepo, landlordProfileRepo, storage, cryptoService
         );
 
         BufferedImage img = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);

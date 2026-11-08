@@ -76,15 +76,16 @@ class KycSecurityMatrixTest {
         KycCryptoService cryptoService = new KycCryptoService("CozyNestKycSecretKey2026DevEnvironment32B", "CozyNestKycPepperSecret2026DevEnvKey!", null);
         KycStatusHistoryRepository historyRepo = mock(KycStatusHistoryRepository.class);
         vn.cozynest.identity.domain.repository.UserRepository userRepo = mock(vn.cozynest.identity.domain.repository.UserRepository.class);
+        vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepo = mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         vn.cozynest.identity.domain.repository.KycEventOutboxRepository outboxRepo = mock(vn.cozynest.identity.domain.repository.KycEventOutboxRepository.class);
 
         moderationUseCase = new KycModerationUseCase(
-                verificationRepository, userRepo, historyRepo, accessLogRepository, outboxRepo, kycStorage, cryptoService
+                verificationRepository, userRepo, landlordProfileRepo, historyRepo, accessLogRepository, outboxRepo, kycStorage, cryptoService
         );
         moderationController = new KycModerationController(moderationUseCase);
 
         landlordKycUseCase = new LandlordKycUseCase(
-                verificationRepository, historyRepo, outboxRepo, kycStorage, cryptoService
+                verificationRepository, historyRepo, outboxRepo, landlordProfileRepo, kycStorage, cryptoService
         );
         landlordKycController = new LandlordKycController(landlordKycUseCase);
 

@@ -57,6 +57,34 @@ public class JavaMailEmailServiceAdapter implements EmailServicePort {
 
     @Override
     @Async
+    public void sendEmailVerificationOtp(String toEmail, String fullName, String otpCode) {
+        try {
+            String htmlContent = "<div style='font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;'>"
+                    + "<h2>Xác thực địa chỉ email - Tổ Ấm</h2>"
+                    + "<p>Xin chào " + (fullName != null ? fullName : "Quý khách") + ",</p>"
+                    + "<p>Mã xác thực (OTP) kích hoạt tài khoản của bạn là:</p>"
+                    + "<div style='font-size:28px;font-weight:bold;letter-spacing:6px;color:#0f766e;padding:12px 0;'>" + otpCode + "</div>"
+                    + "<p>Mã OTP này có hiệu lực trong vòng 10 phút. Tuyệt đối không chia sẻ mã này cho bất kỳ ai.</p>"
+                    + "</div>";
+
+            String textContent = "Mã xác thực email Tổ Ấm của bạn là: " + otpCode + ". Hiệu lực 10 phút.";
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("Mã xác thực OTP kích hoạt tài khoản - Tổ Ấm");
+            helper.setText(textContent, htmlContent);
+
+            mailSender.send(message);
+            log.info("Email verification OTP sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.warn("Failed to send verification OTP email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    @Override
+    @Async
     public void sendPasswordChangedNotice(String toEmail, String fullName) {
         try {
             String htmlContent = loadTemplate("templates/email/password_changed.html")

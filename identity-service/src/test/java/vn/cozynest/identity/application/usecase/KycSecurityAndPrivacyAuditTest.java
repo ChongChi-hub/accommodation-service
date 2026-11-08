@@ -49,13 +49,14 @@ class KycSecurityAndPrivacyAuditTest {
         UserVerificationRepository verificationRepo = mock(UserVerificationRepository.class);
         KycStatusHistoryRepository historyRepo = mock(KycStatusHistoryRepository.class);
         KycEventOutboxRepository outboxRepo = mock(KycEventOutboxRepository.class);
+        vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepo = mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         KycPrivateStoragePort kycStorage = mock(KycPrivateStoragePort.class);
         KycCryptoService cryptoService = new KycCryptoService(
                 "CozyNestKycSecretKey2026DevEnvironment32B", "CozyNestKycPepperSecret2026DevEnvKey!"
         );
 
         LandlordKycUseCase useCase = new LandlordKycUseCase(
-                verificationRepo, historyRepo, outboxRepo, kycStorage, cryptoService
+                verificationRepo, historyRepo, outboxRepo, landlordProfileRepo, kycStorage, cryptoService
         );
 
         MockMultipartFile front = createPng("front", 100, 100);
@@ -92,13 +93,14 @@ class KycSecurityAndPrivacyAuditTest {
         UserVerificationRepository verificationRepo = mock(UserVerificationRepository.class);
         KycStatusHistoryRepository historyRepo = mock(KycStatusHistoryRepository.class);
         KycEventOutboxRepository outboxRepo = mock(KycEventOutboxRepository.class);
+        vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepo = mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         KycPrivateStoragePort kycStorage = mock(KycPrivateStoragePort.class);
         KycCryptoService cryptoService = new KycCryptoService(
                 "CozyNestKycSecretKey2026DevEnvironment32B", "CozyNestKycPepperSecret2026DevEnvKey!"
         );
 
         LandlordKycUseCase useCase = new LandlordKycUseCase(
-                verificationRepo, historyRepo, outboxRepo, kycStorage, cryptoService
+                verificationRepo, historyRepo, outboxRepo, landlordProfileRepo, kycStorage, cryptoService
         );
 
         MockMultipartFile front = createPng("front", 100, 100);
@@ -123,13 +125,14 @@ class KycSecurityAndPrivacyAuditTest {
         UserVerificationRepository verificationRepo = mock(UserVerificationRepository.class);
         KycStatusHistoryRepository historyRepo = mock(KycStatusHistoryRepository.class);
         KycEventOutboxRepository outboxRepo = mock(KycEventOutboxRepository.class);
+        vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepo = mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         KycPrivateStoragePort kycStorage = mock(KycPrivateStoragePort.class);
         KycCryptoService cryptoService = new KycCryptoService(
                 "CozyNestKycSecretKey2026DevEnvironment32B", "CozyNestKycPepperSecret2026DevEnvKey!"
         );
 
         LandlordKycUseCase useCase = new LandlordKycUseCase(
-                verificationRepo, historyRepo, outboxRepo, kycStorage, cryptoService
+                verificationRepo, historyRepo, outboxRepo, landlordProfileRepo, kycStorage, cryptoService
         );
 
         UserVerification rejected3Times = new UserVerification(

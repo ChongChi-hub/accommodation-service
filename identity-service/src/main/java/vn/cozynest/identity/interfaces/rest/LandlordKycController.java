@@ -17,7 +17,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/landlord/kyc")
-@PreAuthorize("hasRole('LANDLORD')")
+@PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
 public class LandlordKycController {
 
     private final LandlordKycUseCase landlordKycUseCase;

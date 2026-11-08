@@ -24,7 +24,15 @@ public class SecurityAccessDeniedHandler implements AccessDeniedHandler {
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        ApiResponse<Void> apiResponse = ApiResponse.error("Bạn không có quyền thực hiện thao tác này (yêu cầu vai trò Chủ trọ).", "ACCESS_DENIED");
+        String uri = request.getRequestURI();
+        ApiResponse<Void> apiResponse;
+
+        if (uri != null && uri.contains("/landlord")) {
+            apiResponse = ApiResponse.error("Tài khoản chưa được phê duyệt quyền Chủ trọ. Vui lòng hoàn tất xác minh KYC.", "ERR_LANDLORD_NOT_APPROVED");
+        } else {
+            apiResponse = ApiResponse.error("Bạn không có quyền thực hiện thao tác này.", "ERR_FORBIDDEN");
+        }
+
         response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
 }

@@ -9,7 +9,7 @@
 | Mã định danh (ID) | Email | Vai trò | Họ và tên | Trạng thái | KYC |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`u-tenant-01`** | `tenant@cozynest.vn` | TENANT | Nguyễn Văn Thuê | ACTIVE | APPROVED |
-| **`u-landlord-01`**| `landlord@cozynest.vn` | LANDLORD | Trần Thị Chủ Trọ | ACTIVE | APPROVED |
+| **`u-landlord-01`**| `landlord@cozynest.vn` | TENANT, LANDLORD | Trần Thị Chủ Trọ | ACTIVE | APPROVED |
 | **`u-mod-01`** | `moderator@cozynest.vn`| MODERATOR | Phạm Minh Kiểm Duyệt | ACTIVE | APPROVED |
 | **`u-admin-01`** | `admin@cozynest.vn` | ADMIN | Lê Hoàng Quản Trị | ACTIVE | APPROVED |
 | `u-tenant-02` | `tenant2@cozynest.vn` | TENANT | Lê Hoàng Minh | ACTIVE | APPROVED |
@@ -19,11 +19,15 @@
 | `u-tenant-06` | `tenant6@cozynest.vn` | TENANT | Đỗ Minh Tuấn | ACTIVE | APPROVED |
 | `u-tenant-07` | `tenant7@cozynest.vn` | TENANT | Hoàng Thùy Linh | PENDING | PENDING |
 | `u-tenant-08` | `tenant8@cozynest.vn` | TENANT | Ngô Quang Hải | LOCKED | APPROVED |
-| `u-landlord-02` | `landlord2@cozynest.vn`| LANDLORD | Trần Minh Tuấn | ACTIVE | APPROVED |
-| `u-landlord-03` | `landlord3@cozynest.vn`| LANDLORD | Hoàng Thị Mai Lan | ACTIVE | APPROVED |
-| `u-landlord-04` | `landlord4@cozynest.vn`| LANDLORD | Phan Thanh Bình | ACTIVE | PENDING |
-| `u-landlord-05` | `landlord5@cozynest.vn`| LANDLORD, TENANT | Nguyễn Thị Ngọc Ánh | ACTIVE | APPROVED |
-| `u-landlord-06` | `landlord6@cozynest.vn`| LANDLORD, TENANT | Vũ Đình Trọng | LOCKED | APPROVED |
+| `u-landlord-02` | `landlord2@cozynest.vn`| TENANT, LANDLORD | Trần Minh Tuấn | ACTIVE | APPROVED |
+| `u-landlord-03` | `landlord3@cozynest.vn`| TENANT, LANDLORD | Hoàng Thị Mai Lan | ACTIVE | APPROVED |
+| `u-landlord-04` | `landlord4@cozynest.vn`| TENANT, LANDLORD | Phan Thanh Bình | ACTIVE | APPROVED |
+| `u-landlord-05` | `landlord5@cozynest.vn`| TENANT, LANDLORD | Nguyễn Thị Ngọc Ánh | ACTIVE | APPROVED |
+| `u-landlord-06` | `landlord6@cozynest.vn`| TENANT, LANDLORD | Vũ Đình Trọng | LOCKED | APPROVED |
+| `u-landlord-new`| `landlord.new@toam.vn` | TENANT | Chủ Trọ Mới Chờ KYC | ACTIVE | AWAITING_KYC |
+| `u-landlord-pending` | `landlord.pending@toam.vn` | TENANT | Chủ Trọ Chờ Duyệt | ACTIVE | PENDING |
+| `u-landlord-rejected`| `landlord.rejected@toam.vn`| TENANT | Chủ Trọ Bị Từ Chối | ACTIVE | REJECTED |
+| `u-tenant-unverified`| `tenant.unverified@toam.vn`| TENANT | Người Thuê Chưa Xác Minh | ACTIVE | NONE |
 | `u-mod-02` | `mod2@cozynest.vn` | MODERATOR | Đoàn Thu Trang | ACTIVE | APPROVED |
 | `u-mod-03` | `mod3@cozynest.vn` | MODERATOR | Lương Gia Bảo | ACTIVE | APPROVED |
 | `u-admin-02` | `admin2@cozynest.vn` | ADMIN | Trịnh Phương Dung | ACTIVE | APPROVED |

@@ -30,6 +30,8 @@ class LoginUseCaseTest {
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
     @Mock
+    private vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepository;
+    @Mock
     private PasswordEncoderPort passwordEncoder;
     @Mock
     private TokenProviderPort tokenProvider;
@@ -42,7 +44,7 @@ class LoginUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter);
+        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, landlordProfileRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter);
     }
 
     @Test

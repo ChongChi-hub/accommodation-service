@@ -40,6 +40,7 @@ class GoogleAuthControllerIntegrationTest {
         ChangePasswordUseCase changePasswordUseCase = mock(ChangePasswordUseCase.class);
         ForgotPasswordUseCase forgotPasswordUseCase = mock(ForgotPasswordUseCase.class);
         ResetPasswordUseCase resetPasswordUseCase = mock(ResetPasswordUseCase.class);
+        VerifyEmailUseCase verifyEmailUseCase = mock(VerifyEmailUseCase.class);
         RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
         TokenProviderPort tokenProvider = mock(TokenProviderPort.class);
         googleAuthUseCase = mock(GoogleAuthUseCase.class);
@@ -52,6 +53,7 @@ class GoogleAuthControllerIntegrationTest {
                 changePasswordUseCase,
                 forgotPasswordUseCase,
                 resetPasswordUseCase,
+                verifyEmailUseCase,
                 googleAuthUseCase,
                 refreshTokenRepository,
                 tokenProvider,

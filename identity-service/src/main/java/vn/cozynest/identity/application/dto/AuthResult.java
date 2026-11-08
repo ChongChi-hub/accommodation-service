@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -13,5 +15,8 @@ public class AuthResult {
     private String token;
     private String refreshToken;
     private UserDto user;
+    private List<String> roles;
+    private Boolean isNewUser;
+    private LandlordApplicationSummaryDto landlordApplication;
+    private Boolean emailVerified;
 }
-

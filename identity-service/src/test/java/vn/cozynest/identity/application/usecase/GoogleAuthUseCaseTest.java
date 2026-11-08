@@ -35,6 +35,7 @@ class GoogleAuthUseCaseTest {
     private UserRepository userRepository;
     private OAuthAccountRepository oauthAccountRepository;
     private RefreshTokenRepository refreshTokenRepository;
+    private vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepository;
     private TokenProviderPort tokenProvider;
     private RateLimiterPort rateLimiter;
     private GoogleTokenVerifier googleTokenVerifier;
@@ -49,6 +50,7 @@ class GoogleAuthUseCaseTest {
         userRepository = mock(UserRepository.class);
         oauthAccountRepository = mock(OAuthAccountRepository.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
+        landlordProfileRepository = mock(vn.cozynest.identity.domain.repository.LandlordProfileRepository.class);
         tokenProvider = mock(TokenProviderPort.class);
         rateLimiter = mock(RateLimiterPort.class);
         googleTokenVerifier = mock(GoogleTokenVerifier.class);
@@ -63,6 +65,7 @@ class GoogleAuthUseCaseTest {
                 userRepository,
                 oauthAccountRepository,
                 refreshTokenRepository,
+                landlordProfileRepository,
                 tokenProvider,
                 rateLimiter,
                 googleTokenVerifier,
@@ -308,7 +311,9 @@ class GoogleAuthUseCaseTest {
                 .build();
 
         AuthResult res1 = useCase.authenticate(cmd1);
-        assertThat(res1.getUser().getRoles()).contains("LANDLORD");
+        assertThat(res1.getUser().getRoles()).containsExactly("TENANT");
+        assertThat(res1.getUser().getRoles()).doesNotContain("LANDLORD");
+        verify(landlordProfileRepository).save(any(vn.cozynest.identity.domain.model.LandlordProfile.class));
 
         // 2. Existing TENANT user -> intendedRole LANDLORD is ignored
         GoogleNonceResponse nonceRes2 = useCase.generateNonce();

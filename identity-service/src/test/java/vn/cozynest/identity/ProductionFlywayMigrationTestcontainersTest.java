@@ -69,6 +69,11 @@ class ProductionFlywayMigrationTestcontainersTest {
                     assertThat(rs.getInt(1)).isZero();
                 }
 
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM landlord_profiles")) {
+                    rs.next();
+                    assertThat(rs.getInt(1)).isZero();
+                }
+
                 try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM face_access_logs")) {
                     rs.next();
                     assertThat(rs.getInt(1)).isZero();

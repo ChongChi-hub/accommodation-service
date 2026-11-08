@@ -40,6 +40,9 @@ class LandlordKycUseCaseTest {
     private KycEventOutboxRepository outboxRepository;
 
     @Mock
+    private vn.cozynest.identity.domain.repository.LandlordProfileRepository landlordProfileRepository;
+
+    @Mock
     private KycPrivateStoragePort kycStorage;
 
     private KycCryptoService cryptoService;
@@ -55,6 +58,7 @@ class LandlordKycUseCaseTest {
                 verificationRepository,
                 historyRepository,
                 outboxRepository,
+                landlordProfileRepository,
                 kycStorage,
                 cryptoService
         );
@@ -99,6 +103,7 @@ class LandlordKycUseCaseTest {
         verify(kycStorage, times(2)).store(anyString(), any(), eq("image/webp"));
         verify(outboxRepository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
+        verify(landlordProfileRepository, times(1)).save(any());
     }
 
     @Test

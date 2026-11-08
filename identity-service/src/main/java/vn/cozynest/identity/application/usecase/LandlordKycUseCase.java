@@ -8,11 +8,9 @@ import org.springframework.web.multipart.MultipartFile;
 import vn.cozynest.common.image.ImageProcessingHelper;
 import vn.cozynest.identity.application.dto.LandlordKycStatusResponse;
 import vn.cozynest.identity.domain.exception.IdentityDomainException;
-import vn.cozynest.identity.domain.model.KycEventOutbox;
-import vn.cozynest.identity.domain.model.KycStatus;
-import vn.cozynest.identity.domain.model.KycStatusHistory;
-import vn.cozynest.identity.domain.model.UserVerification;
+import vn.cozynest.identity.domain.model.*;
 import vn.cozynest.identity.domain.port.KycPrivateStoragePort;
+import vn.cozynest.identity.domain.repository.LandlordProfileRepository;
 import vn.cozynest.identity.domain.repository.KycEventOutboxRepository;
 import vn.cozynest.identity.domain.repository.KycStatusHistoryRepository;
 import vn.cozynest.identity.domain.repository.UserVerificationRepository;
@@ -30,10 +28,10 @@ public class LandlordKycUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(LandlordKycUseCase.class);
     private static final int MAX_SUBMISSIONS_PER_DAY = 3;
-
     private final UserVerificationRepository verificationRepository;
     private final KycStatusHistoryRepository historyRepository;
     private final KycEventOutboxRepository outboxRepository;
+    private final LandlordProfileRepository landlordProfileRepository;
     private final KycPrivateStoragePort kycStorage;
     private final KycCryptoService cryptoService;
 
@@ -41,11 +39,13 @@ public class LandlordKycUseCase {
             UserVerificationRepository verificationRepository,
             KycStatusHistoryRepository historyRepository,
             KycEventOutboxRepository outboxRepository,
+            LandlordProfileRepository landlordProfileRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService) {
         this.verificationRepository = verificationRepository;
         this.historyRepository = historyRepository;
         this.outboxRepository = outboxRepository;
+        this.landlordProfileRepository = landlordProfileRepository;
         this.kycStorage = kycStorage;
         this.cryptoService = cryptoService;
     }
@@ -147,6 +147,12 @@ public class LandlordKycUseCase {
 
         UserVerification saved = verificationRepository.save(verification);
 
+        // Transition LandlordProfile to PENDING_REVIEW
+        LandlordProfile profile = landlordProfileRepository.findByUserId(landlordId)
+                .orElseGet(() -> LandlordProfile.createNew(landlordId));
+        profile.submitKyc();
+        landlordProfileRepository.save(profile);
+
         // Audit Trail & Outbox
         historyRepository.save(KycStatusHistory.record(
                 saved.getId(), fromStatus, KycStatus.PENDING.name(), landlordId, "Chu tro nop ho so xac minh danh tinh"
@@ -158,19 +164,19 @@ public class LandlordKycUseCase {
         return toResponse(saved);
     }
 
-    @Transactional(readOnly = true)
     public byte[] streamKycImage(String landlordId, String side) {
         UserVerification v = verificationRepository.findByUserId(landlordId)
-                .orElseThrow(() -> new IdentityDomainException("Khong tim thay ho so KYC", "ERR_KYC_NOT_FOUND"));
+                .orElseThrow(() -> new IdentityDomainException("Khong tim thay ho so xac minh", "ERR_KYC_NOT_FOUND"));
 
-        String imageKey = "back".equalsIgnoreCase(side) ? v.getBackImageKey() : v.getFrontImageKey();
-        if (imageKey == null || imageKey.isBlank() || "PURGED".equals(imageKey)) {
+        boolean isBack = "back".equalsIgnoreCase(side);
+        String key = isBack ? v.getBackImageKey() : v.getFrontImageKey();
+        if (key == null || key.isBlank() || "PURGED".equals(key)) {
             throw new IdentityDomainException("Khong tim thay tep hinh anh", "ERR_KYC_IMAGE_NOT_FOUND");
         }
 
-        byte[] bytes = kycStorage.load(imageKey);
+        byte[] bytes = kycStorage.load(key);
         if (bytes == null || bytes.length == 0) {
-            throw new IdentityDomainException("Khong the tai tep hinh anh", "ERR_KYC_IMAGE_NOT_FOUND");
+            throw new IdentityDomainException("Khong the doc du lieu tep anh", "ERR_KYC_IMAGE_NOT_FOUND");
         }
         return bytes;
     }
@@ -197,6 +203,8 @@ public class LandlordKycUseCase {
             kycStorage.store(storageKey, webpBytes, "image/webp");
 
             return storageKey;
+        } catch (IdentityDomainException e) {
+            throw e;
         } catch (IOException e) {
             log.error("Failed to process private KYC document for landlord {}", landlordId, e);
             throw new IdentityDomainException("Loi xu ly tep hinh anh xac minh", "ERR_KYC_IMAGE_PROCESS_FAILED");
