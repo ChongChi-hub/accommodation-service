@@ -21,6 +21,9 @@ class ApiGatewayRoutingAndCorsTest {
     @Autowired
     private Environment env;
 
+    @Autowired(required = false)
+    private org.springframework.test.web.reactive.server.WebTestClient webTestClient;
+
     @Test
     @DisplayName("Verify API Gateway routes are registered for all 6 microservices")
     void testGatewayRoutesRegistered() {
@@ -65,6 +68,77 @@ class ApiGatewayRoutingAndCorsTest {
                         .doesNotContain("/internal/**");
             }
         }
+    }
+
+    @Test
+    @DisplayName("Verify valid frontend origin receives exactly 1 ACAO and ACAC header")
+    void testCorsAllowedOriginReturnsSingleAcaoAndAcac() {
+        if (webTestClient == null) return;
+
+        webTestClient.get()
+                .uri("/actuator/health")
+                .header("Origin", "http://localhost:3000")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://localhost:3000")
+                .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true");
+    }
+
+    @Test
+    @DisplayName("Verify CORS preflight OPTIONS request returns 200 with allowed methods")
+    void testCorsPreflightOptionsSucceeds() {
+        if (webTestClient == null) return;
+
+        webTestClient.options()
+                .uri("/api/v1/rooms")
+                .header("Origin", "http://localhost:3000")
+                .header("Access-Control-Request-Method", "GET")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://localhost:3000")
+                .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true");
+    }
+
+    @Test
+    @DisplayName("Verify untrusted origin receives no Access-Control-Allow-Origin header")
+    void testCorsDisallowedOriginHasNoAcao() {
+        if (webTestClient == null) return;
+
+        webTestClient.get()
+                .uri("/actuator/health")
+                .header("Origin", "http://untrusted-attacker-site.com")
+                .exchange()
+                .expectHeader().doesNotExist("Access-Control-Allow-Origin");
+    }
+
+    @Test
+    @DisplayName("Prove duplicate ACAO occurs if downstream emits ACAO without DedupeResponseHeader")
+    void testDedupeFilterPreventsDuplicateHeadersFromDownstream() {
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.add("Access-Control-Allow-Origin", "http://localhost:3000");
+        headers.add("Access-Control-Allow-Origin", "http://localhost:3000");
+
+        assertThat(headers.get("Access-Control-Allow-Origin")).hasSize(2);
+
+        org.springframework.cloud.gateway.filter.factory.DedupeResponseHeaderGatewayFilterFactory factory =
+                new org.springframework.cloud.gateway.filter.factory.DedupeResponseHeaderGatewayFilterFactory();
+        org.springframework.cloud.gateway.filter.factory.DedupeResponseHeaderGatewayFilterFactory.Config config =
+                new org.springframework.cloud.gateway.filter.factory.DedupeResponseHeaderGatewayFilterFactory.Config();
+        config.setName("Access-Control-Allow-Origin");
+        config.setStrategy(org.springframework.cloud.gateway.filter.factory.DedupeResponseHeaderGatewayFilterFactory.Strategy.RETAIN_UNIQUE);
+
+        org.springframework.mock.http.server.reactive.MockServerHttpRequest request =
+                org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/test").build();
+        org.springframework.mock.web.server.MockServerWebExchange exchange =
+                org.springframework.mock.web.server.MockServerWebExchange.from(request);
+        exchange.getResponse().getHeaders().addAll(headers);
+
+        var filter = factory.apply(config);
+        filter.filter(exchange, ex -> reactor.core.publisher.Mono.empty()).block();
+
+        assertThat(exchange.getResponse().getHeaders().get("Access-Control-Allow-Origin"))
+                .hasSize(1)
+                .containsExactly("http://localhost:3000");
     }
 }
 

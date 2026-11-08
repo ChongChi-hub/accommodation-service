@@ -9,7 +9,7 @@ Hệ thống backend "Tổ Ấm" là nền tảng quản lý và tìm kiếm ph�
 - **API Gateway:** Spring Cloud Gateway 2025.1.4 (Port 8080).
 - **Cơ sở dữ liệu:** MySQL 9.7 LTS, charset `utf8mb4`, collation `utf8mb4_unicode_ci`.
 - **Migration:** Flyway 13.12.1 (V* cho cấu trúc, seed riêng cho dev/demo).
-- **Bảo mật:** Spring Security + JJWT 0.12.7 (HMAC-SHA256 Stateless Token), Argon2id/BCrypt.
+- **Bảo mật:** Spring Security + JJWT 0.12.7 (Stateless RS256 / HMAC-SHA256), BCrypt(12).
 - **Tài liệu API:** `springdoc-openapi` 3.2.0 (tự sinh OpenAPI tại `/docs` qua gateway).
 - **Mapping & Boilerplate:** MapStruct 1.6.3, Lombok 1.18.48.
 - **Kiểm thử & Ràng buộc kiến trúc:** JUnit 5, Testcontainers MySQL 1.21.4, ArchUnit 1.5.1.

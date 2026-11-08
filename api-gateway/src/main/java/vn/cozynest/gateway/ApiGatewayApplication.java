@@ -33,6 +33,27 @@ public class ApiGatewayApplication {
     }
 
     @Bean
+    public org.springframework.cloud.gateway.filter.GlobalFilter requestIdFilter() {
+        return (exchange, chain) -> {
+            String incomingReqId = exchange.getRequest().getHeaders().getFirst("X-Request-ID");
+            String cleanUuid = java.util.UUID.randomUUID().toString().replace("-", "");
+            String requestId = (incomingReqId != null && !incomingReqId.isBlank())
+                    ? incomingReqId
+                    : java.util.UUID.randomUUID().toString();
+
+            String traceId = cleanUuid.length() >= 32 ? cleanUuid.substring(0, 32) : (cleanUuid + "00000000000000000000000000000000").substring(0, 32);
+
+            org.springframework.http.server.reactive.ServerHttpRequest mutatedReq = exchange.getRequest().mutate()
+                    .header("X-Request-ID", requestId)
+                    .header("traceparent", "00-" + traceId + "-0000000000000001-01")
+                    .build();
+
+            exchange.getResponse().getHeaders().set("X-Request-ID", requestId);
+            return chain.filter(exchange.mutate().request(mutatedReq).build());
+        };
+    }
+
+    @Bean
     public org.springframework.web.cors.reactive.CorsWebFilter corsWebFilter() {
         org.springframework.web.cors.CorsConfiguration corsConfig = new org.springframework.web.cors.CorsConfiguration();
         corsConfig.setAllowedOrigins(java.util.List.of("http://localhost:3000", "http://127.0.0.1:3000"));

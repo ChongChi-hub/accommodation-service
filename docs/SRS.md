@@ -18,7 +18,7 @@
 
 ### 3.1. Xác thực & Quản lý người dùng (Identity Service)
 * Đăng ký tài khoản (hỗ trợ phân vai trò ban đầu: Người thuê hoặc Chủ trọ).
-* Đăng nhập bảo mật (Argon2id/BCrypt), JWT access token (ngắn hạn) + Refresh token (xoay vòng).
+* Đăng nhập bảo mật (BCrypt hệ số 12), JWT access token (ngắn hạn) + Refresh token (xoay vòng).
 * Quản lý hồ sơ cá nhân và xác minh danh tính (KYC) với ảnh CCCD 2 mặt.
 * Khóa tạm tài khoản nếu nhập sai mật khẩu quá 5 lần liên tiếp.
 

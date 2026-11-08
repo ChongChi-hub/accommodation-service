@@ -30,7 +30,22 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
     public HttpKycVerificationAdapter(
             @Value("${services.identity.url:${IDENTITY_SERVICE_URL:http://localhost:8081}}") String identityServiceUrl,
             @Value("${app.internal.service-key:CozyNestInternalServiceKeySecret2026}") String internalServiceKey) {
+        this(identityServiceUrl, internalServiceKey, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public HttpKycVerificationAdapter(
+            @Value("${services.identity.url:${IDENTITY_SERVICE_URL:http://localhost:8081}}") String identityServiceUrl,
+            @Value("${app.internal.service-key:CozyNestInternalServiceKeySecret2026}") String internalServiceKey,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) org.springframework.core.env.Environment env) {
         this.internalServiceKey = internalServiceKey;
+
+        if (env != null && env.matchesProfiles("prod", "production")) {
+            String envKey = System.getenv("INTERNAL_SERVICE_KEY");
+            if (envKey == null || envKey.isBlank() || "CozyNestInternalServiceKeySecret2026".equals(internalServiceKey)) {
+                throw new IllegalStateException("Production environment must explicitly configure INTERNAL_SERVICE_KEY without default dev key");
+            }
+        }
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3000);
@@ -54,10 +69,17 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
 
         // Inter-service call with fail-closed policy
         try {
-            String json = restClient.get()
+            String traceId = org.slf4j.MDC.get("requestId");
+            var requestSpec = restClient.get()
                     .uri("/internal/users/{id}/kyc-status", queryId)
                     .header("X-Internal-Service-Key", internalServiceKey)
-                    .header(HttpHeaders.ACCEPT, "application/json")
+                    .header(HttpHeaders.ACCEPT, "application/json");
+
+            if (traceId != null && !traceId.isBlank()) {
+                requestSpec = requestSpec.header("X-Request-ID", traceId);
+            }
+
+            String json = requestSpec
                     .retrieve()
                     .body(String.class);
 

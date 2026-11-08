@@ -3,7 +3,7 @@
 ## THUẬT TOÁN BĂM MẬT KHẨU
 - [x] Ghi nhận thuật toán băm đang dùng thật: **BCrypt với hệ số tải 12 (`BCryptPasswordEncoder(12)`)**.
   - **Minh chứng**: `PasswordEncoderConfig.java` cấu hình `@Bean public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }`.
-  - **Ghi nhận**: Đã ghi nhận quyết định kiến trúc tại `docs/DECISIONS.md` Mục 13.1. BCrypt với strength 12 đáp ứng khuyến nghị của OWASP và NIST SP 800-63B, tạo độ trễ ~80-100ms chống tấn công vét cạn.
+  - **Ghi nhận**: Đã ghi nhận quyết định kiến trúc tại `docs/DECISIONS.md` Mục 13.1. BCrypt với strength 12 đáp ứng khuyến nghị của OWASP Password Storage Cheat Sheet, tạo độ trễ ~80-100ms chống tấn công vét cạn.
 
 ---
 

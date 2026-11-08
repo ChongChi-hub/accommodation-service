@@ -19,7 +19,7 @@
 | STT | Route Cũ (Node.js Express) | Microservice Đích | Endpoint Mới (Spring Boot) | Trạng Thái | Bằng Chứng / Lý Do |
 | :---: | :--- | :--- | :--- | :---: | :--- |
 | 1 | `POST /api/v1/auth/register` | `identity-service` | `POST /api/v1/auth/register` | **XONG** | `RegisterUseCaseTest.java`, live curl test HTTP 201 |
-| 2 | `POST /api/v1/auth/login` | `identity-service` | `POST /api/v1/auth/login` | **XONG** | `LoginUseCaseTest.java`, live curl test HTTP 200 (Argon2id) |
+| 2 | `POST /api/v1/auth/login` | `identity-service` | `POST /api/v1/auth/login` | **XONG** | `LoginUseCaseTest.java`, live curl test HTTP 200 (BCrypt(12)) |
 | 3 | `POST /api/v1/auth/google-login` | `identity-service` | `POST /api/v1/auth/google-login` | **XONG** | `oauth_accounts` table, Spring Security OAuth2 handler |
 | 4 | `GET /api/v1/auth/profile` | `identity-service` | `GET /api/v1/users/me/profile` | **XONG** | `UserProfileUseCaseTest.java`, `GET /users/me/profile` |
 | 5 | `PUT /api/v1/auth/profile` | `identity-service` | `PUT /api/v1/users/me/profile` | **XONG** | `UserProfileUseCaseTest.java`, HTTP 200 cập nhật |
@@ -27,7 +27,7 @@
 | 7 | `POST /api/v1/auth/logout` | `identity-service` | `POST /api/v1/auth/logout` | **XONG** | Thu hồi refreshToken trong DB và xóa cookie |
 | 8 | `POST /api/v1/auth/forgot-password` | `identity-service` | `POST /api/v1/auth/forgot-password` | **XONG** | `PasswordRecoveryUseCaseTest.java`, gửi OTP Mailpit |
 | 9 | `POST /api/v1/auth/verify-reset-otp` | `identity-service` | `POST /api/v1/auth/verify-reset-otp`| **XONG** | Kiểm tra OTP hash, cấp resetToken có hạn |
-| 10 | `POST /api/v1/auth/reset-password` | `identity-service` | `POST /api/v1/auth/reset-password` | **XONG** | Cập nhật mật khẩu mới, băm Argon2id |
+| 10 | `POST /api/v1/auth/reset-password` | `identity-service` | `POST /api/v1/auth/reset-password` | **XONG** | Cập nhật mật khẩu mới, băm BCrypt(12) |
 | 11 | `GET /api/v1/rooms` | `listing-service` | `GET /api/v1/rooms` | **XONG** | Trả 37 phòng (Hợp đồng hiển thị công khai PUBLISHED) |
 | 12 | `GET /api/v1/rooms/my-rooms` | `listing-service` | `GET /api/v1/landlord/rooms` | **XONG** | `LandlordRoomUseCaseTest.java`, HTTP 200 theo Landlord ID |
 | 13 | `GET /api/v1/rooms/:id` | `listing-service` | `GET /api/v1/rooms/{slugOrId}` | **XONG** | Trả chi tiết phòng, phí dịch vụ, tiện ích nhóm |
@@ -103,7 +103,7 @@
 
 | Bảng Cũ (`room_rental`) | Schema Đích Mới | Bảng Mới | Thay Đổi Cột & Kiểu Dữ Liệu |
 | :--- | :--- | :--- | :--- |
-| `users` | `cozynest_identity` | `users` | `id` giữ nguyên format (`u-xxx`), thêm `version` (optimistic lock), `deleted_at` (soft delete). Password băm bằng Argon2id. |
+| `users` | `cozynest_identity` | `users` | `id` giữ nguyên format (`u-xxx`), thêm `version` (optimistic lock), `deleted_at` (soft delete). Password băm bằng BCrypt(12). |
 | `user_verifications` | `cozynest_identity` | `user_verifications` | Đổi tên trạng thái thành `PENDING`, `APPROVED`, `REJECTED`. Bổ sung bảng vệ tinh `face_verifications`, `face_verification_frames`. |
 | `provinces` | `cozynest_listing` | `provinces` | Chuẩn hóa mã tỉnh `code` (ví dụ: `HN`, `HCM`, `DN`), tên chuẩn Unicode tiếng Việt. |
 | `districts` | **BỎ CÓ CHỦ ĐÍCH** | *None* | **Loại bỏ hoàn toàn cấp Quận/Huyện** theo quy định địa giới 2 cấp (Tỉnh/Thành -> Phường/Xã). |
@@ -194,7 +194,7 @@ sequenceDiagram
     Tenant->>Web: Nhập email & password
     Web->>Gateway: POST /api/v1/auth/login
     Gateway->>Identity: Forward POST /api/v1/auth/login
-    Identity->>Identity: Verify credentials with Argon2id
+    Identity->>Identity: Verify credentials with BCrypt(12)
     Identity-->>Gateway: Trả JWT (Signed RS256, kid: cozynest-identity-key-1) + RefreshToken
     Gateway-->>Web: Trả JWT token + Thiết lập httpOnly cookie
     Web-->>Tenant: Điều hướng Dashboard theo vai trò
@@ -335,7 +335,7 @@ All core microservices are UP and HEALTHY!
    - Lệnh gọi thiếu header:
      `curl -i http://localhost:8081/internal/users/u-landlord-01/kyc-status` -> Trả về `401 ERR_UNAUTHORIZED`: `"Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le"`.
    - Lệnh gọi kèm header chuẩn:
-     `curl -i http://localhost:8081/internal/users/u-landlord-01/kyc-status -H "X-Internal-Service-Key: CozyNestInternalServiceKeySecret2026"` -> Trả về `200 OK`: `{"data":{"userId":"u-landlord-01","kycStatus":"APPROVED","approved":true}}`.
+     `curl -i http://localhost:8081/internal/users/u-landlord-01/kyc-status -H "X-Internal-Service-Key: [REDACTED-INTERNAL-KEY]"` -> Trả về `200 OK`: `{"data":{"userId":"u-landlord-01","kycStatus":"APPROVED","approved":true}}`.
    - So sánh khóa dùng thuật toán hằng số thời gian `MessageDigest.isEqual(a, b)` chống tấn công Timing Attack.
 
 ---
@@ -460,7 +460,7 @@ Tổng kết chạy kiểm thử tự động toàn bộ 8 modules (`node script
 | 13 | Kiểm thử toàn bộ Backend | `195 tests` hoàn thành thành công 100%, 0 failures | **TICK** |
 | 14 | Đo lường tài nguyên RAM container | Đo `docker stats`: Core ~2.3 GB, Full ~3.2 GB, cờ JVM chi tiết | **TICK** |
 | 15 | Kiểm kê tính năng thiếu & ưu tiên | Mục 15 liệt kê trung thực, không giấu lỗi | **TICK** |
-| 16 | Bảo vệ secrets & Mã hóa sinh trắc học | `.env.example` đầy đủ, Argon2id cho mật khẩu, AES-256 GCM cho khuôn mặt | **TICK** |
+| 16 | Bảo vệ secrets & Mã hóa sinh trắc học | `.env.example` đầy đủ, BCrypt(12) cho mật khẩu, AES-256 GCM cho khuôn mặt (KYC-02) | **TICK** |
 | 17 | Địa giới hành chính 2 cấp chuẩn hóa | Loại bỏ hoàn toàn cấp Quận/Huyện, API chỉ nhận `provinceCode` và `wardCode` | **TICK** |
 | 18 | Hợp đồng hiển thị công khai & KYC Gate | Chỉ phòng PUBLISHED hiển thị public; Landlord cần APPROVED mới được publish | **TICK** |
 | 19 | Tài liệu hướng dẫn khởi động trong 10 phút | Cập nhật `README.md` với các lệnh một dòng và hướng dẫn môi trường sạch | **TICK** |

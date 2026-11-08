@@ -31,8 +31,7 @@ public class LoginUseCase {
     private final TokenProviderPort tokenProvider;
     private final LoginAttemptPort loginAttemptPort;
     private final vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
-
-    private static final String DUMMY_BCRYPT_HASH = "$2a$12$7kPj5aXN62q.7XJjN8wGxeQJv9XW1Nq2g5U1rQ0M5J4L3K2H1G0F.";
+    private final String dummyBcryptHash;
 
     public LoginUseCase(UserRepository userRepository,
                         RefreshTokenRepository refreshTokenRepository,
@@ -48,11 +47,18 @@ public class LoginUseCase {
         this.tokenProvider = tokenProvider;
         this.loginAttemptPort = loginAttemptPort;
         this.rateLimiter = rateLimiter;
+        this.dummyBcryptHash = passwordEncoder.encode("cozynest_dummy_constant_timing_password_protection");
     }
 
     @Transactional
     public AuthResult execute(LoginCommand command) {
         rateLimiter.checkLoginRateLimit(command.getIpAddress());
+
+        if (command.getPassword() != null && command.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            passwordEncoder.matches("invalid", dummyBcryptHash);
+            loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
+            throw new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
+        }
 
         if (loginAttemptPort.isBlocked(command.getEmail(), command.getIpAddress())) {
             throw new IdentityDomainException("Tài khoản hoặc IP của bạn đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
@@ -60,7 +66,7 @@ public class LoginUseCase {
 
         Optional<User> userOpt = userRepository.findByEmail(command.getEmail().trim().toLowerCase());
         if (userOpt.isEmpty()) {
-            passwordEncoder.matches(command.getPassword(), DUMMY_BCRYPT_HASH);
+            passwordEncoder.matches(command.getPassword(), dummyBcryptHash);
             loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
             throw new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
         }
@@ -68,7 +74,7 @@ public class LoginUseCase {
         User user = userOpt.get();
 
         if (user.getPasswordHash() == null) {
-            passwordEncoder.matches(command.getPassword(), DUMMY_BCRYPT_HASH);
+            passwordEncoder.matches(command.getPassword(), dummyBcryptHash);
             loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
             throw new IdentityDomainException("Tài khoản này được đăng ký qua Google. Vui lòng đăng nhập bằng Google.", "ERR_AUTH_OAUTH_ACCOUNT");
         }
@@ -76,6 +82,11 @@ public class LoginUseCase {
         if (!passwordEncoder.matches(command.getPassword(), user.getPasswordHash())) {
             loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
             throw new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
+        }
+
+        if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
+            user.changePassword(passwordEncoder.encode(command.getPassword()));
+            userRepository.save(user);
         }
 
         if (user.getStatus() == UserStatus.LOCKED) {

@@ -7,7 +7,7 @@ import java.util.Set;
 public final class PasswordPolicyValidator {
 
     private static final int MIN_LENGTH = 8;
-    private static final int MAX_LENGTH = 128;
+    private static final int MAX_BYTES = 72;
 
     private static final Set<String> COMMON_PASSWORDS = Set.of(
             "12345678", "123456789", "1234567890", "password", "password123",
@@ -25,9 +25,9 @@ public final class PasswordPolicyValidator {
             );
         }
 
-        if (password.length() > MAX_LENGTH) {
+        if (password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_BYTES) {
             throw new IdentityDomainException(
-                    "Mật khẩu không được vượt quá " + MAX_LENGTH + " ký tự",
+                    "Mật khẩu không được vượt quá " + MAX_BYTES + " byte (giới hạn bảo mật BCrypt)",
                     "ERR_AUTH_PASSWORD_TOO_LONG"
             );
         }

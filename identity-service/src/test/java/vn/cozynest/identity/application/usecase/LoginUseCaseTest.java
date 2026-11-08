@@ -100,5 +100,41 @@ class LoginUseCaseTest {
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
         assertEquals("ERR_AUTH_TEMPORARY_LOCKED", ex.getErrorCode());
     }
+
+    @Test
+    @DisplayName("Should upgrade password hash when old cost encoding is detected")
+    void shouldUpgradePasswordHashWhenOldCostDetected() {
+        User user = User.createNew("tenant@cozynest.vn", "0901234567", "old_cost_hash", "Nguyễn Văn Thuê", UserRoleType.TENANT);
+        when(userRepository.findByEmail("tenant@cozynest.vn")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password123", "old_cost_hash")).thenReturn(true);
+        when(passwordEncoder.upgradeEncoding("old_cost_hash")).thenReturn(true);
+        when(passwordEncoder.encode("password123")).thenReturn("new_cost_hash");
+        when(tokenProvider.generateAccessToken(any(User.class))).thenReturn("mock_token");
+        when(tokenProvider.generateRefreshToken()).thenReturn("mock_refresh");
+        when(tokenProvider.hashToken("mock_refresh")).thenReturn("mock_hash");
+
+        LoginCommand command = LoginCommand.builder()
+                .email("tenant@cozynest.vn")
+                .password("password123")
+                .build();
+
+        AuthResult result = loginUseCase.execute(command);
+        assertNotNull(result);
+        assertEquals("new_cost_hash", user.getPasswordHash());
+        verify(passwordEncoder).upgradeEncoding("old_cost_hash");
+        verify(userRepository, atLeastOnce()).save(user);
+    }
+
+    @Test
+    @DisplayName("Should reject password exceeding 72 bytes")
+    void shouldRejectPasswordExceeding72Bytes() {
+        LoginCommand command = LoginCommand.builder()
+                .email("tenant@cozynest.vn")
+                .password("A".repeat(73))
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_AUTH_INVALID_CREDENTIALS", ex.getErrorCode());
+    }
 }
 

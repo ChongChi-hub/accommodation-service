@@ -55,7 +55,8 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     public User save(User user) {
-        UserJpaEntity entity = toEntity(user);
+        UserJpaEntity existing = springDataUserRepository.findById(user.getId()).orElse(null);
+        UserJpaEntity entity = toEntity(user, existing);
         UserJpaEntity saved = springDataUserRepository.save(entity);
         return toDomain(saved);
     }
@@ -83,7 +84,7 @@ public class UserRepositoryAdapter implements UserRepository {
         );
     }
 
-    private UserJpaEntity toEntity(User domain) {
+    private UserJpaEntity toEntity(User domain, UserJpaEntity existing) {
         Set<RoleJpaEntity> roleEntities = domain.getRoles().stream()
                 .map(roleType -> springDataRoleRepository.findByName(roleType.name())
                         .orElseGet(() -> springDataRoleRepository.save(
@@ -95,6 +96,8 @@ public class UserRepositoryAdapter implements UserRepository {
                                         .build()
                         )))
                 .collect(Collectors.toSet());
+
+        Long version = existing != null ? existing.getVersion() : 0L;
 
         return UserJpaEntity.builder()
                 .id(domain.getId())
@@ -111,6 +114,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .roles(roleEntities)
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
+                .version(version)
                 .build();
     }
 }
