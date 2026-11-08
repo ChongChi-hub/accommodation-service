@@ -33,5 +33,14 @@ jobs:
       - name: Build and Test Backend Services
         run: |
           chmod +x gradlew
-          ./gradlew clean build --no-daemon
+          ./gradlew clean build --no-daemon --info
+
+      - name: Print Test Failures on Error
+        if: failure()
+        run: |
+          echo "=== SEARCHING FOR FAILED TESTS ==="
+          find . -name "*.xml" -path "*/test-results/*" -exec grep -l "<failure\|<error" {} + | while read f; do
+            echo "=== FAILED SUITE: $f ==="
+            cat "$f"
+          done
 
