@@ -1,108 +1,49 @@
 package vn.cozynest.booking.domain.model;
 
-import jakarta.persistence.*;
+import vn.cozynest.booking.domain.exception.InvalidAppointmentStateException;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
-@Entity
-@Table(name = "viewing_appointments")
 public class ViewingAppointment {
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    @Id
-    @Column(name = "id", length = 36, nullable = false)
     private String id;
-
-    @Column(name = "room_id", length = 36, nullable = false)
     private String roomId;
-
-    @Column(name = "tenant_id", length = 36, nullable = false)
     private String tenantId;
-
-    @Column(name = "landlord_id", length = 36, nullable = false)
     private String landlordId;
-
-    @Column(name = "appointment_date", nullable = false)
     private LocalDate appointmentDate;
-
-    @Column(name = "appointment_time", nullable = false)
     private LocalTime appointmentTime;
-
-    @Column(name = "scheduled_start", nullable = false)
     private Instant scheduledStart;
-
-    @Column(name = "scheduled_end", nullable = false)
     private Instant scheduledEnd;
-
-    @Column(name = "message", columnDefinition = "TEXT")
     private String message;
-
-    @Column(name = "tenant_note", columnDefinition = "TEXT")
     private String tenantNote;
-
-    @Column(name = "landlord_note", columnDefinition = "TEXT")
     private String landlordNote;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 30, nullable = false)
     private AppointmentStatus status = AppointmentStatus.PENDING;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "cancel_reason_code", length = 50)
     private CancelReasonCode cancelReasonCode;
-
-    @Column(name = "cancel_reason_note", length = 500)
     private String cancelReasonNote;
-
-    @Column(name = "rejection_reason", length = 255)
     private String rejectionReason;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "cancelled_by", length = 30)
     private CancelledBy cancelledBy;
-
-    @Column(name = "confirmed_at")
     private Instant confirmedAt;
-
-    @Column(name = "completed_at")
     private Instant completedAt;
-
-    @Version
-    @Column(name = "version", nullable = false)
     private Long version = 0L;
-
-    @Column(name = "room_title", length = 255)
     private String roomTitle;
-
-    @Column(name = "room_address", length = 300)
     private String roomAddress;
-
-    @Column(name = "room_cover_thumb_key", length = 500)
     private String roomCoverThumbKey;
-
-    @Column(name = "contact_name", length = 100)
     private String contactName;
-
-    @Column(name = "contact_phone", length = 20)
     private String contactPhone;
-
-    @Column(name = "contact_email", length = 100)
     private String contactEmail;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
-
-    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
     public ViewingAppointment() {}
 
     public void confirm(String actorId, String note) {
         if (this.status != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Chi co the xac nhan lich hen o trang thai PENDING");
+            throw new InvalidAppointmentStateException(this.status, AppointmentStatus.CONFIRMED);
         }
         this.status = AppointmentStatus.CONFIRMED;
         this.confirmedAt = Instant.now();
@@ -114,9 +55,9 @@ public class ViewingAppointment {
 
     public void decline(String actorId, CancelReasonCode reasonCode, String reasonNote) {
         if (this.status != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Chi co the tu choi lich hen o trang thai PENDING");
+            throw new InvalidAppointmentStateException(this.status, AppointmentStatus.DECLINED);
         }
-        validateReasonNote(reasonCode, reasonNote);
+        validateReason(reasonCode, reasonNote);
         this.status = AppointmentStatus.DECLINED;
         this.cancelReasonCode = reasonCode;
         this.cancelReasonNote = reasonNote != null ? reasonNote.trim() : null;
@@ -126,10 +67,10 @@ public class ViewingAppointment {
     }
 
     public void cancel(String actorId, CancelledBy by, CancelReasonCode reasonCode, String reasonNote) {
-        if (this.status != AppointmentStatus.CONFIRMED) {
-            throw new IllegalStateException("Chi co the huy lich hen o trang thai CONFIRMED");
+        if (this.status != AppointmentStatus.PENDING && this.status != AppointmentStatus.CONFIRMED) {
+            throw new InvalidAppointmentStateException(this.status, AppointmentStatus.CANCELLED);
         }
-        validateReasonNote(reasonCode, reasonNote);
+        validateReason(reasonCode, reasonNote);
         this.status = AppointmentStatus.CANCELLED;
         this.cancelReasonCode = reasonCode;
         this.cancelReasonNote = reasonNote != null ? reasonNote.trim() : null;
@@ -140,10 +81,10 @@ public class ViewingAppointment {
 
     public void complete(String actorId, AppointmentStatus outcome, String note) {
         if (this.status != AppointmentStatus.CONFIRMED) {
-            throw new IllegalStateException("Chi co the cap nhat ket qua khi lich hen o trang thai CONFIRMED");
+            throw new InvalidAppointmentStateException(this.status, outcome);
         }
         if (outcome != AppointmentStatus.COMPLETED && outcome != AppointmentStatus.NO_SHOW) {
-            throw new IllegalArgumentException("Ket qua lich hen phai la COMPLETED hoac NO_SHOW");
+            throw new InvalidAppointmentStateException(this.status, outcome);
         }
         if (Instant.now().isBefore(this.scheduledStart)) {
             throw new IllegalStateException("Khong the cap nhat ket qua truoc gio hen bat dau");
@@ -158,21 +99,24 @@ public class ViewingAppointment {
 
     public void expire() {
         if (this.status != AppointmentStatus.PENDING) {
-            throw new IllegalStateException("Chi co the het han lich hen o trang thai PENDING");
-        }
-        if (Instant.now().isBefore(this.scheduledStart)) {
-            throw new IllegalStateException("Khong the het han truoc gio hen bat dau");
+            throw new InvalidAppointmentStateException(this.status, AppointmentStatus.EXPIRED);
         }
         this.status = AppointmentStatus.EXPIRED;
         this.cancelledBy = CancelledBy.SYSTEM;
         this.updatedAt = Instant.now();
     }
 
-    private void validateReasonNote(CancelReasonCode code, String note) {
+    private void validateReason(CancelReasonCode code, String note) {
+        if (code == null) {
+            throw new IllegalArgumentException("Ma ly do khong duoc de trong");
+        }
         if (code == CancelReasonCode.OTHER) {
             if (note == null || note.trim().length() < 10) {
                 throw new IllegalArgumentException("Ly do khac bat buoc nhap toi thieu 10 ky tu");
             }
+        }
+        if (note != null && note.trim().length() > 500) {
+            throw new IllegalArgumentException("Ghi chu ly do khong duoc vuot qua 500 ky tu");
         }
     }
 

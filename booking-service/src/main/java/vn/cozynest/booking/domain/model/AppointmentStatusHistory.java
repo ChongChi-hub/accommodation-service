@@ -1,35 +1,16 @@
 package vn.cozynest.booking.domain.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "appointment_status_history")
 public class AppointmentStatusHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "appointment_id", length = 36, nullable = false)
     private String appointmentId;
-
-    @Column(name = "from_status", length = 30)
     private String fromStatus;
-
-    @Column(name = "to_status", length = 30, nullable = false)
     private String toStatus;
-
-    @Column(name = "actor_id", length = 36, nullable = false)
     private String actorId;
-
-    @Column(name = "actor_role", length = 30, nullable = false)
     private String actorRole;
-
-    @Column(name = "reason", length = 500)
     private String reason;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     public AppointmentStatusHistory() {}
@@ -46,6 +27,7 @@ public class AppointmentStatusHistory {
     }
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public String getAppointmentId() { return appointmentId; }
     public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
     public String getFromStatus() { return fromStatus; }

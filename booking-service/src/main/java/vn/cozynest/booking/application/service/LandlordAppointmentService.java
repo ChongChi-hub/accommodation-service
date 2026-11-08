@@ -3,10 +3,10 @@ package vn.cozynest.booking.application.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.dto.*;
@@ -48,8 +48,6 @@ public class LandlordAppointmentService {
 
     @Transactional(readOnly = true)
     public Page<ViewingAppointmentListItemDto> getAppointments(String landlordId, AppointmentFilterParams params) {
-        Specification<ViewingAppointment> spec = AppointmentSpecificationBuilder.build(landlordId, params);
-
         int page = (params.page() != null && params.page() >= 0) ? params.page() : 0;
         int size = (params.size() != null && params.size() > 0) ? params.size() : 20;
 
@@ -57,7 +55,29 @@ public class LandlordAppointmentService {
         Sort.Direction direction = "desc".equalsIgnoreCase(params.sortDirection()) ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
-        return appointmentRepository.findAll(spec, pageable).map(ViewingAppointmentListItemDto::fromEntity);
+        List<ViewingAppointment> items = appointmentRepository.searchLandlordAppointments(
+                landlordId,
+                params.status(),
+                params.roomId(),
+                params.dateFrom(),
+                params.dateTo(),
+                params.search(),
+                page,
+                size,
+                sortBy,
+                params.sortDirection()
+        );
+        long total = appointmentRepository.countLandlordAppointments(
+                landlordId,
+                params.status(),
+                params.roomId(),
+                params.dateFrom(),
+                params.dateTo(),
+                params.search()
+        );
+
+        List<ViewingAppointmentListItemDto> dtos = items.stream().map(ViewingAppointmentListItemDto::fromEntity).toList();
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     @Transactional(readOnly = true)

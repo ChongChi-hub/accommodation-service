@@ -1,13 +1,15 @@
 package vn.cozynest.booking.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface AppointmentEventOutboxRepository extends JpaRepository<AppointmentEventOutbox, Long> {
+public interface AppointmentEventOutboxRepository {
 
-    List<AppointmentEventOutbox> findByPublishedAtIsNullOrderByCreatedAtAsc();
+    AppointmentEventOutbox save(AppointmentEventOutbox outbox);
+
+    List<AppointmentEventOutbox> findUnprocessed();
+
+    Optional<AppointmentEventOutbox> findById(String id);
 }

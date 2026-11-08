@@ -109,4 +109,30 @@ class ViewingAppointmentDomainTest {
         assertThat(appt.getStatus()).isEqualTo(AppointmentStatus.EXPIRED);
         assertThat(appt.getCancelledBy()).isEqualTo(CancelledBy.SYSTEM);
     }
+
+    @Test
+    @DisplayName("terminal states cannot transition and throw InvalidAppointmentStateException")
+    void testTerminalStatesCannotTransition() {
+        AppointmentStatus[] terminals = {
+                AppointmentStatus.DECLINED,
+                AppointmentStatus.CANCELLED,
+                AppointmentStatus.COMPLETED,
+                AppointmentStatus.NO_SHOW,
+                AppointmentStatus.EXPIRED
+        };
+
+        for (AppointmentStatus terminal : terminals) {
+            ViewingAppointment appt = createPendingAppointment(Instant.now());
+            appt.setStatus(terminal);
+
+            assertThatThrownBy(() -> appt.confirm("landlord-01", null))
+                    .isInstanceOf(vn.cozynest.booking.domain.exception.InvalidAppointmentStateException.class);
+
+            assertThatThrownBy(() -> appt.decline("landlord-01", CancelReasonCode.ROOM_TAKEN, "note"))
+                    .isInstanceOf(vn.cozynest.booking.domain.exception.InvalidAppointmentStateException.class);
+
+            assertThatThrownBy(() -> appt.expire())
+                    .isInstanceOf(vn.cozynest.booking.domain.exception.InvalidAppointmentStateException.class);
+        }
+    }
 }

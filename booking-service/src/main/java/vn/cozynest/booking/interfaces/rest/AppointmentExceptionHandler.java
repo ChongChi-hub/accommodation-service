@@ -7,12 +7,27 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.cozynest.booking.application.exception.AppointmentNotFoundException;
 import vn.cozynest.booking.application.exception.OptimisticLockConflictException;
 import vn.cozynest.booking.application.exception.TimeConflictException;
+import vn.cozynest.booking.domain.exception.InvalidAppointmentStateException;
 import vn.cozynest.common.dto.ApiResponse;
 
 import java.util.Map;
 
 @RestControllerAdvice
 public class AppointmentExceptionHandler {
+
+    @ExceptionHandler(InvalidAppointmentStateException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleInvalidState(InvalidAppointmentStateException ex) {
+        Map<String, Object> data = Map.of(
+                "currentStatus", ex.getCurrentStatus() != null ? ex.getCurrentStatus().name() : "",
+                "targetStatus", ex.getTargetStatus() != null ? ex.getTargetStatus().name() : ""
+        );
+        ApiResponse<Map<String, Object>> response = ApiResponse.<Map<String, Object>>builder()
+                .errorCode("ERR_INVALID_APPOINTMENT_STATE")
+                .message(ex.getMessage())
+                .data(data)
+                .build();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
 
     @ExceptionHandler(AppointmentNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(AppointmentNotFoundException ex) {

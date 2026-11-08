@@ -37,11 +37,14 @@ public record ViewingAppointmentDetailDto(
             ViewingAppointment entity,
             List<AppointmentStatusHistoryDto> history
     ) {
-        boolean canSeePhone = entity.getStatus() == AppointmentStatus.CONFIRMED
+        boolean canSeeContact = entity.getStatus() == AppointmentStatus.CONFIRMED
                 || entity.getStatus() == AppointmentStatus.COMPLETED;
-        String phone = canSeePhone
+        String phone = canSeeContact
                 ? entity.getContactPhone()
                 : PhoneMasker.mask(entity.getContactPhone());
+        String email = canSeeContact
+                ? entity.getContactEmail()
+                : PhoneMasker.maskEmail(entity.getContactEmail());
 
         return new ViewingAppointmentDetailDto(
                 entity.getId(),
@@ -56,7 +59,7 @@ public record ViewingAppointmentDetailDto(
                 entity.getStatus(),
                 entity.getContactName(),
                 phone,
-                entity.getContactEmail(),
+                email,
                 entity.getTenantNote(),
                 entity.getLandlordNote(),
                 entity.getCancelReasonCode(),

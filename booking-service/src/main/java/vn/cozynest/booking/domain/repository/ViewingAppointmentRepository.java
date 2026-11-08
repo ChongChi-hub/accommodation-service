@@ -1,13 +1,5 @@
 package vn.cozynest.booking.domain.repository;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.booking.domain.model.AppointmentStatus;
 import vn.cozynest.booking.domain.model.ViewingAppointment;
 
@@ -15,57 +7,53 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-@Repository
-public interface ViewingAppointmentRepository
-        extends JpaRepository<ViewingAppointment, String>, JpaSpecificationExecutor<ViewingAppointment> {
+public interface ViewingAppointmentRepository {
+
+    Optional<ViewingAppointment> findById(String id);
 
     Optional<ViewingAppointment> findByIdAndLandlordId(String id, String landlordId);
 
     Optional<ViewingAppointment> findByIdAndTenantId(String id, String tenantId);
 
-    Page<ViewingAppointment> findByTenantId(String tenantId, Pageable pageable);
+    ViewingAppointment save(ViewingAppointment appointment);
 
-    @Query("""
-        SELECT a FROM ViewingAppointment a
-        WHERE a.landlordId = :landlordId
-          AND a.status = vn.cozynest.booking.domain.model.AppointmentStatus.CONFIRMED
-          AND (:excludeId IS NULL OR a.id <> :excludeId)
-          AND a.scheduledStart < :end
-          AND a.scheduledEnd > :start
-    """)
-    List<ViewingAppointment> findOverlappingConfirmed(
-            @Param("landlordId") String landlordId,
-            @Param("start") Instant start,
-            @Param("end") Instant end,
-            @Param("excludeId") String excludeId
-    );
+    List<ViewingAppointment> findOverlappingConfirmed(String landlordId, Instant start, Instant end, String excludeId);
 
-    @Query("""
-        SELECT a FROM ViewingAppointment a
-        WHERE a.status = vn.cozynest.booking.domain.model.AppointmentStatus.PENDING
-          AND a.scheduledStart <= :now
-    """)
-    List<ViewingAppointment> findExpiredPending(@Param("now") Instant now);
+    List<ViewingAppointment> findOverlappingConfirmedForUpdate(String landlordId, Instant start, Instant end, String excludeId);
+
+    List<ViewingAppointment> findExpiredPending(Instant now, Instant pendingCutoff);
+
+    int atomicallyExpirePending(String id, Instant now);
 
     long countByLandlordIdAndStatus(String landlordId, AppointmentStatus status);
 
-    @Query("""
-        SELECT COUNT(a) FROM ViewingAppointment a
-        WHERE a.landlordId = :landlordId
-          AND a.status = vn.cozynest.booking.domain.model.AppointmentStatus.CONFIRMED
-          AND a.scheduledStart <= :now
-    """)
-    long countNeedingOutcomeUpdate(@Param("landlordId") String landlordId, @Param("now") Instant now);
+    long countNeedingOutcomeUpdate(String landlordId, Instant now);
 
-    @Query("""
-        SELECT COUNT(a) FROM ViewingAppointment a
-        WHERE a.landlordId = :landlordId
-          AND a.scheduledStart >= :todayStart
-          AND a.scheduledStart < :tomorrowStart
-    """)
-    long countTodayAppointments(
-            @Param("landlordId") String landlordId,
-            @Param("todayStart") Instant todayStart,
-            @Param("tomorrowStart") Instant tomorrowStart
+    long countTodayAppointments(String landlordId, Instant start, Instant end);
+
+    List<ViewingAppointment> findByTenantId(String tenantId, int page, int size);
+
+    long countByTenantId(String tenantId);
+
+    List<ViewingAppointment> searchLandlordAppointments(
+            String landlordId,
+            AppointmentStatus status,
+            String roomId,
+            Instant dateFrom,
+            Instant dateTo,
+            String search,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection
+    );
+
+    long countLandlordAppointments(
+            String landlordId,
+            AppointmentStatus status,
+            String roomId,
+            Instant dateFrom,
+            Instant dateTo,
+            String search
     );
 }

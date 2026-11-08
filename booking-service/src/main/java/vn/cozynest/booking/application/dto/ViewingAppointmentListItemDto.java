@@ -30,11 +30,14 @@ public record ViewingAppointmentListItemDto(
         Instant createdAt
 ) {
     public static ViewingAppointmentListItemDto fromEntity(ViewingAppointment entity) {
-        boolean canSeePhone = entity.getStatus() == AppointmentStatus.CONFIRMED
+        boolean canSeeContact = entity.getStatus() == AppointmentStatus.CONFIRMED
                 || entity.getStatus() == AppointmentStatus.COMPLETED;
-        String phone = canSeePhone
+        String phone = canSeeContact
                 ? entity.getContactPhone()
                 : PhoneMasker.mask(entity.getContactPhone());
+        String email = canSeeContact
+                ? entity.getContactEmail()
+                : PhoneMasker.maskEmail(entity.getContactEmail());
 
         return new ViewingAppointmentListItemDto(
                 entity.getId(),
@@ -47,7 +50,7 @@ public record ViewingAppointmentListItemDto(
                 entity.getStatus(),
                 entity.getContactName(),
                 phone,
-                entity.getContactEmail(),
+                email,
                 entity.getTenantNote(),
                 entity.getLandlordNote(),
                 entity.getCancelReasonCode(),
