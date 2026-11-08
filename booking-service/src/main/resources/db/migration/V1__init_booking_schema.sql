@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS contract_templates (
 -- 2. Viewing Appointments (Lịch hẹn xem phòng)
 CREATE TABLE IF NOT EXISTS viewing_appointments (
     id VARCHAR(36) NOT NULL,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     tenant_id VARCHAR(36) NOT NULL,
     landlord_id VARCHAR(36) NOT NULL,
     appointment_date DATE NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS viewing_appointments (
 -- 3. Rental Requests (Yêu cầu thuê phòng)
 CREATE TABLE IF NOT EXISTS rental_requests (
     id VARCHAR(36) NOT NULL,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     tenant_id VARCHAR(36) NOT NULL,
     landlord_id VARCHAR(36) NOT NULL,
     proposed_move_in_date DATE NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS rental_requests (
 CREATE TABLE IF NOT EXISTS contracts (
     id VARCHAR(36) NOT NULL,
     contract_code VARCHAR(50) NOT NULL UNIQUE,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     tenant_id VARCHAR(36) NOT NULL,
     landlord_id VARCHAR(36) NOT NULL,
     request_id VARCHAR(36) NULL,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS contract_terminations (
 CREATE TABLE IF NOT EXISTS room_snapshots (
     id VARCHAR(36) NOT NULL,
     contract_id VARCHAR(36) NOT NULL UNIQUE,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     title VARCHAR(255) NOT NULL,
     address VARCHAR(300) NOT NULL,
     area DOUBLE NOT NULL,
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS room_snapshots (
 CREATE TABLE IF NOT EXISTS maintenance_requests (
     id VARCHAR(36) NOT NULL,
     request_code VARCHAR(50) NOT NULL UNIQUE,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     contract_id VARCHAR(36) NULL,
     tenant_id VARCHAR(36) NOT NULL,
     landlord_id VARCHAR(36) NOT NULL,

@@ -182,6 +182,7 @@ public class LandlordRoomQueryService {
                 .hiddenBy(room.getHiddenBy())
                 .hiddenReason(room.getHiddenReason())
                 .rejectedReason(room.getRejectedReason())
+                .version(room.getVersion())
                 .createdAt(room.getCreatedAt())
                 .updatedAt(room.getUpdatedAt())
                 .images(imageDtos)

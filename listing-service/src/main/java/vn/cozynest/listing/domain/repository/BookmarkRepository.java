@@ -28,3 +28,4 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     long countByRoomId(Long roomId);
 }
+

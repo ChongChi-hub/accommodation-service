@@ -133,4 +133,66 @@ class LandlordNamespaceSecurityMatrixTest {
         assertThat(auth.getAuthorities()).anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         assertThat(auth.getAuthorities()).noneMatch(a -> a.getAuthority().equals("ROLE_LANDLORD"));
     }
+
+    @Test
+    @DisplayName("Expired JWT token is rejected: SecurityContext is cleared")
+    void testExpiredTokenRejected() throws Exception {
+        String expiredToken = Jwts.builder()
+                .subject("u-landlord-01")
+                .claim("roles", "LANDLORD")
+                .issuedAt(new Date(System.currentTimeMillis() - 7200000))
+                .expiration(new Date(System.currentTimeMillis() - 3600000))
+                .header().keyId("cozynest-identity-key-1").and()
+                .signWith(privateKey, Jwts.SIG.RS256)
+                .compact();
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/rooms");
+        req.addHeader("Authorization", "Bearer " + expiredToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("JWT signed with unknown foreign key is rejected")
+    void testWrongSignatureRejected() throws Exception {
+        java.security.KeyPair foreignPair = java.security.KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        String forgedToken = Jwts.builder()
+                .subject("u-landlord-01")
+                .claim("roles", "LANDLORD")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .header().keyId("fake-key").and()
+                .signWith(foreignPair.getPrivate(), Jwts.SIG.RS256)
+                .compact();
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/rooms");
+        req.addHeader("Authorization", "Bearer " + forgedToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("JWT with alg=none is rejected")
+    void testAlgNoneRejected() throws Exception {
+        // Base64Url header: {"alg":"none","typ":"JWT"} -> eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0
+        // Base64Url payload: {"sub":"u-landlord-01","roles":"LANDLORD"} -> eyJzdWIiOiJ1LWxhbmRsb3JkLTAxIiwicm9sZXMiOiJMQU5ETE9SRCJ9
+        String algNoneToken = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ1LWxhbmRsb3JkLTAxIiwicm9sZXMiOiJMQU5ETE9SRCJ9.";
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/rooms");
+        req.addHeader("Authorization", "Bearer " + algNoneToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
 }

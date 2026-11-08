@@ -14,3 +14,4 @@ public class BookmarkStatusDto {
     private boolean isBookmarked;
     private int bookmarkCount;
 }
+

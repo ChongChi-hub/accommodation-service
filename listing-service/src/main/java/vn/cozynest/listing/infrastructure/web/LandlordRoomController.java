@@ -16,8 +16,10 @@ import vn.cozynest.listing.application.dto.*;
 import vn.cozynest.listing.application.service.LandlordImageService;
 import vn.cozynest.listing.application.service.LandlordRoomManagementService;
 import vn.cozynest.listing.application.service.LandlordRoomQueryService;
+import vn.cozynest.listing.domain.exception.*;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.infrastructure.security.LandlordContextResolver;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -200,8 +202,32 @@ public class LandlordRoomController {
 
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(NoSuchElementException ex) {
-        // Return 404 for IDOR protection: accessing another landlord's room behaves as if it doesn't exist
         return ResponseEntity.status(404).body(ApiResponse.error(ex.getMessage(), "NOT_FOUND"));
+    }
+
+    @ExceptionHandler(RoomVersionConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleVersionConflict(RoomVersionConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage(), "ERR_OPTIMISTIC_LOCK_CONFLICT"));
+    }
+
+    @ExceptionHandler(RoomDeletionBlockedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDeletionBlocked(RoomDeletionBlockedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage(), "ERR_ROOM_DELETION_BLOCKED"));
+    }
+
+    @ExceptionHandler(RoomModeratedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomModerated(RoomModeratedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error(ex.getMessage(), "ERR_ROOM_MODERATED_HIDDEN"));
+    }
+
+    @ExceptionHandler(RoomSubmissionValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSubmissionValidation(RoomSubmissionValidationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRateLimit(RateLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
     }
 
     @ExceptionHandler(IllegalStateException.class)

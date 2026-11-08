@@ -10,11 +10,11 @@ INSERT INTO contract_templates (id, template_code, name, description, content_te
 ON DUPLICATE KEY UPDATE name=name;
 
 -- 2. Viewing Appointments (Lịch hẹn xem phòng)
-INSERT INTO viewing_appointments (id, room_id, tenant_id, landlord_id, appointment_date, appointment_time, message, status, created_at, updated_at) VALUES
-('app-00000001', 'room-00000001-0000-0000-0000-000000000001', 'u-tenant-01', 'u-landlord-01', '2026-10-25', '09:30:00', 'Em chào chị chủ, em muốn qua xem trực tiếp phòng studio vào sáng thứ 7 này ạ.', 'COMPLETED', '2026-10-23 08:15:00.000', '2026-10-25 10:30:00.000'),
-('app-00000002', 'room-00000001-0000-0000-0000-000000000002', 'u-tenant-02', 'u-landlord-01', '2026-10-26', '14:00:00', 'Xin phép hẹn xem căn hộ 1PN lúc 14h chiều chủ nhật.', 'COMPLETED', '2026-10-24 11:20:00.000', '2026-10-26 15:00:00.000'),
-('app-00000003', 'room-00000001-0000-0000-0000-000000000003', 'u-tenant-03', 'u-landlord-02', '2026-11-08', '16:00:00', 'Chào anh, em muốn xem gác lửng và thử áp lực nước.', 'CONFIRMED', '2026-11-06 09:00:00.000', '2026-11-06 10:00:00.000'),
-('app-00000004', 'room-00000001-0000-0000-0000-000000000004', 'u-tenant-04', 'u-landlord-02', '2026-11-09', '18:30:00', 'Hẹn xem phòng sau giờ tan làm.', 'PENDING', '2026-11-07 08:30:00.000', '2026-11-07 08:30:00.000')
+INSERT INTO viewing_appointments (id, room_id, tenant_id, landlord_id, appointment_date, appointment_time, scheduled_start, scheduled_end, message, status, created_at, updated_at) VALUES
+('app-00000001', 'room-00000001-0000-0000-0000-000000000001', 'u-tenant-01', 'u-landlord-01', '2026-10-25', '09:30:00', '2026-10-25 09:30:00.000', '2026-10-25 10:15:00.000', 'Em chào chị chủ, em muốn qua xem trực tiếp phòng studio vào sáng thứ 7 này ạ.', 'COMPLETED', '2026-10-23 08:15:00.000', '2026-10-25 10:30:00.000'),
+('app-00000002', 'room-00000001-0000-0000-0000-000000000002', 'u-tenant-02', 'u-landlord-01', '2026-10-26', '14:00:00', '2026-10-26 14:00:00.000', '2026-10-26 14:45:00.000', 'Xin phép hẹn xem căn hộ 1PN lúc 14h chiều chủ nhật.', 'COMPLETED', '2026-10-24 11:20:00.000', '2026-10-26 15:00:00.000'),
+('app-00000003', 'room-00000001-0000-0000-0000-000000000003', 'u-tenant-03', 'u-landlord-02', '2026-11-08', '16:00:00', '2026-11-08 16:00:00.000', '2026-11-08 16:45:00.000', 'Chào anh, em muốn xem gác lửng và thử áp lực nước.', 'CONFIRMED', '2026-11-06 09:00:00.000', '2026-11-06 10:00:00.000'),
+('app-00000004', 'room-00000001-0000-0000-0000-000000000004', 'u-tenant-04', 'u-landlord-02', '2026-11-09', '18:30:00', '2026-11-09 18:30:00.000', '2026-11-09 19:15:00.000', 'Hẹn xem phòng sau giờ tan làm.', 'PENDING', '2026-11-07 08:30:00.000', '2026-11-07 08:30:00.000')
 ON DUPLICATE KEY UPDATE message=message;
 
 -- 3. Rental Requests (Yêu cầu thuê phòng)

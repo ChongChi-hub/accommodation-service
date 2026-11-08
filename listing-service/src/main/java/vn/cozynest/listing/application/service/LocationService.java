@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.LocationDto.*;
-import vn.cozynest.listing.domain.repository.LocationRepositories.*;
+import vn.cozynest.listing.domain.repository.ProvinceRepository;
+import vn.cozynest.listing.domain.repository.DistrictRepository;
+import vn.cozynest.listing.domain.repository.WardRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;

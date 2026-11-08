@@ -52,6 +52,7 @@ public class LandlordRoomDetailDto {
     private String hiddenBy;
     private String hiddenReason;
     private String rejectedReason;
+    private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<RoomImageDto> images;

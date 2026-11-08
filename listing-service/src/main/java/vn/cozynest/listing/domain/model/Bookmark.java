@@ -30,3 +30,4 @@ public class Bookmark {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

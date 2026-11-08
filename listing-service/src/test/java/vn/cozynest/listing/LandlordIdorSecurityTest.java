@@ -84,5 +84,28 @@ class LandlordIdorSecurityTest {
         verify(roomRepository, never()).save(any());
         verify(roomStatusHistoryRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("IDOR Prevention: Landlord A cannot update Landlord B's room")
+    void testLandlordACannotUpdateLandlordBRoom() {
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(ROOM_B_ID, LANDLORD_A))
+                .thenReturn(Optional.empty());
+
+        vn.cozynest.listing.application.dto.UpdateRoomRequest req = vn.cozynest.listing.application.dto.UpdateRoomRequest.builder()
+                .title("Tấn công IDOR").address("Hà Nội").area(20.0).price(java.math.BigDecimal.valueOf(2000000)).build();
+
+        assertThrows(NoSuchElementException.class, () ->
+                managementService.updateRoom(LANDLORD_A, ROOM_B_ID, req, "u-landlord-a"));
+    }
+
+    @Test
+    @DisplayName("IDOR Prevention: Landlord A cannot submit Landlord B's room for review")
+    void testLandlordACannotSubmitLandlordBRoom() {
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(ROOM_B_ID, LANDLORD_A))
+                .thenReturn(Optional.empty());
+
+        assertThrows(NoSuchElementException.class, () ->
+                managementService.submitForReview(LANDLORD_A, ROOM_B_ID, "u-landlord-a"));
+    }
 }
 

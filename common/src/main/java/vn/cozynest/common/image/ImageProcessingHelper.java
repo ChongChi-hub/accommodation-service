@@ -74,8 +74,9 @@ public final class ImageProcessingHelper {
 
         // Fast Header Inspection: read dimensions WITHOUT full image raster decompression
         Dimension dim = getImageDimensions(rawBytes);
-        if (dim.width > MAX_PIXEL_DIMENSION || dim.height > MAX_PIXEL_DIMENSION || dim.width <= 0 || dim.height <= 0) {
-            throw new IllegalArgumentException("Kich thuoc anh vuot qua gioi han 8000x8000 pixel");
+        if (dim.width > MAX_PIXEL_DIMENSION || dim.height > MAX_PIXEL_DIMENSION || dim.width <= 0 || dim.height <= 0
+                || ((long) dim.width * dim.height > 40_000_000L)) {
+            throw new IllegalArgumentException("Kich thuoc anh vuot qua gioi han (toi da 40 Megapixel hoac 8000x8000 pixel)");
         }
 
         BufferedImage original = ImageIO.read(new ByteArrayInputStream(rawBytes));

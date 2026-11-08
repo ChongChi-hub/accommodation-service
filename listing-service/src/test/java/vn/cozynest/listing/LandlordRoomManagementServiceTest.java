@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.cozynest.listing.application.service.LandlordRoomManagementService;
+import vn.cozynest.listing.domain.exception.*;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.model.RoomStatusHistory;
 import vn.cozynest.listing.domain.port.RoomUsagePort;
@@ -94,11 +95,11 @@ class LandlordRoomManagementServiceTest {
     void testUnhideModeratorHiddenRoomFails() {
         when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(104L, 1L)).thenReturn(Optional.of(hiddenByModRoom));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+        RoomModeratedException ex = assertThrows(RoomModeratedException.class, () -> {
             service.toggleVisibility(1L, 104L, true, "u-landlord-01");
         });
 
-        assertThat(ex.getMessage()).contains("Bài đăng bị kiểm duyệt viên ẩn");
+        assertThat(ex.getMessage()).contains("kiểm duyệt viên ẩn");
     }
 
     @Test
@@ -129,11 +130,11 @@ class LandlordRoomManagementServiceTest {
         when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(108L, 1L)).thenReturn(Optional.of(rentedRoom));
         when(roomUsagePort.isRoomInActiveUse(108L)).thenReturn(true);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+        RoomDeletionBlockedException ex = assertThrows(RoomDeletionBlockedException.class, () -> {
             service.softDeleteRoom(1L, 108L, "u-landlord-01");
         });
 
-        assertThat(ex.getMessage()).contains("Không thể xóa phòng đang có khách thuê");
+        assertThat(ex.getMessage()).contains("Không thể xóa phòng");
     }
 
     @Test
@@ -143,11 +144,11 @@ class LandlordRoomManagementServiceTest {
         when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(201L, 1L)).thenReturn(Optional.of(draftRoom));
         when(roomImageRepository.countByRoomId(201L)).thenReturn(2L);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+        RoomSubmissionValidationException ex = assertThrows(RoomSubmissionValidationException.class, () -> {
             service.submitForReview(1L, 201L, "u-landlord-01");
         });
 
-        assertThat(ex.getMessage()).contains("phải có ít nhất 3 hình ảnh");
+        assertThat(ex.getErrorCode()).isEqualTo("ERR_SUBMIT_MIN_IMAGES");
     }
 
     @Test
@@ -158,11 +159,11 @@ class LandlordRoomManagementServiceTest {
         when(roomImageRepository.countByRoomId(202L)).thenReturn(3L);
         when(roomImageRepository.findByRoomIdAndCoverTrue(202L)).thenReturn(Optional.empty());
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+        RoomSubmissionValidationException ex = assertThrows(RoomSubmissionValidationException.class, () -> {
             service.submitForReview(1L, 202L, "u-landlord-01");
         });
 
-        assertThat(ex.getMessage()).contains("phải có đúng 1 ảnh bìa");
+        assertThat(ex.getErrorCode()).isEqualTo("ERR_SUBMIT_NO_COVER");
     }
 
     @Test
@@ -222,6 +223,24 @@ class LandlordRoomManagementServiceTest {
         Room created = service.createRoom(1L, req, "u-landlord-01", "Chủ trọ", "0901234567");
 
         assertThat(created.getStatus()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    @DisplayName("Updating room with conflicting version throws RoomVersionConflictException")
+    void testUpdateRoomVersionConflictThrows() {
+        Room r = Room.builder().id(101L).landlordId(1L).version(2L).build();
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(101L, 1L)).thenReturn(Optional.of(r));
+
+        vn.cozynest.listing.application.dto.UpdateRoomRequest req = vn.cozynest.listing.application.dto.UpdateRoomRequest.builder()
+                .title("Cập nhật phòng")
+                .address("Địa chỉ mới")
+                .area(20.0)
+                .price(java.math.BigDecimal.valueOf(3000000))
+                .version(1L)
+                .build();
+
+        assertThrows(RoomVersionConflictException.class, () ->
+                service.updateRoom(1L, 101L, req, "u-landlord-01"));
     }
 }
 

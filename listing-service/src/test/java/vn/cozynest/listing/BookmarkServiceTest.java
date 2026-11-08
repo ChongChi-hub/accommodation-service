@@ -149,3 +149,4 @@ class BookmarkServiceTest {
         assertThat(list.get(1).getIsBookmarked()).isTrue();
     }
 }
+

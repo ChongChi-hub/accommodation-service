@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.CreateRoomRequest;
 import vn.cozynest.listing.application.dto.UpdateRoomRequest;
-import vn.cozynest.listing.domain.exception.KycRequiredException;
+import vn.cozynest.listing.domain.exception.*;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.model.RoomStatusHistory;
 import vn.cozynest.listing.domain.port.KycVerificationPort;
@@ -55,7 +55,7 @@ public class LandlordRoomManagementService {
                 throw new IllegalStateException("Phòng không ở trạng thái bị ẩn để mở hiển thị.");
             }
             if ("MODERATOR".equalsIgnoreCase(room.getHiddenBy()) || "ADMIN".equalsIgnoreCase(room.getHiddenBy())) {
-                throw new IllegalStateException("Bài đăng bị kiểm duyệt viên ẩn do vi phạm quy chuẩn. Bạn không thể tự mở lại.");
+                throw new RoomModeratedException("Bài đăng bị kiểm duyệt viên ẩn do vi phạm quy chuẩn. Bạn không thể tự mở lại.");
             }
             if (room.getPublishedAt() == null) {
                 throw new IllegalStateException("Phòng trọ chưa từng được kiểm duyệt duyệt xuất bản.");
@@ -83,7 +83,7 @@ public class LandlordRoomManagementService {
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 
         if (roomUsagePort.isRoomInActiveUse(roomId)) {
-            throw new IllegalStateException("Không thể xóa phòng đang có khách thuê (RENTED) hoặc đang có hợp đồng còn hiệu lực.");
+            throw new RoomDeletionBlockedException("Không thể xóa phòng: Phòng đang có khách thuê, có hợp đồng hiệu lực hoặc có lịch hẹn xem phòng đã xác nhận trong tương lai.");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -102,6 +102,10 @@ public class LandlordRoomManagementService {
     public Room updateRoom(Long landlordId, Long roomId, UpdateRoomRequest req, String actorId) {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
+
+        if (req.getVersion() != null && !req.getVersion().equals(room.getVersion())) {
+            throw new RoomVersionConflictException("Dữ liệu phòng đã bị thay đổi bởi phiên làm việc khác. Vui lòng tải lại trang.");
+        }
 
         room.setTitle(req.getTitle());
         room.setTitleSearch(LandlordRoomQueryService.removeAccents(req.getTitle().toLowerCase()));
@@ -188,12 +192,12 @@ public class LandlordRoomManagementService {
 
         long imageCount = roomImageRepository.countByRoomId(roomId);
         if (imageCount < minImagesForReview) {
-            throw new IllegalStateException("Bài đăng phải có ít nhất " + minImagesForReview + " hình ảnh trước khi gửi duyệt.");
+            throw new RoomSubmissionValidationException("Bài đăng phải có ít nhất " + minImagesForReview + " hình ảnh trước khi gửi duyệt.", "ERR_SUBMIT_MIN_IMAGES");
         }
 
         boolean hasCover = roomImageRepository.findByRoomIdAndCoverTrue(roomId).isPresent();
         if (!hasCover) {
-            throw new IllegalStateException("Bài đăng phải có đúng 1 ảnh bìa trước khi gửi duyệt.");
+            throw new RoomSubmissionValidationException("Bài đăng phải có đúng 1 ảnh bìa trước khi gửi duyệt.", "ERR_SUBMIT_NO_COVER");
         }
 
         String fromStatus = room.getStatus();

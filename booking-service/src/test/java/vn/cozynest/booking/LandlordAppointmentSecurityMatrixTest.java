@@ -99,4 +99,96 @@ class LandlordAppointmentSecurityMatrixTest {
         assertNotNull(auth);
         assertThat(auth.getAuthorities()).noneMatch(a -> a.getAuthority().equals("ROLE_LANDLORD"));
     }
+
+    @Test
+    @DisplayName("MODERATOR: Request with ROLE_MODERATOR lacks ROLE_LANDLORD")
+    void testModeratorDoesNotHaveLandlordRole() throws Exception {
+        String token = generateToken("u-mod-01", List.of("ROLE_MODERATOR"));
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/appointments");
+        req.addHeader("Authorization", "Bearer " + token);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        assertThat(auth.getAuthorities()).noneMatch(a -> a.getAuthority().equals("ROLE_LANDLORD"));
+    }
+
+    @Test
+    @DisplayName("ADMIN: Request with ROLE_ADMIN lacks ROLE_LANDLORD")
+    void testAdminDoesNotHaveLandlordRole() throws Exception {
+        String token = generateToken("u-admin-01", List.of("ROLE_ADMIN"));
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/appointments");
+        req.addHeader("Authorization", "Bearer " + token);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertNotNull(auth);
+        assertThat(auth.getAuthorities()).noneMatch(a -> a.getAuthority().equals("ROLE_LANDLORD"));
+    }
+
+    @Test
+    @DisplayName("Expired JWT token is rejected: SecurityContext is cleared")
+    void testExpiredTokenRejected() throws Exception {
+        String expiredToken = Jwts.builder()
+                .subject("u-landlord-01")
+                .claim("roles", "ROLE_LANDLORD")
+                .issuedAt(new Date(System.currentTimeMillis() - 7200000))
+                .expiration(new Date(System.currentTimeMillis() - 3600000))
+                .header().keyId("cozynest-identity-key-1").and()
+                .signWith(privateKey, Jwts.SIG.RS256)
+                .compact();
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/appointments");
+        req.addHeader("Authorization", "Bearer " + expiredToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("JWT signed with unknown foreign key is rejected")
+    void testWrongSignatureRejected() throws Exception {
+        java.security.KeyPair foreignPair = java.security.KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        String forgedToken = Jwts.builder()
+                .subject("u-landlord-01")
+                .claim("roles", "ROLE_LANDLORD")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .header().keyId("fake-key").and()
+                .signWith(foreignPair.getPrivate(), Jwts.SIG.RS256)
+                .compact();
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/appointments");
+        req.addHeader("Authorization", "Bearer " + forgedToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    @DisplayName("JWT with alg=none is rejected")
+    void testAlgNoneRejected() throws Exception {
+        String algNoneToken = "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ1LWxhbmRsb3JkLTAxIiwicm9sZXMiOiJMQU5ETE9SRCJ9.";
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/landlord/appointments");
+        req.addHeader("Authorization", "Bearer " + algNoneToken);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        jwtAuthFilter.doFilter(req, res, chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
 }

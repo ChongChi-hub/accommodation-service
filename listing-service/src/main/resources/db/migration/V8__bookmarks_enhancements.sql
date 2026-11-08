@@ -7,3 +7,4 @@ ALTER TABLE bookmarks MODIFY COLUMN user_id VARCHAR(36) NOT NULL;
 ALTER TABLE rooms ADD COLUMN bookmark_count INT NOT NULL DEFAULT 0;
 
 CREATE INDEX idx_bookmarks_room ON bookmarks (room_id);
+

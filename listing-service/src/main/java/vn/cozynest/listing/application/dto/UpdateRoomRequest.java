@@ -50,5 +50,7 @@ public class UpdateRoomRequest {
 
     private Boolean allowPets;
     private Boolean allowCooking;
+
+    private Long version;
 }
 

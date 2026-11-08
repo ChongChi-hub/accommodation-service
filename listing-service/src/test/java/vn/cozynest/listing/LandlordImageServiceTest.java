@@ -40,7 +40,8 @@ class LandlordImageServiceTest {
 
     @Mock
     private ImageStoragePort imageStoragePort;
-
+    @Mock
+    private vn.cozynest.listing.application.service.UploadRateLimiter rateLimiter;
     @InjectMocks
     private LandlordImageService imageService;
 
@@ -207,18 +208,18 @@ class LandlordImageServiceTest {
 
     @Test
     @DisplayName("Upload rate limiting locks out user when exceeding 30 uploads per minute")
-    void testUploadRateLimitingLockout() throws IOException {
-        imageService.clearRateLimits();
+    void testUploadRateLimitingLockout() {
+        doThrow(new vn.cozynest.listing.domain.exception.RateLimitExceededException("Rate limit", "ERR_UPLOAD_RATE_LIMIT"))
+                .when(rateLimiter).checkRateLimit(eq(1L), eq(31));
 
-        // 31 dummy files in one batch
         MultipartFile[] batch = new MultipartFile[31];
-        byte[] testBytes = createTestJpegBytes(10, 10);
         for (int i = 0; i < 31; i++) {
-            batch[i] = new MockMultipartFile("files", "img_" + i + ".jpg", "image/jpeg", testBytes);
+            batch[i] = new MockMultipartFile("files", "img_" + i + ".jpg", "image/jpeg", new byte[10]);
         }
 
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () ->
-                imageService.uploadImages(1L, 101L, batch, "u-landlord-01"));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                vn.cozynest.listing.domain.exception.RateLimitExceededException.class,
+                () -> imageService.uploadImages(1L, 101L, batch, "u-landlord-01"));
     }
 
     @Test
