@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_identity_schema.sql
--- Identity Service Schema (toam_identity)
+-- Identity Service Schema (cozynest_identity)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS roles (

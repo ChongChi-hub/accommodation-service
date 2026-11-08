@@ -1,7 +1,7 @@
 -- ============================================================
 -- V6__seed_landlord_demo_rooms.sql
 -- Seed Data for LANDLORD-04 & LANDLORD-02:
--- Comprehensive room inventory for landlord1@toam.vn (u-landlord-01)
+-- Comprehensive room inventory for landlord1@cozynest.vn (u-landlord-01)
 -- covering all statuses: DRAFT, PENDING_REVIEW, PUBLISHED, HIDDEN (OWNER),
 -- HIDDEN (MODERATOR with reason), REJECTED (with reason), RENTED.
 -- Provides > 25 rooms for pagination testing, long titles/addresses,

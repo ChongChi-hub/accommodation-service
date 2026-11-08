@@ -45,25 +45,25 @@ ON DUPLICATE KEY UPDATE title=title;
 
 -- 5. Seed Images for Additional Rooms
 INSERT INTO room_images (room_id, image_url, is_primary, display_order) VALUES
-(9, '/rooms/room-1.jpg', TRUE, 1), (9, '/rooms/room-2.jpg', FALSE, 2),
-(10, '/rooms/room-3.jpg', TRUE, 1), (10, '/rooms/room-4.jpg', FALSE, 2),
-(11, '/rooms/room-5.jpg', TRUE, 1), (11, '/rooms/room-1.jpg', FALSE, 2),
-(12, '/rooms/room-2.jpg', TRUE, 1), (12, '/rooms/room-3.jpg', FALSE, 2),
-(13, '/rooms/room-4.jpg', TRUE, 1), (13, '/rooms/room-5.jpg', FALSE, 2),
-(14, '/rooms/room-1.jpg', TRUE, 1),
-(15, '/rooms/room-2.jpg', TRUE, 1), (15, '/rooms/room-3.jpg', FALSE, 2),
-(16, '/rooms/room-4.jpg', TRUE, 1),
-(17, '/rooms/room-5.jpg', TRUE, 1), (17, '/rooms/room-1.jpg', FALSE, 2),
-(18, '/rooms/room-2.jpg', TRUE, 1), (18, '/rooms/room-3.jpg', FALSE, 2),
-(19, '/rooms/room-4.jpg', TRUE, 1),
-(20, '/rooms/room-5.jpg', TRUE, 1), (20, '/rooms/room-1.jpg', FALSE, 2),
-(21, '/rooms/room-2.jpg', TRUE, 1),
-(22, '/rooms/room-3.jpg', TRUE, 1), (22, '/rooms/room-4.jpg', FALSE, 2),
-(23, '/rooms/room-5.jpg', TRUE, 1),
-(24, '/rooms/room-1.jpg', TRUE, 1),
-(25, '/rooms/room-2.jpg', TRUE, 1),
-(26, '/rooms/room-3.jpg', TRUE, 1),
-(27, '/rooms/room-4.jpg', TRUE, 1)
+(9, '/uploads/rooms/r9_1.webp', TRUE, 1), (9, '/uploads/rooms/r9_2.webp', FALSE, 2),
+(10, '/uploads/rooms/r10_1.webp', TRUE, 1), (10, '/uploads/rooms/r10_2.webp', FALSE, 2),
+(11, '/uploads/rooms/r11_1.webp', TRUE, 1), (11, '/uploads/rooms/r11_2.webp', FALSE, 2),
+(12, '/uploads/rooms/r12_1.webp', TRUE, 1), (12, '/uploads/rooms/r12_2.webp', FALSE, 2),
+(13, '/uploads/rooms/r13_1.webp', TRUE, 1), (13, '/uploads/rooms/r13_2.webp', FALSE, 2),
+(14, '/uploads/rooms/r14_1.webp', TRUE, 1),
+(15, '/uploads/rooms/r15_1.webp', TRUE, 1), (15, '/uploads/rooms/r15_2.webp', FALSE, 2),
+(16, '/uploads/rooms/r16_1.webp', TRUE, 1),
+(17, '/uploads/rooms/r17_1.webp', TRUE, 1), (17, '/uploads/rooms/r17_2.webp', FALSE, 2),
+(18, '/uploads/rooms/r18_1.webp', TRUE, 1), (18, '/uploads/rooms/r18_2.webp', FALSE, 2),
+(19, '/uploads/rooms/r19_1.webp', TRUE, 1),
+(20, '/uploads/rooms/r20_1.webp', TRUE, 1), (20, '/uploads/rooms/r20_2.webp', FALSE, 2),
+(21, '/uploads/rooms/r21_1.webp', TRUE, 1),
+(22, '/uploads/rooms/r22_1.webp', TRUE, 1), (22, '/uploads/rooms/r22_2.webp', FALSE, 2),
+(23, '/uploads/rooms/r23_1.webp', TRUE, 1),
+(24, '/uploads/rooms/r24_1.webp', TRUE, 1),
+(25, '/uploads/rooms/r25_1.webp', TRUE, 1),
+(26, '/uploads/rooms/r26_1.webp', TRUE, 1),
+(27, '/uploads/rooms/r27_1.webp', TRUE, 1)
 ON DUPLICATE KEY UPDATE image_url=image_url;
 
 -- 6. Seed Room Amenities

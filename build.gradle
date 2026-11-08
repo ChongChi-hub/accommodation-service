@@ -5,7 +5,7 @@ plugins {
 }
 
 allprojects {
-    group = 'vn.toam'
+    group = 'vn.cozynest'
     version = '1.0.0-SNAPSHOT'
 
     repositories {
@@ -43,6 +43,10 @@ subprojects {
 
     tasks.named('test') {
         useJUnitPlatform()
+        testLogging {
+            events "failed"
+            exceptionFormat "full"
+        }
     }
 
     tasks.withType(JavaCompile).configureEach {

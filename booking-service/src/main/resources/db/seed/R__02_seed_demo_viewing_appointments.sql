@@ -25,7 +25,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em chào chị chủ, em muốn qua xem phòng studio trực tiếp vào sáng nay ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
 
 ('va-demo-02', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-02',
@@ -33,7 +33,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xin phép hẹn xem căn hộ 1PN vào đầu giờ chiều nay.', 'Chị sẽ đợi ở sảnh tầng 1 em nhé.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 2 DAY), NOW()),
 
 ('va-demo-03', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-03',
@@ -41,7 +41,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Chào cô, cháu muốn xem thử áp lực nước và ánh sáng phòng khách lúc 16h chiều nay ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 6 HOUR), NOW()),
 
 -- === NHÓM 2: 2 LỊCH CONFIRMED ĐÃ QUA GIỜ CHƯA CẬP NHẬT KẾT QUẢ (CẦN CẬP NHẬT KẾT QUẢ) ===
@@ -50,7 +50,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Hẹn xem phòng sáng hôm qua.', 'Đã hẹn trước cửa phòng.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 2 DAY), NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
 
 ('va-demo-05', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-05',
@@ -58,7 +58,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Muốn qua đo kích thước kê bàn làm việc.', 'Sẵn sàng tiếp khách.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@toam.vn',
+ 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
 
 -- === NHÓM 3: 2 LỊCH PENDING ĐÃ QUÁ GIỜ (CHỜ HỆ THỐNG QUÉT EXPIRED) ===
@@ -67,7 +67,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em cần xem gấp sáng hôm qua mà chưa thấy chủ nhà phản hồi.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Đỗ Minh Tuấn', '0906789012', 'tenant6@toam.vn',
+ 'Đỗ Minh Tuấn', '0906789012', 'tenant6@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
 
 ('va-demo-07', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-07',
@@ -75,7 +75,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Hẹn xem sau giờ tan ca 3 ngày trước.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Hoàng Thùy Linh', '0907890123', 'tenant7@toam.vn',
+ 'Hoàng Thùy Linh', '0907890123', 'tenant7@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
 
 -- === NHÓM 4: 2 LỊCH TRÙNG GIỜ CÙNG CHỦ TRỌ (TIME CONFLICT) ===
@@ -84,7 +84,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Lịch hẹn xem phòng studio vào sáng mai lúc 10h.', 'Chị đã xác nhận lịch này trước.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-09', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-03',
@@ -92,7 +92,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em cũng muốn xem căn hộ 1PN cùng lúc 10h sáng mai để tiện so sánh ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  NOW(), NOW()),
 
 -- === NHÓM 5: LỊCH BỊ HỦY / TỪ CHỐI VỚI TỪNG LOẠI LÝ DO (CANCEL REASON CODES) ===
@@ -102,7 +102,7 @@ INSERT INTO viewing_appointments (
  'BUSY', 'Chủ nhà bận việc gia đình đột xuất', 'LANDLORD',
  NULL, NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
 
 ('va-demo-11', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-04',
@@ -111,7 +111,7 @@ INSERT INTO viewing_appointments (
  'ROOM_TAKEN', 'Phòng này vừa có khách ký hợp đồng và cọc xong', 'LANDLORD',
  NULL, NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
 
 ('va-demo-12', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-05',
@@ -120,7 +120,7 @@ INSERT INTO viewing_appointments (
  'TENANT_NOT_ELIGIBLE', 'Phòng chỉ cho phép tối đa 2 người cư trú theo quy định tòa nhà', 'LANDLORD',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 2,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@toam.vn',
+ 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 2 DAY), NOW()),
 
 ('va-demo-13', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-06',
@@ -129,7 +129,7 @@ INSERT INTO viewing_appointments (
  'TIME_CONFLICT', 'Trùng với lịch hẹn bảo trì điện thoại tòa nhà', 'LANDLORD',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 2,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Đỗ Minh Tuấn', '0906789012', 'tenant6@toam.vn',
+ 'Đỗ Minh Tuấn', '0906789012', 'tenant6@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 2 DAY), NOW()),
 
 ('va-demo-14', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-07',
@@ -138,7 +138,7 @@ INSERT INTO viewing_appointments (
  'OTHER', 'Hiện tại khu vực tầng 4 đang quét sơn lại hành lang nên không tiện đón khách', 'LANDLORD',
  NULL, NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Hoàng Thùy Linh', '0907890123', 'tenant7@toam.vn',
+ 'Hoàng Thùy Linh', '0907890123', 'tenant7@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
 
 -- === NHÓM 6: CÁC LỊCH COMPLETED (ĐÃ GẶP KHÁCH) & NO_SHOW (KHÁCH KHÔNG ĐẾN) TRONG QUÁ KHỨ ===
@@ -147,7 +147,7 @@ INSERT INTO viewing_appointments (
  'COMPLETED', 'Đến xem trực tiếp phòng studio.', 'Khách rất ưng ý ban công và ánh sáng.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 2,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
 
 ('va-demo-16', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-02',
@@ -155,7 +155,7 @@ INSERT INTO viewing_appointments (
  'COMPLETED', 'Xem căn hộ dịch vụ 1PN.', 'Đã dẫn khách xem phòng và bãi đỗ xe.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 2,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
 
 ('va-demo-17', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-03',
@@ -163,7 +163,7 @@ INSERT INTO viewing_appointments (
  'NO_SHOW', 'Hẹn xem phòng studio.', 'Chủ nhà đợi 30 phút, gọi điện 3 cuộc không nghe máy.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 2,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY)),
 
 ('va-demo-18', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-04',
@@ -172,7 +172,7 @@ INSERT INTO viewing_appointments (
  NULL, 'Hệ thống tự động hủy do quá thời gian hẹn mà chưa được duyệt', 'SYSTEM',
  NULL, NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
 
 -- === NHÓM 7: LỊCH SẮP TỚI TRONG TUẦN NÀY VÀ TUẦN SAU (UPCOMING) ===
@@ -181,7 +181,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xem phòng sáng sớm cuối tuần trước khi đi làm.', 'Hẹn em sáng thứ 7 nhé.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@toam.vn',
+ 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-20', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-06',
@@ -189,7 +189,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xem phòng chiều chủ nhật cùng gia đình.', 'Chủ nhà sẽ có mặt hướng dẫn.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Đỗ Minh Tuấn', '0906789012', 'tenant6@toam.vn',
+ 'Đỗ Minh Tuấn', '0906789012', 'tenant6@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-21', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-01',
@@ -197,7 +197,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em muốn sang tuần sau qua xem căn hộ view Landmark này ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-22', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-02',
@@ -205,7 +205,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Chào chủ trọ, tuần sau em mới lên Hà Nội nên đặt trước lịch này.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-23', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-03',
@@ -213,7 +213,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Tôi muốn xem tiện ích phòng bếp và ban công phơi đồ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  NOW(), NOW()),
 
 -- === NHÓM 8: CÁC LỊCH BỔ SUNG TRẢI RỘNG 5 PHÒNG (TỔNG CỘNG 36 LỊCH CHO U-LANDLORD-01) ===
@@ -222,7 +222,7 @@ INSERT INTO viewing_appointments (
  'COMPLETED', 'Xem phòng studio đợt đầu tháng.', 'Khách khen phòng sạch sẽ.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY), 2,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY)),
 
 ('va-demo-25', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-05',
@@ -230,7 +230,7 @@ INSERT INTO viewing_appointments (
  'COMPLETED', 'Xem căn 1PN.', 'Đã dẫn lên xem thực tế.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY), 2,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@toam.vn',
+ 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY)),
 
 ('va-demo-26', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-06',
@@ -238,7 +238,7 @@ INSERT INTO viewing_appointments (
  'NO_SHOW', 'Hẹn xem phòng 2 tuần trước.', 'Khách bận đột xuất không báo trước.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY), 2,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Đỗ Minh Tuấn', '0906789012', 'tenant6@toam.vn',
+ 'Đỗ Minh Tuấn', '0906789012', 'tenant6@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 16 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY)),
 
 ('va-demo-27', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-01',
@@ -246,7 +246,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em hẹn xem phòng studio cùng bạn đại học ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-28', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-02',
@@ -254,7 +254,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Tôi muốn xem hợp đồng mẫu và tiện ích trước khi quyết định.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-29', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-03',
@@ -262,7 +262,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Hẹn xem phòng chiều chủ nhật tuần sau.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-30', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-04',
@@ -270,7 +270,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Xin phép xem phòng studio vào sáng 2 tuần nữa.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-31', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-05',
@@ -278,7 +278,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xem phòng căn hộ 1PN.', 'Đã ghi nhận lịch hẹn.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@toam.vn',
+ 'Bùi Thị Thanh Hà', '0905678901', 'tenant5@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-32', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-06',
@@ -286,7 +286,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xem phòng studio Landmark.', 'Đồng ý đón tiếp khách.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Đỗ Minh Tuấn', '0906789012', 'tenant6@toam.vn',
+ 'Đỗ Minh Tuấn', '0906789012', 'tenant6@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-33', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-07',
@@ -295,7 +295,7 @@ INSERT INTO viewing_appointments (
  'BUSY', 'Chủ nhà có lịch ký hợp đồng nhà khác vào khung giờ này', 'LANDLORD',
  NULL, NULL, 1,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Hoàng Thùy Linh', '0907890123', 'tenant7@toam.vn',
+ 'Hoàng Thùy Linh', '0907890123', 'tenant7@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-34', 'room-00000001-0000-0000-0000-000000000002', 'u-landlord-01', 'u-tenant-01',
@@ -304,7 +304,7 @@ INSERT INTO viewing_appointments (
  'OTHER', 'Khách thuê thay đổi kế hoạch công tác nên hủy lịch xem phòng', 'TENANT',
  NOW(), NULL, 2,
  'Căn hộ dịch vụ 1N1K trung tâm Bến Nghé, TP.HCM', '142 Cô Bắc, Phường Cô Giang, TP. Hồ Chí Minh', 'rooms/2/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-35', 'room-00000001-0000-0000-0000-000000000008', 'u-landlord-01', 'u-tenant-02',
@@ -312,7 +312,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Tôi muốn dẫn theo người thân xem phòng trực tiếp.', 'Chủ trọ sẽ có mặt đón tiếp.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Studio view Landmark 81, Phường 5, TP.HCM', '45/3 Điện Biên Phủ, Phường 15, TP. Hồ Chí Minh', 'rooms/8/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-36', 'room-00000001-0000-0000-0000-000000000001', 'u-landlord-01', 'u-tenant-03',
@@ -320,7 +320,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Em đặt lịch trước 20 ngày cho kỳ nhập học sắp tới ạ.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng studio ban công thoáng Dịch Vọng Hậu, Hà Nội', 'Số 18 Ngõ 86 Duy Tân, Phường Dịch Vọng Hậu, Hà Nội', 'rooms/1/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  NOW(), NOW()),
 
 -- === NHÓM 9: 4 LỊCH CỦA CHỦ TRỌ THỨ HAI (U-LANDLORD-02) ĐỂ THỬ BẢO MẬT IDOR ===
@@ -329,7 +329,7 @@ INSERT INTO viewing_appointments (
  'PENDING', 'Xem gác lửng giá rẻ của anh Tuấn.', NULL,
  NULL, NULL, NULL, NULL, NULL, 0,
  'Phòng trọ gác lửng giá rẻ Phường 1, TP.HCM', '78/12 Quang Trung, Phường 8, TP. Hồ Chí Minh', 'rooms/3/cover_thumb.webp',
- 'Nguyễn Văn Thuê', '0901234567', 'tenant@toam.vn',
+ 'Nguyễn Văn Thuê', '0901234567', 'tenant@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-38', 'room-00000001-0000-0000-0000-000000000004', 'u-landlord-02', 'u-tenant-02',
@@ -337,7 +337,7 @@ INSERT INTO viewing_appointments (
  'CONFIRMED', 'Xem căn mini Láng Hạ.', 'Chủ trọ B xác nhận.',
  NULL, NULL, NULL, NOW(), NULL, 1,
  'Căn hộ mini đầy đủ nội thất Láng Hạ, Hà Nội', '124/8 Nguyễn Đình Chiểu, Phường Đa Kao, TP. Hồ Chí Minh', 'rooms/4/cover_thumb.webp',
- 'Lê Hoàng Minh', '0902345678', 'tenant2@toam.vn',
+ 'Lê Hoàng Minh', '0902345678', 'tenant2@cozynest.vn',
  NOW(), NOW()),
 
 ('va-demo-39', 'room-00000001-0000-0000-0000-000000000003', 'u-landlord-02', 'u-tenant-03',
@@ -345,7 +345,7 @@ INSERT INTO viewing_appointments (
  'COMPLETED', 'Đã gặp xem gác lửng.', 'Khách đã xem xong.',
  NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 2,
  'Phòng trọ gác lửng giá rẻ Phường 1, TP.HCM', '78/12 Quang Trung, Phường 8, TP. Hồ Chí Minh', 'rooms/3/cover_thumb.webp',
- 'Vũ Phương Thảo', '0903456789', 'tenant3@toam.vn',
+ 'Vũ Phương Thảo', '0903456789', 'tenant3@cozynest.vn',
  DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
 
 ('va-demo-40', 'room-00000001-0000-0000-0000-000000000004', 'u-landlord-02', 'u-tenant-04',
@@ -354,7 +354,7 @@ INSERT INTO viewing_appointments (
  'BUSY', 'Chủ nhà bận tiếp đối tác', 'LANDLORD',
  NULL, NULL, 1,
  'Căn hộ mini đầy đủ nội thất Láng Hạ, Hà Nội', '124/8 Nguyễn Đình Chiểu, Phường Đa Kao, TP. Hồ Chí Minh', 'rooms/4/cover_thumb.webp',
- 'Đặng Quốc Hưng', '0904567890', 'tenant4@toam.vn',
+ 'Đặng Quốc Hưng', '0904567890', 'tenant4@cozynest.vn',
  NOW(), NOW());
 
 -- 2. GHI LỊCH SỬ TRẠNG THÁI (APPOINTMENT_STATUS_HISTORY) CHO CÁC LỊCH ĐÃ THAY ĐỔI

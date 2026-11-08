@@ -6,10 +6,10 @@
 
 -- 1. Alter rooms to support cross-service UUID, slug, version, soft delete
 ALTER TABLE rooms
-    ADD COLUMN IF NOT EXISTS room_uuid VARCHAR(36) NULL AFTER id,
-    ADD COLUMN IF NOT EXISTS slug VARCHAR(300) NULL AFTER title,
-    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 AFTER review_count,
-    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL AFTER updated_at;
+    ADD COLUMN room_uuid VARCHAR(64) NULL AFTER id,
+    ADD COLUMN slug VARCHAR(300) NULL AFTER title,
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0 AFTER review_count,
+    ADD COLUMN deleted_at TIMESTAMP NULL AFTER updated_at;
 
 -- Populate room_uuid for existing records if null
 UPDATE rooms SET room_uuid = CONCAT('room-00000001-0000-0000-0000-', LPAD(id, 12, '0')) WHERE room_uuid IS NULL;
@@ -17,8 +17,8 @@ UPDATE rooms SET slug = CONCAT('phong-tro-demo-', id) WHERE slug IS NULL;
 
 -- Add indexes and unique constraint
 ALTER TABLE rooms
-    ADD UNIQUE KEY IF NOT EXISTS uq_rooms_uuid (room_uuid),
-    ADD UNIQUE KEY IF NOT EXISTS uq_rooms_slug (slug);
+    ADD UNIQUE KEY uq_rooms_uuid (room_uuid),
+    ADD UNIQUE KEY uq_rooms_slug (slug);
 
 -- 2. Room Service Unit Prices (Điện, Nước, Internet, Vệ sinh)
 CREATE TABLE IF NOT EXISTS room_prices (

@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Communication Service (`toam_communication`)
+# Sơ Đồ Thực Thể - Communication Service (`cozynest_communication`)
 
 ```mermaid
 erDiagram

@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_billing_schema.sql
--- Billing Service Schema (toam_billing)
+-- Billing Service Schema (cozynest_billing)
 -- Bounded Context: Utility Readings, Invoices, Payments, Deposits
 -- ============================================================
 
@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS utility_readings (
     id VARCHAR(36) NOT NULL,
     contract_id VARCHAR(36) NOT NULL,
-    room_id VARCHAR(36) NOT NULL,
+    room_id VARCHAR(64) NOT NULL,
     period_month DATE NOT NULL,
     electric_prev DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     electric_curr DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS deposit_transactions (
 CREATE TABLE IF NOT EXISTS expenses (
     id VARCHAR(36) NOT NULL,
     landlord_id VARCHAR(36) NOT NULL,
-    room_id VARCHAR(36) NULL,
+    room_id VARCHAR(64) NULL,
     category VARCHAR(50) NOT NULL,
     amount BIGINT NOT NULL,
     expense_date DATE NOT NULL,

@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Admin Service (`toam_admin`)
+# Sơ Đồ Thực Thể - Admin Service (`cozynest_admin`)
 
 ```mermaid
 erDiagram

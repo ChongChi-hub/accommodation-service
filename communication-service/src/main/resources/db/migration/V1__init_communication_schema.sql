@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_communication_schema.sql
--- Communication Service Schema (toam_communication)
+-- Communication Service Schema (cozynest_communication)
 -- Bounded Context: Notifications, Realtime Chat, Support Tickets
 -- ============================================================
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 -- 3. Conversations (Cuộc trò chuyện giữa Tenant và Landlord)
 CREATE TABLE IF NOT EXISTS conversations (
     id VARCHAR(36) NOT NULL,
-    room_id VARCHAR(36) NULL,
+    room_id VARCHAR(64) NULL,
     last_message_content TEXT NULL,
     last_message_time DATETIME(3) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

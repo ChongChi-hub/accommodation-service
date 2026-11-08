@@ -10,13 +10,13 @@
 
 -- 1. Alter rooms table
 ALTER TABLE rooms
-    ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP NULL AFTER deleted_at,
-    ADD COLUMN IF NOT EXISTS hidden_by VARCHAR(20) NULL AFTER hidden_at,
-    ADD COLUMN IF NOT EXISTS hidden_reason VARCHAR(500) NULL AFTER hidden_by,
-    ADD COLUMN IF NOT EXISTS rejected_reason VARCHAR(500) NULL AFTER hidden_reason,
-    ADD COLUMN IF NOT EXISTS published_at TIMESTAMP NULL AFTER rejected_reason,
-    ADD COLUMN IF NOT EXISTS view_count INT NOT NULL DEFAULT 0 AFTER published_at,
-    ADD COLUMN IF NOT EXISTS title_search VARCHAR(255) NULL AFTER title;
+    ADD COLUMN hidden_at TIMESTAMP NULL AFTER deleted_at,
+    ADD COLUMN hidden_by VARCHAR(20) NULL AFTER hidden_at,
+    ADD COLUMN hidden_reason VARCHAR(500) NULL AFTER hidden_by,
+    ADD COLUMN rejected_reason VARCHAR(500) NULL AFTER hidden_reason,
+    ADD COLUMN published_at TIMESTAMP NULL AFTER rejected_reason,
+    ADD COLUMN view_count INT NOT NULL DEFAULT 0 AFTER published_at,
+    ADD COLUMN title_search VARCHAR(255) NULL AFTER title;
 
 -- Update published_at and view_count for existing published/rented rooms
 UPDATE rooms 
@@ -35,20 +35,20 @@ CREATE INDEX idx_rooms_title_search ON rooms (title_search);
 
 -- 2. Alter room_images table
 ALTER TABLE room_images
-    ADD COLUMN IF NOT EXISTS storage_key VARCHAR(255) NULL AFTER image_url,
-    ADD COLUMN IF NOT EXISTS thumb_key VARCHAR(255) NULL AFTER storage_key,
-    ADD COLUMN IF NOT EXISTS medium_key VARCHAR(255) NULL AFTER thumb_key,
-    ADD COLUMN IF NOT EXISTS large_key VARCHAR(255) NULL AFTER medium_key,
-    ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255) NULL AFTER large_key,
-    ADD COLUMN IF NOT EXISTS content_type VARCHAR(50) NOT NULL DEFAULT 'image/webp' AFTER original_filename,
-    ADD COLUMN IF NOT EXISTS size_bytes BIGINT NOT NULL DEFAULT 102400 AFTER content_type,
-    ADD COLUMN IF NOT EXISTS width INT NOT NULL DEFAULT 1280 AFTER size_bytes,
-    ADD COLUMN IF NOT EXISTS height INT NOT NULL DEFAULT 720 AFTER width,
-    ADD COLUMN IF NOT EXISTS is_cover BOOLEAN NOT NULL DEFAULT FALSE AFTER height,
-    ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0 AFTER is_cover,
-    ADD COLUMN IF NOT EXISTS alt_text VARCHAR(255) NULL AFTER sort_order,
-    ADD COLUMN IF NOT EXISTS uploaded_by VARCHAR(50) NULL AFTER alt_text,
-    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER uploaded_by;
+    ADD COLUMN storage_key VARCHAR(255) NULL AFTER image_url,
+    ADD COLUMN thumb_key VARCHAR(255) NULL AFTER storage_key,
+    ADD COLUMN medium_key VARCHAR(255) NULL AFTER thumb_key,
+    ADD COLUMN large_key VARCHAR(255) NULL AFTER medium_key,
+    ADD COLUMN original_filename VARCHAR(255) NULL AFTER large_key,
+    ADD COLUMN content_type VARCHAR(50) NOT NULL DEFAULT 'image/webp' AFTER original_filename,
+    ADD COLUMN size_bytes BIGINT NOT NULL DEFAULT 102400 AFTER content_type,
+    ADD COLUMN width INT NOT NULL DEFAULT 1280 AFTER size_bytes,
+    ADD COLUMN height INT NOT NULL DEFAULT 720 AFTER width,
+    ADD COLUMN is_cover BOOLEAN NOT NULL DEFAULT FALSE AFTER height,
+    ADD COLUMN sort_order INT NOT NULL DEFAULT 0 AFTER is_cover,
+    ADD COLUMN alt_text VARCHAR(255) NULL AFTER sort_order,
+    ADD COLUMN uploaded_by VARCHAR(50) NULL AFTER alt_text,
+    ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER uploaded_by;
 
 -- Sync existing columns
 UPDATE room_images 

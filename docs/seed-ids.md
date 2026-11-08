@@ -4,35 +4,39 @@
 
 ---
 
-## 1. Người dùng & Tài khoản Demo (`toam_identity`)
+## 1. Người dùng & Tài khoản Demo (`cozynest_identity`)
 
 | Mã định danh (ID) | Email | Vai trò | Họ và tên | Trạng thái | KYC |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`u-tenant-01`** | `tenant@toam.vn` | TENANT | Nguyễn Văn Thuê | ACTIVE | APPROVED |
-| **`u-landlord-01`**| `landlord@toam.vn` | LANDLORD | Trần Thị Chủ Trọ | ACTIVE | APPROVED |
-| **`u-mod-01`** | `moderator@toam.vn`| MODERATOR | Phạm Minh Kiểm Duyệt | ACTIVE | APPROVED |
-| **`u-admin-01`** | `admin@toam.vn` | ADMIN | Lê Hoàng Quản Trị | ACTIVE | APPROVED |
-| `u-tenant-02` | `tenant2@toam.vn` | TENANT | Lê Hoàng Minh | ACTIVE | APPROVED |
-| `u-tenant-03` | `tenant3@toam.vn` | TENANT | Vũ Phương Thảo | ACTIVE | APPROVED |
-| `u-tenant-04` | `tenant4@toam.vn` | TENANT | Đặng Quốc Hưng | ACTIVE | PENDING |
-| `u-tenant-05` | `tenant5@toam.vn` | TENANT | Bùi Thị Thanh Hà | ACTIVE | REJECTED |
-| `u-tenant-06` | `tenant6@toam.vn` | TENANT | Đỗ Minh Tuấn | ACTIVE | APPROVED |
-| `u-tenant-07` | `tenant7@toam.vn` | TENANT | Hoàng Thùy Linh | PENDING | PENDING |
-| `u-tenant-08` | `tenant8@toam.vn` | TENANT | Ngô Quang Hải | LOCKED | APPROVED |
-| `u-landlord-02` | `landlord2@toam.vn`| LANDLORD | Trần Minh Tuấn | ACTIVE | APPROVED |
-| `u-landlord-03` | `landlord3@toam.vn`| LANDLORD | Hoàng Thị Mai Lan | ACTIVE | APPROVED |
-| `u-landlord-04` | `landlord4@toam.vn`| LANDLORD | Phan Thanh Bình | ACTIVE | PENDING |
-| `u-landlord-05` | `landlord5@toam.vn`| LANDLORD, TENANT | Nguyễn Thị Ngọc Ánh | ACTIVE | APPROVED |
-| `u-landlord-06` | `landlord6@toam.vn`| LANDLORD, TENANT | Vũ Đình Trọng | LOCKED | APPROVED |
-| `u-mod-02` | `mod2@toam.vn` | MODERATOR | Đoàn Thu Trang | ACTIVE | APPROVED |
-| `u-mod-03` | `mod3@toam.vn` | MODERATOR | Lương Gia Bảo | ACTIVE | APPROVED |
-| `u-admin-02` | `admin2@toam.vn` | ADMIN | Trịnh Phương Dung | ACTIVE | APPROVED |
+| **`u-tenant-01`** | `tenant@cozynest.vn` | TENANT | Nguyễn Văn Thuê | ACTIVE | APPROVED |
+| **`u-landlord-01`**| `landlord@cozynest.vn` | TENANT, LANDLORD | Trần Thị Chủ Trọ | ACTIVE | APPROVED |
+| **`u-mod-01`** | `moderator@cozynest.vn`| MODERATOR | Phạm Minh Kiểm Duyệt | ACTIVE | APPROVED |
+| **`u-admin-01`** | `admin@cozynest.vn` | ADMIN | Lê Hoàng Quản Trị | ACTIVE | APPROVED |
+| `u-tenant-02` | `tenant2@cozynest.vn` | TENANT | Lê Hoàng Minh | ACTIVE | APPROVED |
+| `u-tenant-03` | `tenant3@cozynest.vn` | TENANT | Vũ Phương Thảo | ACTIVE | APPROVED |
+| `u-tenant-04` | `tenant4@cozynest.vn` | TENANT | Đặng Quốc Hưng | ACTIVE | PENDING |
+| `u-tenant-05` | `tenant5@cozynest.vn` | TENANT | Bùi Thị Thanh Hà | ACTIVE | REJECTED |
+| `u-tenant-06` | `tenant6@cozynest.vn` | TENANT | Đỗ Minh Tuấn | ACTIVE | APPROVED |
+| `u-tenant-07` | `tenant7@cozynest.vn` | TENANT | Hoàng Thùy Linh | PENDING | PENDING |
+| `u-tenant-08` | `tenant8@cozynest.vn` | TENANT | Ngô Quang Hải | LOCKED | APPROVED |
+| `u-landlord-02` | `landlord2@cozynest.vn`| TENANT, LANDLORD | Trần Minh Tuấn | ACTIVE | APPROVED |
+| `u-landlord-03` | `landlord3@cozynest.vn`| TENANT, LANDLORD | Hoàng Thị Mai Lan | ACTIVE | APPROVED |
+| `u-landlord-04` | `landlord4@cozynest.vn`| TENANT, LANDLORD | Phan Thanh Bình | ACTIVE | APPROVED |
+| `u-landlord-05` | `landlord5@cozynest.vn`| TENANT, LANDLORD | Nguyễn Thị Ngọc Ánh | ACTIVE | APPROVED |
+| `u-landlord-06` | `landlord6@cozynest.vn`| TENANT, LANDLORD | Vũ Đình Trọng | LOCKED | APPROVED |
+| `u-landlord-new`| `landlord.new@toam.vn` | TENANT | Chủ Trọ Mới Chờ KYC | ACTIVE | AWAITING_KYC |
+| `u-landlord-pending` | `landlord.pending@toam.vn` | TENANT | Chủ Trọ Chờ Duyệt | ACTIVE | PENDING |
+| `u-landlord-rejected`| `landlord.rejected@toam.vn`| TENANT | Chủ Trọ Bị Từ Chối | ACTIVE | REJECTED |
+| `u-tenant-unverified`| `tenant.unverified@toam.vn`| TENANT | Người Thuê Chưa Xác Minh | ACTIVE | NONE |
+| `u-mod-02` | `mod2@cozynest.vn` | MODERATOR | Đoàn Thu Trang | ACTIVE | APPROVED |
+| `u-mod-03` | `mod3@cozynest.vn` | MODERATOR | Lương Gia Bảo | ACTIVE | APPROVED |
+| `u-admin-02` | `admin2@cozynest.vn` | ADMIN | Trịnh Phương Dung | ACTIVE | APPROVED |
 
 *Ghi chú Mật khẩu:* Mọi tài khoản demo sử dụng mật khẩu: `password123` (BCrypt cost 12 hash: `$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a`).
 
 ---
 
-## 2. Phòng Trọ Tiêu Biểu (`toam_listing`)
+## 2. Phòng Trọ Tiêu Biểu (`cozynest_listing`)
 
 | Mã số (ID) | UUID Tham chiếu | Tiêu đề tóm tắt (Mô hình 2 cấp: Xã/Phường, Tỉnh/Thành) | Chủ trọ sở hữu | Trạng thái tin đăng |
 | :---: | :--- | :--- | :--- | :--- |
@@ -48,7 +52,7 @@
 
 ---
 
-## 3. Quy Trình Thuê & Hợp Đồng (`toam_booking`)
+## 3. Quy Trình Thuê & Hợp Đồng (`cozynest_booking`)
 
 | ID Hợp đồng | Mã HĐ | Người thuê | Chủ trọ | Phòng ID | Giá thuê | Tiền cọc | Trạng thái |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -59,7 +63,7 @@
 
 ---
 
-## 4. Hóa Đơn & Thanh Toán (`toam_billing`)
+## 4. Hóa Đơn & Thanh Toán (`cozynest_billing`)
 
 | ID Hóa đơn | Mã HĐ | Hợp đồng | Kỳ tháng | Tổng tiền | Đã thanh toán | Trạng thái |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -72,14 +76,14 @@
 
 ## 5. Phiếu Hỗ Trợ, Tranh Chấp & Báo Cáo
 
-- **Phiếu hỗ trợ (`toam_communication`):**
+- **Phiếu hỗ trợ (`cozynest_communication`):**
   - `ticket-1001`: `TK-1001` (`u-tenant-01` gửi - `OPEN`)
   - `ticket-1002`: `TK-1002` (`u-landlord-01` gửi - `IN_PROGRESS`)
   - `ticket-1003`: `TK-1003` (`u-tenant-02` gửi - `RESOLVED`)
-- **Vụ tranh chấp (`toam_admin`):**
+- **Vụ tranh chấp (`cozynest_admin`):**
   - `disp-00000001`: `DISP-501` (`ct-00000001` - `DEPOSIT_RETURN` - `MEDIATING`)
   - `disp-00000002`: `DISP-502` (`ct-00000002` - `DAMAGE_COMPENSATION` - `PENDING`)
-- **Yêu cầu bảo trì (`toam_booking`):**
+- **Yêu cầu bảo trì (`cozynest_booking`):**
   - `maint-00000001`: `MN-201` (`u-tenant-01` / `room-00000001-0000-0000-0000-000000000001` - `HIGH` - `PENDING`)
   - `maint-00000002`: `MN-202` (`u-tenant-02` / `room-00000001-0000-0000-0000-000000000002` - `MEDIUM` - `IN_PROGRESS`)
   - `maint-00000003`: `MN-203` (`u-tenant-01` / `room-00000001-0000-0000-0000-000000000003` - `LOW` - `RESOLVED`)

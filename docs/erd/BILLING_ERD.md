@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Billing Service (`toam_billing`)
+# Sơ Đồ Thực Thể - Billing Service (`cozynest_billing`)
 
 ```mermaid
 erDiagram

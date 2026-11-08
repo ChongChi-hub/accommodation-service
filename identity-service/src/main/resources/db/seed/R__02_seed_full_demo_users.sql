@@ -8,27 +8,27 @@
 -- 1. Insert Additional Users (Tenant 02..08, Landlord 02..06, Mod 02..03, Admin 02)
 INSERT INTO users (id, email, phone, password_hash, full_name, avatar_url, gender, status, email_verified_at, created_at, updated_at) VALUES
 -- Additional Tenants
-('u-tenant-02', 'tenant2@toam.vn', '0901000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hoàng Minh', '/uploads/avatars/tenant2.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-03', 'tenant3@toam.vn', '0901000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Vũ Phương Thảo', '/uploads/avatars/tenant3.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-04', 'tenant4@toam.vn', '0901000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đặng Quốc Hưng', '/uploads/avatars/tenant4.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-05', 'tenant5@toam.vn', '0901000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Bùi Thị Thanh Hà', '/uploads/avatars/tenant5.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-06', 'tenant6@toam.vn', '0901000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đỗ Minh Tuấn', '/uploads/avatars/tenant6.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-07', 'tenant7@toam.vn', '0901000007', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Hoàng Thùy Linh', '/uploads/avatars/tenant7.jpg', 'FEMALE', 'PENDING', NULL, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-tenant-08', 'tenant8@toam.vn', '0901000008', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Ngô Quang Hải', '/uploads/avatars/tenant8.jpg', 'MALE', 'LOCKED', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-02', 'tenant2@cozynest.vn', '0901000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hoàng Minh', '/uploads/avatars/tenant2.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-03', 'tenant3@cozynest.vn', '0901000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Vũ Phương Thảo', '/uploads/avatars/tenant3.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-04', 'tenant4@cozynest.vn', '0901000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đặng Quốc Hưng', '/uploads/avatars/tenant4.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-05', 'tenant5@cozynest.vn', '0901000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Bùi Thị Thanh Hà', '/uploads/avatars/tenant5.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-06', 'tenant6@cozynest.vn', '0901000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đỗ Minh Tuấn', '/uploads/avatars/tenant6.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-07', 'tenant7@cozynest.vn', '0901000007', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Hoàng Thùy Linh', '/uploads/avatars/tenant7.jpg', 'FEMALE', 'PENDING', NULL, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-tenant-08', 'tenant8@cozynest.vn', '0901000008', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Ngô Quang Hải', '/uploads/avatars/tenant8.jpg', 'MALE', 'LOCKED', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 
 -- Additional Landlords
-('u-landlord-02', 'landlord2@toam.vn', '0902000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trần Minh Tuấn', '/uploads/avatars/landlord2.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-landlord-03', 'landlord3@toam.vn', '0902000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Hoàng Thị Mai Lan', '/uploads/avatars/landlord3.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-landlord-04', 'landlord4@toam.vn', '0902000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Phan Thanh Bình', '/uploads/avatars/landlord4.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-landlord-05', 'landlord5@toam.vn', '0902000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Nguyễn Thị Ngọc Ánh', '/uploads/avatars/landlord5.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-landlord-06', 'landlord6@toam.vn', '0902000007', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Vũ Đình Trọng', '/uploads/avatars/landlord6.jpg', 'MALE', 'LOCKED', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-02', 'landlord2@cozynest.vn', '0902000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trần Minh Tuấn', '/uploads/avatars/landlord2.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-03', 'landlord3@cozynest.vn', '0902000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Hoàng Thị Mai Lan', '/uploads/avatars/landlord3.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-04', 'landlord4@cozynest.vn', '0902000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Phan Thanh Bình', '/uploads/avatars/landlord4.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-05', 'landlord5@cozynest.vn', '0902000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Nguyễn Thị Ngọc Ánh', '/uploads/avatars/landlord5.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-06', 'landlord6@cozynest.vn', '0902000007', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Vũ Đình Trọng', '/uploads/avatars/landlord6.jpg', 'MALE', 'LOCKED', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 
 -- Additional Moderators
-('u-mod-02', 'mod2@toam.vn', '0904000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đoàn Thu Trang', '/uploads/avatars/mod2.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-mod-03', 'mod3@toam.vn', '0904000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lương Gia Bảo', '/uploads/avatars/mod3.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-mod-02', 'mod2@cozynest.vn', '0904000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đoàn Thu Trang', '/uploads/avatars/mod2.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-mod-03', 'mod3@cozynest.vn', '0904000006', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lương Gia Bảo', '/uploads/avatars/mod3.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 
 -- Additional Admin
-('u-admin-02', 'admin2@toam.vn', '0903000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trịnh Phương Dung', '/uploads/avatars/admin2.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
+('u-admin-02', 'admin2@cozynest.vn', '0903000005', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trịnh Phương Dung', '/uploads/avatars/admin2.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE email=email;
 
 -- 2. Assign Roles (u-landlord-05 và u-landlord-06 là tài khoản đa vai trò: TENANT + LANDLORD)

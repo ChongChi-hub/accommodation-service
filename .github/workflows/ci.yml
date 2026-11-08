@@ -2,7 +2,7 @@ name: Backend CI Pipeline
 
 on:
   push:
-    branches: [main, master, develop, feat/*]
+    branches: [main, master, develop, "feat/**"]
   pull_request:
     branches: [main, master]
 
@@ -33,5 +33,14 @@ jobs:
       - name: Build and Test Backend Services
         run: |
           chmod +x gradlew
-          ./gradlew clean build test
+          ./gradlew clean build --no-daemon --info
+
+      - name: Print Test Failures on Error
+        if: failure()
+        run: |
+          echo "=== SEARCHING FOR FAILED TESTS ==="
+          find . -name "*.xml" -path "*/test-results/*" -exec grep -l "<failure\|<error" {} + | while read f; do
+            echo "=== FAILED SUITE: $f ==="
+            cat "$f"
+          done
 
