@@ -113,3 +113,4 @@ Dựa trên 6 bức ảnh chụp giao diện thực tế thu được từ Playw
    * Đăng xuất khỏi hệ thống, sau đó truy cập `http://localhost:3000/login`.
    * Bấm nút **Đăng nhập với Google**. Hệ thống nhận diện tài khoản đã tồn tại qua `sub`, ghi nhận lịch sử đăng nhập vào bảng `login_history` và cho phép truy cập ngay lập tức.
    * Sau khi đăng nhập, truy cập trang Hồ sơ cá nhân -> Đổi mật khẩu: quan sát khung thông báo hướng dẫn dành cho tài khoản Google và thử tính năng tạo mật khẩu qua luồng Quên mật khẩu.
+
