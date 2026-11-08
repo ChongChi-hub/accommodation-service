@@ -44,7 +44,7 @@
 - **Vấn đề**: Logic xử lý ảnh đang bị giới hạn trong `listing-service`, nếu `identity-service` viết lại sẽ vi phạm nguyên tắc DRY.
 - **Giải pháp**:
   - Đưa dependency `imageio-webp` và `thumbnailator` vào module `common`.
-  - Tách bộ xử lý ảnh `ImageProcessingHelper` / `ImageSanitizer` vào `vn.toam.common.image` với các hàm kiểm tra magic bytes, đọc kích thước an toàn, xoá EXIF, cắt vuông và nén WebP.
+  - Tách bộ xử lý ảnh `ImageProcessingHelper` / `ImageSanitizer` vào `vn.cozynest.common.image` với các hàm kiểm tra magic bytes, đọc kích thước an toàn, xoá EXIF, cắt vuông và nén WebP.
   - Cả `listing-service` và `identity-service` cùng sử dụng chung module này, đảm bảo kiểm thử hiện có của `listing-service` tiếp tục xanh 100%.
 
 ---

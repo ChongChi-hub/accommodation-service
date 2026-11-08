@@ -39,3 +39,4 @@ for (const m of modules) {
   grandSkip += skipped;
 }
 console.log(`| **TỔNG CỘNG** | **${grandTotal}** | **${grandFail}** | **${grandSkip}** | **ALL PASSED** |`);
+

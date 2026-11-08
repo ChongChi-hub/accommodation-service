@@ -5,7 +5,7 @@ spring:
   application:
     name: identity-service
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:toam_identity}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cozynest_identity}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -34,7 +34,7 @@ spring:
     ignore-missing-migrations: true
 
 jwt:
-  secret: ${JWT_SECRET:toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+  secret: ${JWT_SECRET:cozynest_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
   expiration-ms: 900000          # 15 minutes
   refresh-expiration-ms: 2592000000 # 30 days
 

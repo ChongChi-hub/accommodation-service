@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Booking Service (`toam_booking`)
+# Sơ Đồ Thực Thể - Booking Service (`cozynest_booking`)
 
 ```mermaid
 erDiagram

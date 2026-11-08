@@ -6,7 +6,7 @@
 
 -- 1. Contract Templates
 INSERT INTO contract_templates (id, template_code, name, description, content_template, version, is_active, created_at, updated_at) VALUES
-('tmpl-001', 'TOAM_STD_2026', 'Mẫu hợp đồng thuê phòng chuẩn Tổ Ấm 2026', 'Mẫu hợp đồng tiêu chuẩn có điều khoản bảo vệ cả người thuê và chủ nhà theo Bộ Luật Dân sự 2015', 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nHỢP ĐỒNG THUÊ PHÒNG TRỌ VÀ CĂN HỘ\nSố: {{contract_code}}\n\nBên cho thuê (Bên A): {{landlord_name}}\nBên thuê (Bên B): {{tenant_name}}\nĐiều 1: Đối tượng hợp đồng: {{room_title}} tại địa chỉ {{room_address}}\nĐiều 2: Giá thuê {{monthly_rent}} VNĐ/tháng, tiền đặt cọc {{deposit_amount}} VNĐ.\nĐiều 3: Thanh toán vào ngày {{payment_due_day}} hàng tháng.', 1, 1, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
+('tmpl-001', 'COZYNEST_STD_2026', 'Mẫu hợp đồng thuê phòng chuẩn Tổ Ấm 2026', 'Mẫu hợp đồng tiêu chuẩn có điều khoản bảo vệ cả người thuê và chủ nhà theo Bộ Luật Dân sự 2015', 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n\nHỢP ĐỒNG THUÊ PHÒNG TRỌ VÀ CĂN HỘ\nSố: {{contract_code}}\n\nBên cho thuê (Bên A): {{landlord_name}}\nBên thuê (Bên B): {{tenant_name}}\nĐiều 1: Đối tượng hợp đồng: {{room_title}} tại địa chỉ {{room_address}}\nĐiều 2: Giá thuê {{monthly_rent}} VNĐ/tháng, tiền đặt cọc {{deposit_amount}} VNĐ.\nĐiều 3: Thanh toán vào ngày {{payment_due_day}} hàng tháng.', 1, 1, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE name=name;
 
 -- 2. Viewing Appointments (Lịch hẹn xem phòng)

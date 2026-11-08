@@ -136,20 +136,20 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 
 ## 9. Cơ chế Xác thực Phiên, Quản lý Cookie & Xoay vòng Khóa RSA (Session Cookies & Key Rotation)
 
-### 9.1 Định danh và Bản chất Cookie `toam_token`
+### 9.1 Định danh và Bản chất Cookie `cozynest_token`
 * **Loại Token:** JWT ký mật mã bằng thuật toán bất đối xứng **RS256** (RSA Signature with SHA-256).
 * **Payload quy chuẩn:**
   * `sub`: UUID v7 của người dùng (khóa chính `users.id` / `users.user_uuid`).
   * `email`: Địa chỉ email xác thực.
   * `roles`: Danh sách vai trò (`ROLE_TENANT`, `ROLE_LANDLORD`, `ROLE_MODERATOR`, `ROLE_ADMIN`).
-  * `iss`: `toam-identity` (được thẩm định bởi Resource Server).
+  * `iss`: `cozynest-identity` (được thẩm định bởi Resource Server).
   * `exp`: Thời hạn sống của Access Token là **24 giờ** (86,400 giây).
   * `kid`: Key ID tương ứng trong JWKS Keyset để phục vụ xác thực và xoay vòng khóa.
 * **Thời hạn sống của Refresh Token:** Token ngẫu nhiên bảo mật cao được lưu mã hóa SHA-256 trong bảng `refresh_tokens` có hạn **30 ngày** (2,592,000 giây) kèm cơ chế phát hiện tái sử dụng (Reuse Detection Revocation).
 
 ### 9.2 Cơ chế Làm mới Token (Silent Refresh Flow)
-* **Kênh truyền:** Khi Access Token hết hạn (nhận mã HTTP 401 Unauthorized từ gateway hoặc backend), HTTP client tại frontend (`ApiClient`) chặn request và tự động gọi endpoint `/api/v1/auth/refresh-token` với `toam_refresh_token` từ `localStorage`.
-* **Cập nhật liền mạch:** Khi cấp thành công cặp token mới, `toam_token` trong cookie và `toam_refresh_token` trong `localStorage` được cập nhật đồng thời mà không bắt người dùng phải đăng nhập lại hoặc gián đoạn trải nghiệm người dùng.
+* **Kênh truyền:** Khi Access Token hết hạn (nhận mã HTTP 401 Unauthorized từ gateway hoặc backend), HTTP client tại frontend (`ApiClient`) chặn request và tự động gọi endpoint `/api/v1/auth/refresh-token` với `cozynest_refresh_token` từ `localStorage`.
+* **Cập nhật liền mạch:** Khi cấp thành công cặp token mới, `cozynest_token` trong cookie và `cozynest_refresh_token` trong `localStorage` được cập nhật đồng thời mà không bắt người dùng phải đăng nhập lại hoặc gián đoạn trải nghiệm người dùng.
 * **Xử lý tranh chấp (Race Condition):** `ApiClient` duy trì một `refreshPromise` singleton duy nhất để ghép các request đồng thời, ngăn chặn việc gọi refresh token nhiều lần làm kích hoạt cơ chế thu hồi do nghi ngờ tái sử dụng token.
 
 ### 9.3 Chính sách An toàn Cookie ở Production
@@ -170,7 +170,7 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 
 ### 9.5 JWKS Caching và Cơ chế Xoay vòng Khóa (Key Rotation by `kid`)
 * Identity service công khai bộ khóa công khai tại endpoint tiêu chuẩn `/.well-known/jwks.json`.
-* Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `toam-key-2026-v1`).
+* Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `cozynest-key-2026-v1`).
 * Các Resource Server (`listing-service`, `billing-service`, `booking-service`, `admin-service`) cache JWKS trong bộ nhớ với thời gian sống TTL 24 giờ. Khi gặp token mang `kid` mới chưa có trong cache, Resource Server tự động fetch lại JWKS để cập nhật khóa mới mà không cần khởi động lại dịch vụ (Zero-downtime key rotation).
 
 ---
@@ -253,7 +253,7 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 ### 12.1 Thư viện Xử lý Ảnh Dùng chung (Shared Image Processing)
 * **Vấn đề**: Cả `listing-service` (ảnh phòng) và `identity-service` (avatar người dùng, ảnh CCCD KYC) đều cần kiểm tra an ninh hình ảnh nghiêm ngặt (magic bytes, chống file polyglot, chặn bom pixel $\le 8000$px, tẩy EXIF/GPS, nén sang WebP).
 * **Quyết định**: Di chuyển và đưa các thư viện `com.twelvemonkeys.imageio:imageio-webp:3.12.0` và `net.coobird:thumbnailator:0.4.20` vào module `common`.
-* Đóng gói tiện ích xử lý ảnh dùng chung trong `vn.toam.common.image.ImageProcessingHelper`:
+* Đóng gói tiện ích xử lý ảnh dùng chung trong `vn.cozynest.common.image.ImageProcessingHelper`:
   * Xác thực magic bytes: JPEG (`FF D8 FF`), PNG (`89 50 4E 47 0D 0A 1A 0A`), WebP (Byte 0-3 `RIFF`, byte 8-11 `WEBP`).
   * Tẩy sạch EXIF, dữ liệu định vị GPS và mã độc bằng cách vẽ lại hoàn toàn sang một `BufferedImage` kiểu `TYPE_INT_RGB` mới.
   * Cắt ảnh vuông từ tâm (center square crop) tự động cho avatar người dùng.

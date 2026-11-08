@@ -9,12 +9,12 @@ He thong Backend Microservices cho nen tang thue tro **To Am**, thiet ke theo ng
 | Service | Port | Database Schema | Chuc Nang Chinh |
 |---|---|---|---|
 | **`api-gateway`** | `8080` | - | Dinh tuyen trung tam, CORS, Rate Limit, gop OpenAPI `/docs` |
-| **`identity-service`** | `8081` | `toam_identity` | Tai khoan, vai tro (RBAC), Dang ky, Dang nhap, JWT, Refresh Token, KYC |
-| **`listing-service`** | `8082` | `toam_listing` | Phong tro, loai phong, dia gioi DVHCVN, tien nghi, anh, danh gia |
-| **`booking-service`** | `8083` | `toam_booking` | Lich hen xem phong, yeu cau thue, hop dong dien tu |
-| **`billing-service`** | `8084` | `toam_billing` | Chi so dien nuoc (cong to), hoa don hang thang, thanh toan |
-| **`communication-service`** | `8085` | `toam_communication` | Tin nhan hoi thoai thoi gian thuc, thong bao in-app |
-| **`admin-service`** | `8086` | `toam_admin` | Thong ke bang dieu khien, kiem duyet tin/KYC, bao cao vi pham |
+| **`identity-service`** | `8081` | `cozynest_identity` | Tai khoan, vai tro (RBAC), Dang ky, Dang nhap, JWT, Refresh Token, KYC |
+| **`listing-service`** | `8082` | `cozynest_listing` | Phong tro, loai phong, dia gioi DVHCVN, tien nghi, anh, danh gia |
+| **`booking-service`** | `8083` | `cozynest_booking` | Lich hen xem phong, yeu cau thue, hop dong dien tu |
+| **`billing-service`** | `8084` | `cozynest_billing` | Chi so dien nuoc (cong to), hoa don hang thang, thanh toan |
+| **`communication-service`** | `8085` | `cozynest_communication` | Tin nhan hoi thoai thoi gian thuc, thong bao in-app |
+| **`admin-service`** | `8086` | `cozynest_admin` | Thong ke bang dieu khien, kiem duyet tin/KYC, bao cao vi pham |
 
 ---
 
@@ -22,10 +22,10 @@ He thong Backend Microservices cho nen tang thue tro **To Am**, thiet ke theo ng
 
 | Vai tro | Email | Mat khau |
 |---|---|---|
-| **Nguoi thue (Tenant)** | `tenant@toam.vn` | `password123` |
-| **Chu tro (Landlord)** | `landlord@toam.vn` | `password123` |
-| **Kiem duyet vien (Moderator)** | `moderator@toam.vn` | `password123` |
-| **Quan tri vien (Admin)** | `admin@toam.vn` | `password123` |
+| **Nguoi thue (Tenant)** | `tenant@cozynest.vn` | `password123` |
+| **Chu tro (Landlord)** | `landlord@cozynest.vn` | `password123` |
+| **Kiem duyet vien (Moderator)** | `moderator@cozynest.vn` | `password123` |
+| **Quan tri vien (Admin)** | `admin@cozynest.vn` | `password123` |
 
 ---
 

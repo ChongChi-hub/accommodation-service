@@ -15,10 +15,10 @@ ON DUPLICATE KEY UPDATE name=name;
 
 -- 2. Insert Demo Users
 INSERT INTO users (id, email, phone, password_hash, full_name, avatar_url, gender, status, created_at, updated_at) VALUES
-('u-tenant-01', 'tenant@toam.vn', '0901000001', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Nguyễn Văn Thuê (Demo Tenant)', '/uploads/avatars/tenant1.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-landlord-01', 'landlord@toam.vn', '0902000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trần Thị Chủ Trọ (Demo Landlord)', '/uploads/avatars/landlord1.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-admin-01', 'admin@toam.vn', '0903000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hoàng Quản Trị (Demo Admin)', '/uploads/avatars/admin1.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-mod-01', 'moderator@toam.vn', '0904000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Phạm Minh Kiểm Duyệt (Demo Mod)', '/uploads/avatars/mod1.jpg', 'OTHER', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
+('u-tenant-01', 'tenant@cozynest.vn', '0901000001', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Nguyễn Văn Thuê (Demo Tenant)', '/uploads/avatars/tenant1.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-landlord-01', 'landlord@cozynest.vn', '0902000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Trần Thị Chủ Trọ (Demo Landlord)', '/uploads/avatars/landlord1.jpg', 'FEMALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-admin-01', 'admin@cozynest.vn', '0903000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hoàng Quản Trị (Demo Admin)', '/uploads/avatars/admin1.jpg', 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-mod-01', 'moderator@cozynest.vn', '0904000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Phạm Minh Kiểm Duyệt (Demo Mod)', '/uploads/avatars/mod1.jpg', 'OTHER', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE email=email;
 
 -- 3. Assign User Roles

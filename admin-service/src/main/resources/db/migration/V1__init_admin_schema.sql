@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_admin_schema.sql
--- Admin Service Schema (toam_admin)
+-- Admin Service Schema (cozynest_admin)
 -- Bounded Context: Reports, Moderation, Audit, Stats, Disputes, Content
 -- ============================================================
 

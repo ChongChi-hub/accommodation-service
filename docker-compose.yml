@@ -3,53 +3,52 @@ version: '3.8'
 services:
   mysql:
     image: mysql:9.1
-    container_name: toam_mysql
+    container_name: cozynest_mysql
     restart: always
     command: >
-      --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword123}
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-5555}:3306"
     volumes:
-      - toam_mysql_data:/var/lib/mysql
+      - cozynest_mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - toam_network
+      - cozynest_network
 
   redis:
     image: redis:7-alpine
-    container_name: toam_redis
+    container_name: cozynest_redis
     restart: always
     ports:
       - "6379:6379"
     volumes:
-      - toam_redis_data:/data
+      - cozynest_redis_data:/data
     networks:
-      - toam_network
+      - cozynest_network
 
   mailpit:
     image: axllent/mailpit:latest
-    container_name: toam_mailpit
+    container_name: cozynest_mailpit
     restart: always
     ports:
       - "1025:1025" # SMTP
       - "8025:8025" # Web UI
     networks:
-      - toam_network
+      - cozynest_network
 
   api-gateway:
     build:
       context: .
       dockerfile: api-gateway/Dockerfile
-    container_name: toam_gateway
+    container_name: cozynest_gateway
     restart: always
     ports:
       - "8080:8080"
@@ -64,13 +63,13 @@ services:
       - mysql
       - redis
     networks:
-      - toam_network
+      - cozynest_network
 
   identity-service:
     build:
       context: .
       dockerfile: identity-service/Dockerfile
-    container_name: toam_identity
+    container_name: cozynest_identity
     restart: always
     ports:
       - "8081:8081"
@@ -78,21 +77,21 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_identity
+      DB_NAME: cozynest_identity
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
-      JWT_SECRET: ${JWT_SECRET:-toam_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+      JWT_SECRET: ${JWT_SECRET:-cozynest_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   listing-service:
     build:
       context: .
       dockerfile: listing-service/Dockerfile
-    container_name: toam_listing
+    container_name: cozynest_listing
     restart: always
     ports:
       - "8082:8082"
@@ -100,20 +99,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_listing
+      DB_NAME: cozynest_listing
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   booking-service:
     build:
       context: .
       dockerfile: booking-service/Dockerfile
-    container_name: toam_booking
+    container_name: cozynest_booking
     restart: always
     ports:
       - "8083:8083"
@@ -121,20 +120,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_booking
+      DB_NAME: cozynest_booking
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   billing-service:
     build:
       context: .
       dockerfile: billing-service/Dockerfile
-    container_name: toam_billing
+    container_name: cozynest_billing
     restart: always
     ports:
       - "8084:8084"
@@ -142,20 +141,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_billing
+      DB_NAME: cozynest_billing
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   communication-service:
     build:
       context: .
       dockerfile: communication-service/Dockerfile
-    container_name: toam_communication
+    container_name: cozynest_communication
     restart: always
     ports:
       - "8085:8085"
@@ -163,20 +162,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_communication
+      DB_NAME: cozynest_communication
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   admin-service:
     build:
       context: .
       dockerfile: admin-service/Dockerfile
-    container_name: toam_admin
+    container_name: cozynest_admin
     restart: always
     ports:
       - "8086:8086"
@@ -184,20 +183,20 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: toam_admin
+      DB_NAME: cozynest_admin
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - toam_network
+      - cozynest_network
 
   web:
     build:
       context: ../accommodation-web
       dockerfile: Dockerfile
-    container_name: toam_web
+    container_name: cozynest_web
     restart: always
     ports:
       - "3000:3000"
@@ -206,14 +205,14 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - toam_network
+      - cozynest_network
     profiles:
       - full
 
 networks:
-  toam_network:
+  cozynest_network:
     driver: bridge
 
 volumes:
-  toam_mysql_data:
-  toam_redis_data:
+  cozynest_mysql_data:
+  cozynest_redis_data:

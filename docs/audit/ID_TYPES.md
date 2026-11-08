@@ -141,3 +141,4 @@ Migration `V4__user_profile_and_kyc_schema.sql` thêm các bảng và cột sau:
    - `version`: `BIGINT NOT NULL DEFAULT 0` (cho Khóa Lạc Quan - Optimistic Locking).
 
 **Kết luận V4**: 100% các bảng mới và cột định danh trong V4 tuân thủ chuẩn `VARCHAR(36)` đồng nhất với toàn bộ `identity-service`.
+

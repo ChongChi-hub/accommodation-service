@@ -29,3 +29,4 @@ console.log('--- FRONTEND ---');
 const f = check('d:/RIKKEI/THUC_TAP/PROJECT/accommodation-web', ['3c53d54']);
 console.log('Total files checked:', f.list.length);
 console.log('Files > 250 lines:', JSON.stringify(f.over250, null, 2));
+

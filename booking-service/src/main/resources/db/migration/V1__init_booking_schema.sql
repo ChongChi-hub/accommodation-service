@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_booking_schema.sql
--- Booking Service Schema (toam_booking)
+-- Booking Service Schema (cozynest_booking)
 -- Bounded Context: Appointments, Requests, Contracts, Maintenance
 -- ============================================================
 

@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_billing_schema.sql
--- Billing Service Schema (toam_billing)
+-- Billing Service Schema (cozynest_billing)
 -- Bounded Context: Utility Readings, Invoices, Payments, Deposits
 -- ============================================================
 

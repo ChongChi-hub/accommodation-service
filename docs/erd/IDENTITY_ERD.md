@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Identity Service (`toam_identity`)
+# Sơ Đồ Thực Thể - Identity Service (`cozynest_identity`)
 
 ```mermaid
 erDiagram

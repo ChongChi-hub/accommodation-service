@@ -24,12 +24,12 @@ Hệ thống backend "Tổ Ấm" là nền tảng quản lý và tìm kiếm ph�
 | Service | Port | Schema DB | Bounded Context & Trách nhiệm |
 |---|---|---|---|
 | `api-gateway` | 8080 | - | Reverse proxy, định tuyến, rate limit, CORS, gộp OpenAPI `/docs` |
-| `identity-service` | 8081 | `toam_identity` | Tài khoản, vai trò (RBAC), đăng ký, đăng nhập, refresh token, KYC, hồ sơ |
-| `listing-service` | 8082 | `toam_listing` | Phòng trọ, loại phòng, địa giới DVHCVN, tiện nghi, ảnh, đánh giá, yêu thích |
-| `booking-service` | 8083 | `toam_booking` | Lịch hẹn xem phòng, yêu cầu thuê, hợp đồng điện tử, snapshot phòng |
-| `billing-service` | 8084 | `toam_billing` | Chỉ số điện nước (đồng hồ), hóa đơn hàng tháng, lịch sử thanh toán |
-| `communication-service` | 8085 | `toam_communication` | Hội thoại chat trực tiếp, tin nhắn thời gian thực, thông báo in-app |
-| `admin-service` | 8086 | `toam_admin` | Bảng thống kê dashboard, kiểm duyệt phòng/KYC, báo cáo vi phạm, audit logs |
+| `identity-service` | 8081 | `cozynest_identity` | Tài khoản, vai trò (RBAC), đăng ký, đăng nhập, refresh token, KYC, hồ sơ |
+| `listing-service` | 8082 | `cozynest_listing` | Phòng trọ, loại phòng, địa giới DVHCVN, tiện nghi, ảnh, đánh giá, yêu thích |
+| `booking-service` | 8083 | `cozynest_booking` | Lịch hẹn xem phòng, yêu cầu thuê, hợp đồng điện tử, snapshot phòng |
+| `billing-service` | 8084 | `cozynest_billing` | Chỉ số điện nước (đồng hồ), hóa đơn hàng tháng, lịch sử thanh toán |
+| `communication-service` | 8085 | `cozynest_communication` | Hội thoại chat trực tiếp, tin nhắn thời gian thực, thông báo in-app |
+| `admin-service` | 8086 | `cozynest_admin` | Bảng thống kê dashboard, kiểm duyệt phòng/KYC, báo cáo vi phạm, audit logs |
 
 ### Luật Giao Tiếp Liên Service
 1. **Tuyệt đối không dùng Foreign Key liên schema:** Tham chiếu giữa các service CHỈ bằng ID (UUID chuỗi 36 ký tự hoặc `BINARY(16)`).
@@ -37,10 +37,10 @@ Hệ thống backend "Tổ Ấm" là nền tảng quản lý và tìm kiếm ph�
 3. **Domain Event nội bộ:** Dùng `ApplicationEventPublisher`. Chuẩn bị sẵn interface cổng (Port) cho Message Broker trong tương lai.
 
 ## 4. Cấu Trúc Thư Mục Chuẩn DDD Phân Tầng Trong MỖI Service
-Package gốc: `vn.toam.<service>`
+Package gốc: `vn.cozynest.<service>`
 
 ```text
-vn.toam.<service>/
+vn.cozynest.<service>/
 ├── domain/                    # TẦNG MIỀN (Thuần Java, KHÔNG import Spring/JPA)
 │   ├── model/                 # Aggregate Root, Entity, Value Object (Money, PhoneNumber...)
 │   ├── event/                 # Domain Events

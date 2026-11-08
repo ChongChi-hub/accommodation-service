@@ -1,4 +1,4 @@
-# Sơ Đồ Thực Thể - Listing Service (`toam_listing`)
+# Sơ Đồ Thực Thể - Listing Service (`cozynest_listing`)
 
 ```mermaid
 erDiagram

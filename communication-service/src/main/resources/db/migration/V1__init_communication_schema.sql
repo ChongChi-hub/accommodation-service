@@ -1,6 +1,6 @@
 -- ============================================================
 -- V1__init_communication_schema.sql
--- Communication Service Schema (toam_communication)
+-- Communication Service Schema (cozynest_communication)
 -- Bounded Context: Notifications, Realtime Chat, Support Tickets
 -- ============================================================
 

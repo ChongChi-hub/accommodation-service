@@ -140,7 +140,7 @@ UPDATE user_profiles SET
     gender = 'MALE',
     date_of_birth = '1990-02-10',
     permanent_address = 'Cầu Giấy, Hà Nội',
-    address_detail = 'Tòa nhà ToAm Central',
+    address_detail = 'Tòa nhà CozyNest Central',
     province_code = '01',
     ward_id = '00160',
     bio = 'Kiểm duyệt viên an toàn và nội dung nền tảng Tổ Ấm.',
@@ -170,7 +170,7 @@ WHERE user_id = 'u-admin-01';
 -- Delete previous seed records for landlord verifications to insert complete encrypted records
 DELETE FROM user_verifications WHERE user_id IN ('u-landlord-01', 'u-landlord-02', 'u-landlord-03', 'u-landlord-04', 'u-landlord-05', 'u-landlord-06');
 
--- Landlord 01 (landlord@toam.vn) -> APPROVED
+-- Landlord 01 (landlord@cozynest.vn) -> APPROVED
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
     issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
@@ -186,7 +186,7 @@ INSERT INTO user_verifications (
     NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY
 );
 
--- Landlord 02 (landlord2@toam.vn) -> PENDING (Chờ duyệt để kiểm tra quy trình Moderator)
+-- Landlord 02 (landlord2@cozynest.vn) -> PENDING (Chờ duyệt để kiểm tra quy trình Moderator)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
     issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
@@ -202,7 +202,7 @@ INSERT INTO user_verifications (
     NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR, CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR
 );
 
--- Landlord 03 (landlord3@toam.vn) -> REJECTED (Lý do BLURRY để thử giao diện nộp lại)
+-- Landlord 03 (landlord3@cozynest.vn) -> REJECTED (Lý do BLURRY để thử giao diện nộp lại)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
     issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
@@ -220,7 +220,7 @@ INSERT INTO user_verifications (
     CURRENT_TIMESTAMP(3) - INTERVAL 1 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR
 );
 
--- Landlord 06 (landlord6@toam.vn) -> REJECTED (Lý do MISMATCH)
+-- Landlord 06 (landlord6@cozynest.vn) -> REJECTED (Lý do MISMATCH)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
     issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
