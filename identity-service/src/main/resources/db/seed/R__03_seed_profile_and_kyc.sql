@@ -173,7 +173,7 @@ DELETE FROM user_verifications WHERE user_id IN ('u-landlord-01', 'u-landlord-02
 -- Landlord 01 (landlord@cozynest.vn) -> APPROVED
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
-    issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
+    issue_date, issue_place, front_image_url, back_image_url, front_image_key, back_image_key, selfie_key, status,
     consent_at, consent_policy_version, submitted_at, reviewed_at, reviewed_by,
     reject_reason_code, reject_reason_note, attempt_count, created_at, updated_at
 ) VALUES (
@@ -181,6 +181,7 @@ INSERT INTO user_verifications (
     '1vGAJe2xOWal7bPQys0xxiUH2QHbUg8+vvx9fuD8vJpCms2Rn9XALQ==',
     '67281ddb7e4ca3fd9447ea34765686a4eaf679b568573bcd2f690f8577e222d9',
     '0001', '2021-06-10', 'Cục Cảnh sát QLHC về TTXH',
+    '/kyc/private/landlord-01_front.webp', '/kyc/private/landlord-01_back.webp',
     'kyc/private/landlord-01_front.webp', 'kyc/private/landlord-01_back.webp', NULL,
     'APPROVED', CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, 'v1.0', CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY, 'u-admin-01',
     NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 15 DAY, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY
@@ -189,7 +190,7 @@ INSERT INTO user_verifications (
 -- Landlord 02 (landlord2@cozynest.vn) -> PENDING (Chờ duyệt để kiểm tra quy trình Moderator)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
-    issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
+    issue_date, issue_place, front_image_url, back_image_url, front_image_key, back_image_key, selfie_key, status,
     consent_at, consent_policy_version, submitted_at, reviewed_at, reviewed_by,
     reject_reason_code, reject_reason_note, attempt_count, created_at, updated_at
 ) VALUES (
@@ -197,6 +198,7 @@ INSERT INTO user_verifications (
     '7XFfqbCPp7nLX0TerII+n9ecNlLQmzbEB3wpemjafypTLUaNVMhhmA==',
     'd4e041eb8faef2590865b863f77e13b39ff00c8582a8b09a9ca9bf45035e5de4',
     '0002', '2022-03-12', 'Cục Cảnh sát QLHC về TTXH',
+    '/kyc/private/landlord-02_front.webp', '/kyc/private/landlord-02_back.webp',
     'kyc/private/landlord-02_front.webp', 'kyc/private/landlord-02_back.webp', NULL,
     'PENDING', CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR, 'v1.0', CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR, NULL, NULL,
     NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR, CURRENT_TIMESTAMP(3) - INTERVAL 2 HOUR
@@ -205,7 +207,7 @@ INSERT INTO user_verifications (
 -- Landlord 03 (landlord3@cozynest.vn) -> REJECTED (Lý do BLURRY để thử giao diện nộp lại)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
-    issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
+    issue_date, issue_place, front_image_url, back_image_url, front_image_key, back_image_key, selfie_key, status,
     consent_at, consent_policy_version, submitted_at, reviewed_at, reviewed_by,
     reject_reason_code, reject_reason_note, attempt_count, created_at, updated_at
 ) VALUES (
@@ -213,6 +215,7 @@ INSERT INTO user_verifications (
     'qhZbi+repmF/t6uwJmhqXyclhDYfBRptC72cerUjxm87Ny7YBhjz8Q==',
     'bfd0dc19e8bca05d70353971d812a3c061c40e8de6d176de1140c521bc203d8d',
     '0003', '2020-08-25', 'Cục Cảnh sát QLHC về TTXH',
+    '/kyc/private/landlord-03_front.webp', '/kyc/private/landlord-03_back.webp',
     'kyc/private/landlord-03_front.webp', 'kyc/private/landlord-03_back.webp', NULL,
     'REJECTED', CURRENT_TIMESTAMP(3) - INTERVAL 1 DAY, 'v1.0', CURRENT_TIMESTAMP(3) - INTERVAL 1 DAY,
     CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR, 'u-mod-03',
@@ -223,7 +226,7 @@ INSERT INTO user_verifications (
 -- Landlord 06 (landlord6@cozynest.vn) -> REJECTED (Lý do MISMATCH)
 INSERT INTO user_verifications (
     id, user_id, full_name_on_id, date_of_birth, id_number_enc, id_number_hash, id_number_last4,
-    issue_date, issue_place, front_image_key, back_image_key, selfie_key, status,
+    issue_date, issue_place, front_image_url, back_image_url, front_image_key, back_image_key, selfie_key, status,
     consent_at, consent_policy_version, submitted_at, reviewed_at, reviewed_by,
     reject_reason_code, reject_reason_note, attempt_count, created_at, updated_at
 ) VALUES (
@@ -231,6 +234,7 @@ INSERT INTO user_verifications (
     'kTxLQdwVbx31MZfSgjndpJGUYGqkF9aO/13VQ7wMA158sw0mz0lykA==',
     '3067d4cdcd576bab905bc1bf9ccfd0651f4f97a1b561bf58f4ff851f0a7d5791',
     '0006', '2023-01-15', 'Cục Cảnh sát QLHC về TTXH',
+    '/kyc/private/landlord-06_front.webp', '/kyc/private/landlord-06_back.webp',
     'kyc/private/landlord-06_front.webp', 'kyc/private/landlord-06_back.webp', NULL,
     'REJECTED', CURRENT_TIMESTAMP(3) - INTERVAL 2 DAY, 'v1.0', CURRENT_TIMESTAMP(3) - INTERVAL 2 DAY,
     CURRENT_TIMESTAMP(3) - INTERVAL 40 HOUR, 'u-mod-02',

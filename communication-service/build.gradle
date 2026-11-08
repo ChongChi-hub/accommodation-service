@@ -12,6 +12,7 @@ dependencies {
     implementation libs.spring.boot.starter.actuator
 
     // Database & Flyway
+    implementation libs.spring.boot.starter.flyway
     runtimeOnly libs.mysql.connector.j
     implementation libs.flyway.core
     implementation libs.flyway.mysql

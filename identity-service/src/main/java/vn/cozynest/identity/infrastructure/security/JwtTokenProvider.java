@@ -25,6 +25,7 @@ public class JwtTokenProvider implements TokenProviderPort {
         this(rsaKeyProvider, 900000L);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public JwtTokenProvider(
             RsaKeyProvider rsaKeyProvider,
             @Value("${jwt.expiration-ms:900000}") long expirationMs) {

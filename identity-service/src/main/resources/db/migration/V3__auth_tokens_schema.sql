@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 
 -- 4. Add Version and Soft Delete to users and user_verifications
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS deleted_at DATETIME(3) NULL AFTER updated_at,
-    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 AFTER deleted_at;
+    ADD COLUMN deleted_at DATETIME(3) NULL AFTER updated_at,
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0 AFTER deleted_at;
 
 ALTER TABLE user_verifications
-    ADD COLUMN IF NOT EXISTS deleted_at DATETIME(3) NULL AFTER created_at,
-    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 AFTER deleted_at;
+    ADD COLUMN deleted_at DATETIME(3) NULL AFTER created_at,
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0 AFTER deleted_at;

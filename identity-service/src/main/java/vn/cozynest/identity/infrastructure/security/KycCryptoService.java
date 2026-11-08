@@ -29,6 +29,7 @@ public class KycCryptoService {
         this(secretKey, pepper, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public KycCryptoService(
             @Value("${app.kyc.secret-key:CozyNestKycSecretKey2026DevEnvironment32B}") String secretKey,
             @Value("${app.kyc.pepper:CozyNestKycPepperSecret2026DevEnvKey!}") String pepper,

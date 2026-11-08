@@ -5,18 +5,18 @@
 
 -- 1. Upgrade user_profiles for full profile attributes and optimistic locking
 ALTER TABLE user_profiles
-    ADD COLUMN IF NOT EXISTS full_name VARCHAR(150) NULL AFTER user_id,
-    ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NULL AFTER full_name,
-    ADD COLUMN IF NOT EXISTS gender ENUM('MALE', 'FEMALE', 'OTHER') NULL AFTER phone,
-    ADD COLUMN IF NOT EXISTS date_of_birth DATE NULL AFTER gender,
-    ADD COLUMN IF NOT EXISTS address_detail VARCHAR(255) NULL AFTER permanent_address,
-    ADD COLUMN IF NOT EXISTS province_code VARCHAR(20) NULL AFTER address_detail,
-    ADD COLUMN IF NOT EXISTS ward_id VARCHAR(50) NULL AFTER province_code,
-    ADD COLUMN IF NOT EXISTS locale VARCHAR(10) NOT NULL DEFAULT 'vi' AFTER language,
-    ADD COLUMN IF NOT EXISTS avatar_key VARCHAR(255) NULL AFTER locale,
-    ADD COLUMN IF NOT EXISTS avatar_thumb_key VARCHAR(255) NULL AFTER avatar_key,
-    ADD COLUMN IF NOT EXISTS avatar_medium_key VARCHAR(255) NULL AFTER avatar_thumb_key,
-    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0 AFTER avatar_medium_key;
+    ADD COLUMN full_name VARCHAR(150) NULL AFTER user_id,
+    ADD COLUMN phone VARCHAR(20) NULL AFTER full_name,
+    ADD COLUMN gender ENUM('MALE', 'FEMALE', 'OTHER') NULL AFTER phone,
+    ADD COLUMN date_of_birth DATE NULL AFTER gender,
+    ADD COLUMN address_detail VARCHAR(255) NULL AFTER permanent_address,
+    ADD COLUMN province_code VARCHAR(20) NULL AFTER address_detail,
+    ADD COLUMN ward_id VARCHAR(50) NULL AFTER province_code,
+    ADD COLUMN locale VARCHAR(10) NOT NULL DEFAULT 'vi' AFTER language,
+    ADD COLUMN avatar_key VARCHAR(255) NULL AFTER locale,
+    ADD COLUMN avatar_thumb_key VARCHAR(255) NULL AFTER avatar_key,
+    ADD COLUMN avatar_medium_key VARCHAR(255) NULL AFTER avatar_thumb_key,
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0 AFTER avatar_medium_key;
 
 -- Populate initial full_name, phone, gender, date_of_birth from users table for existing records
 UPDATE user_profiles up
@@ -33,27 +33,29 @@ ALTER TABLE user_profiles
 
 -- 2. Upgrade user_verifications for encrypted CCCD, HMAC hash uniqueness, and audit fields
 ALTER TABLE user_verifications
-    ADD COLUMN IF NOT EXISTS full_name_on_id VARCHAR(150) NULL AFTER user_id,
-    ADD COLUMN IF NOT EXISTS date_of_birth DATE NULL AFTER full_name_on_id,
-    ADD COLUMN IF NOT EXISTS id_number_enc VARCHAR(500) NULL AFTER date_of_birth,
-    ADD COLUMN IF NOT EXISTS id_number_hash VARCHAR(64) NULL AFTER id_number_enc,
-    ADD COLUMN IF NOT EXISTS id_number_last4 VARCHAR(4) NULL AFTER id_number_hash,
-    ADD COLUMN IF NOT EXISTS issue_date DATE NULL AFTER id_number_last4,
-    ADD COLUMN IF NOT EXISTS issue_place VARCHAR(150) NULL AFTER issue_date,
-    ADD COLUMN IF NOT EXISTS front_image_key VARCHAR(255) NULL AFTER issue_place,
-    ADD COLUMN IF NOT EXISTS back_image_key VARCHAR(255) NULL AFTER front_image_key,
-    ADD COLUMN IF NOT EXISTS selfie_key VARCHAR(255) NULL AFTER back_image_key,
-    ADD COLUMN IF NOT EXISTS consent_at DATETIME(3) NULL AFTER selfie_key,
-    ADD COLUMN IF NOT EXISTS consent_policy_version VARCHAR(20) NULL AFTER consent_at,
-    ADD COLUMN IF NOT EXISTS submitted_at DATETIME(3) NULL AFTER consent_policy_version,
-    ADD COLUMN IF NOT EXISTS reject_reason_code VARCHAR(30) NULL AFTER reviewed_at,
-    ADD COLUMN IF NOT EXISTS reject_reason_note TEXT NULL AFTER reject_reason_code,
-    ADD COLUMN IF NOT EXISTS attempt_count INT NOT NULL DEFAULT 1 AFTER reject_reason_note,
-    ADD COLUMN IF NOT EXISTS updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) AFTER created_at;
+    MODIFY COLUMN front_image_url VARCHAR(500) NULL,
+    MODIFY COLUMN back_image_url VARCHAR(500) NULL,
+    ADD COLUMN full_name_on_id VARCHAR(150) NULL AFTER user_id,
+    ADD COLUMN date_of_birth DATE NULL AFTER full_name_on_id,
+    ADD COLUMN id_number_enc VARCHAR(500) NULL AFTER date_of_birth,
+    ADD COLUMN id_number_hash VARCHAR(64) NULL AFTER id_number_enc,
+    ADD COLUMN id_number_last4 VARCHAR(4) NULL AFTER id_number_hash,
+    ADD COLUMN issue_date DATE NULL AFTER id_number_last4,
+    ADD COLUMN issue_place VARCHAR(150) NULL AFTER issue_date,
+    ADD COLUMN front_image_key VARCHAR(255) NULL AFTER issue_place,
+    ADD COLUMN back_image_key VARCHAR(255) NULL AFTER front_image_key,
+    ADD COLUMN selfie_key VARCHAR(255) NULL AFTER back_image_key,
+    ADD COLUMN consent_at DATETIME(3) NULL AFTER selfie_key,
+    ADD COLUMN consent_policy_version VARCHAR(20) NULL AFTER consent_at,
+    ADD COLUMN submitted_at DATETIME(3) NULL AFTER consent_policy_version,
+    ADD COLUMN reject_reason_code VARCHAR(30) NULL AFTER reviewed_at,
+    ADD COLUMN reject_reason_note TEXT NULL AFTER reject_reason_code,
+    ADD COLUMN attempt_count INT NOT NULL DEFAULT 1 AFTER reject_reason_note,
+    ADD COLUMN updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) AFTER created_at;
 
 -- Enforce CCCD uniqueness only among PENDING and APPROVED states using stored generated column
 ALTER TABLE user_verifications
-    ADD COLUMN IF NOT EXISTS active_id_hash VARCHAR(64) GENERATED ALWAYS AS (
+    ADD COLUMN active_id_hash VARCHAR(64) GENERATED ALWAYS AS (
         CASE WHEN status IN ('PENDING', 'APPROVED') THEN id_number_hash ELSE NULL END
     ) STORED AFTER id_number_hash;
 

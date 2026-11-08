@@ -81,9 +81,15 @@ services:
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
       JWT_SECRET: ${JWT_SECRET:-cozynest_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - cozynest_network
 

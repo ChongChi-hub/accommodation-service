@@ -4,6 +4,7 @@ RUN apk add --no-cache curl tzdata \
     && cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime \
     && echo "Asia/Ho_Chi_Minh" > /etc/timezone
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN mkdir -p /app/storage && chown -R appuser:appgroup /app
 COPY --chown=appuser:appgroup identity-service/build/libs/identity-service-1.0.0-SNAPSHOT.jar app.jar
 USER appuser
 EXPOSE 8081
