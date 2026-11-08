@@ -63,6 +63,37 @@ public class User {
         );
     }
 
+    public static User createNewGoogleUser(String email, String fullName, UserRoleType role) {
+        Set<UserRoleType> roles = new HashSet<>();
+        roles.add(role != null ? role : UserRoleType.TENANT);
+        return new User(
+                UUID.randomUUID().toString(),
+                email,
+                null,
+                null,
+                fullName,
+                null,
+                null,
+                null,
+                UserStatus.ACTIVE,
+                Instant.now(),
+                Instant.now(),
+                roles,
+                Instant.now(),
+                Instant.now()
+        );
+    }
+
+    public void verifyEmailNow() {
+        this.emailVerifiedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void clearPassword() {
+        this.passwordHash = null;
+        this.updatedAt = Instant.now();
+    }
+
     public void updateProfile(String fullName, String avatarUrl, String gender, LocalDate dateOfBirth) {
         this.fullName = fullName;
         if (avatarUrl != null) this.avatarUrl = avatarUrl;

@@ -13,4 +13,6 @@ public interface RateLimiterPort {
     void checkLoginRateLimit(String ipAddress);
 
     void checkRegisterRateLimit(String ipAddress);
+
+    void checkGoogleAuthRateLimit(String ipAddress);
 }

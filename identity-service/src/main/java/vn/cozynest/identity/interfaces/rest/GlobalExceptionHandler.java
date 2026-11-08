@@ -18,12 +18,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDomainException(IdentityDomainException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
             case "ERR_AUTH_INVALID_CREDENTIALS", "ERR_AUTH_INVALID_PASSWORD",
-                 "ERR_AUTH_INVALID_TOKEN", "ERR_AUTH_TOKEN_EXPIRED" -> HttpStatus.UNAUTHORIZED;
-            case "ERR_AUTH_ACCOUNT_LOCKED", "ERR_FORBIDDEN" -> HttpStatus.FORBIDDEN;
+                 "ERR_AUTH_INVALID_TOKEN", "ERR_AUTH_TOKEN_EXPIRED", "ERR_INVALID_GOOGLE_TOKEN" -> HttpStatus.UNAUTHORIZED;
+            case "ERR_AUTH_ACCOUNT_LOCKED", "ERR_FORBIDDEN", "ERR_USER_DELETED", "ERR_USER_SUSPENDED" -> HttpStatus.FORBIDDEN;
             case "ERR_AUTH_USER_NOT_FOUND", "ERR_KYC_NOT_FOUND", "ERR_KYC_IMAGE_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "ERR_AUTH_EMAIL_EXISTS", "ERR_AUTH_PHONE_EXISTS", "ERR_KYC_ID_NUMBER_DUPLICATE",
                  "ERR_PROFILE_VERSION_CONFLICT", "ERR_PROFILE_PHONE_DUPLICATE" -> HttpStatus.CONFLICT;
             case "ERR_KYC_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_COOLDOWN" -> HttpStatus.TOO_MANY_REQUESTS;
+            case "ERR_GOOGLE_NOT_CONFIGURED" -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.BAD_REQUEST;
         };
 

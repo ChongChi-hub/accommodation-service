@@ -335,3 +335,26 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * Áp dụng quy chuẩn địa giới hành chính 2 cấp (Tỉnh/Thành -> Phường/Xã).
 * Loại bỏ route `GET /api/v1/location/districts` và bảng `districts` trong nghiệp vụ. Phường/Xã liên kết trực tiếp với mã Tỉnh/Thành qua trường `province_code`.
 
+---
+
+## 15. Quyết Định Kiến Trúc & Bảo Mật Đăng Nhập/Đăng Ký Bằng Google [AUTH-02]
+
+### 15.1 Xác Thực Qua Google Identity Services (GIS) Không Cần Client Secret
+* **Mô hình**: Sử dụng ID Token do Google Identity Services SDK phát hành trực tiếp trên trình duyệt, gửi về Backend (`POST /api/v1/auth/google`) để xác thực chữ ký số bằng thuật toán RS256 thông qua Google Public JWKS (`https://www.googleapis.com/oauth2/v3/certs`) với thư viện chuẩn `NimbusJwtDecoder` trong Spring Security OAuth2.
+* **Bảo mật Secret**: Tuyệt đối không cấu hình `GOOGLE_CLIENT_SECRET` trên Backend lẫn Frontend. GIS ID token flow là luồng công khai chuẩn được Google khuyến nghị cho Web App, loại bỏ hoàn toàn nguy cơ rò rỉ Client Secret.
+* **Chống Replay Attack bằng Nonce một lần**: Mỗi phiên đăng nhập bắt buộc phải lấy một giá trị ngẫu nhiên cryptographically secure qua `GET /api/v1/auth/google/nonce`. Nonce được lưu trong Redis với TTL 5 phút và cơ chế tiêu thụ 1 lần duy nhất (single-use consumption). Nếu nonce đã dùng hoặc không khớp giá trị trong ID token, backend từ chối với `400 Bad Request`.
+
+### 15.2 Chính Sách Khóa Mật Khẩu Đối Với Google OAuth
+* **Quy tắc**: Việc tài khoản bị khóa tạm thời 15 phút do nhập sai mật khẩu cục bộ 5 lần liên tiếp (chống brute-force) KHÔNG làm khóa việc đăng nhập bằng Google.
+* **Lý do**: Đăng nhập bằng Google là xác thực qua nhà cung cấp danh tính bên thứ ba (Google Identity Provider) đã được xác minh bảo mật nhiều lớp (2FA/OTP của Google). Việc kẻ xấu cố tình gõ sai mật khẩu cục bộ không được phép làm tê liệt quyền truy cập qua kênh xác thực an toàn của người dùng thực.
+* **Ngoại lệ duy nhất**: Nếu tài khoản bị Admin gắn cờ đình chỉ vi phạm chính sách (`status = SUSPENDED`) hoặc xóa mềm (`DELETED`), hệ thống sẽ chặn tất cả mọi hình thức đăng nhập kể cả Google OAuth với mã lỗi `403 Forbidden`.
+
+### 15.3 Khả Năng Thiết Lập Mật Khẩu Cục Bộ Cho Tài Khoản Tạo Mới Bằng Google
+* **Quy tắc**: Người dùng đăng ký ban đầu hoàn toàn qua Google (`password_hash = NULL`, `phone = NULL`) được phép sử dụng luồng Quên mật khẩu (`/forgot-password` -> OTP qua email) để thiết lập mật khẩu đăng nhập cục bộ bất cứ lúc nào.
+* **Lý do**: Tối ưu tính linh hoạt và quyền tự chủ của người dùng khi muốn đăng nhập bằng phương thức email + mật khẩu truyền thống mà không bị phụ thuộc duy nhất vào tài khoản Google.
+
+### 15.4 Kiểm Tra Lệch Client ID Trong Dev Mode Không Lộ Secret
+* **Quy tắc**: Endpoint `GET /api/v1/auth/google/status` trả về cờ `enabled: boolean` và `clientIdFingerprint: string` (8 ký tự đầu của chuỗi SHA-256 hash của Client ID).
+* **Lý do**: Cho phép Frontend phát hiện ngay lập tức tình trạng cấu hình lệch giữa `.env.local` của Frontend và cấu hình backend trên môi trường dev/staging mà tuyệt đối không để lộ toàn bộ Client ID qua API public.
+
+

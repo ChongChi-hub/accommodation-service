@@ -96,6 +96,8 @@ services:
       DB_USER: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword123}
       JWT_SECRET: ${JWT_SECRET:-cozynest_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+      GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       REDIS_HOST: redis

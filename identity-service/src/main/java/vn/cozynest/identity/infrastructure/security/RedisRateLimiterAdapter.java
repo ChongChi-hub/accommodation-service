@@ -76,6 +76,13 @@ public class RedisRateLimiterAdapter implements RateLimiterPort {
         checkSlidingLimit(key, cleanIp, MAX_REGISTER_PER_HOUR, 3600, "ERR_REGISTER_RATE_LIMIT_EXCEEDED", "Bạn đã đăng ký quá nhiều tài khoản từ IP này. Vui lòng thử lại sau 1 giờ.");
     }
 
+    @Override
+    public void checkGoogleAuthRateLimit(String ipAddress) {
+        String cleanIp = (ipAddress != null && !ipAddress.isBlank()) ? ipAddress.trim() : "127.0.0.1";
+        String key = "rate:google:ip:" + cleanIp;
+        checkSlidingLimit(key, cleanIp + ":google", 10, 60, "ERR_RATE_LIMIT_EXCEEDED", "Quá nhiều yêu cầu đăng nhập Google từ IP này. Vui lòng thử lại sau 1 phút.");
+    }
+
     private void checkSlidingLimit(String redisKey, String inMemKey, int maxReqs, int windowSecs, String errCode, String errMsg) {
         try {
             if (isRedisAlive()) {

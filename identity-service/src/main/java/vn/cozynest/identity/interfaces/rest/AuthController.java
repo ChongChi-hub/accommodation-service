@@ -27,6 +27,7 @@ public class AuthController {
     private final ChangePasswordUseCase changePasswordUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
+    private final GoogleAuthUseCase googleAuthUseCase;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TokenProviderPort tokenProvider;
     private final boolean isProduction;
@@ -38,6 +39,7 @@ public class AuthController {
                           ChangePasswordUseCase changePasswordUseCase,
                           ForgotPasswordUseCase forgotPasswordUseCase,
                           ResetPasswordUseCase resetPasswordUseCase,
+                          GoogleAuthUseCase googleAuthUseCase,
                           RefreshTokenRepository refreshTokenRepository,
                           TokenProviderPort tokenProvider,
                           @Value("${spring.profiles.active:dev}") String activeProfile) {
@@ -48,6 +50,7 @@ public class AuthController {
         this.changePasswordUseCase = changePasswordUseCase;
         this.forgotPasswordUseCase = forgotPasswordUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
+        this.googleAuthUseCase = googleAuthUseCase;
         this.refreshTokenRepository = refreshTokenRepository;
         this.tokenProvider = tokenProvider;
         this.isProduction = activeProfile != null && (activeProfile.contains("prod") || activeProfile.contains("production"));
@@ -161,5 +164,43 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordCommand command) {
         resetPasswordUseCase.execute(command);
         return ResponseEntity.ok(ApiResponse.message("Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
+    }
+
+    @GetMapping("/google/status")
+    public ResponseEntity<ApiResponse<GoogleStatusResponse>> getGoogleStatus() {
+        GoogleStatusResponse status = googleAuthUseCase.getStatus();
+        return ResponseEntity.ok(ApiResponse.success(status));
+    }
+
+    @GetMapping("/google/nonce")
+    public ResponseEntity<ApiResponse<GoogleNonceResponse>> getGoogleNonce() {
+        GoogleNonceResponse nonce = googleAuthUseCase.generateNonce();
+        return ResponseEntity.ok(ApiResponse.success(nonce));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResult>> googleAuth(
+            @Valid @RequestBody GoogleAuthCommand command,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        if (command.getIpAddress() == null) {
+            command.setIpAddress(request.getRemoteAddr());
+        }
+        if (command.getDeviceInfo() == null) {
+            command.setDeviceInfo(request.getHeader("User-Agent"));
+        }
+
+        AuthResult result = googleAuthUseCase.authenticate(command);
+
+        ResponseCookie cookie = ResponseCookie.from("cozynest_token", result.getToken())
+                .httpOnly(true)
+                .secure(isProduction)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(86400)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(ApiResponse.success("Xác thực Google thành công", result));
     }
 }

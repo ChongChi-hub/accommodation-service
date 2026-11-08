@@ -39,6 +39,11 @@ jwt:
   expiration-ms: 900000          # 15 minutes
   refresh-expiration-ms: 2592000000 # 30 days
 
+google:
+  enabled: ${GOOGLE_LOGIN_ENABLED:false}
+  client-id: ${GOOGLE_CLIENT_ID:}
+  jwks-uri: ${GOOGLE_JWKS_URI:https://www.googleapis.com/oauth2/v3/certs}
+
 springdoc:
   api-docs:
     path: /api-docs
