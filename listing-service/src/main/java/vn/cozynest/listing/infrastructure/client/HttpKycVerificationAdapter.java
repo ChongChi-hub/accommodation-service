@@ -28,7 +28,7 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
     private final Map<String, CachedStatus> cache = new ConcurrentHashMap<>();
 
     public HttpKycVerificationAdapter(
-            @Value("${services.identity.url:http://localhost:8081}") String identityServiceUrl,
+            @Value("${services.identity.url:${IDENTITY_SERVICE_URL:http://localhost:8081}}") String identityServiceUrl,
             @Value("${app.internal.service-key:CozyNestInternalServiceKeySecret2026}") String internalServiceKey) {
         this.internalServiceKey = internalServiceKey;
 
@@ -65,7 +65,9 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
                 JsonNode root = objectMapper.readTree(json);
                 JsonNode dataNode = root.has("data") ? root.get("data") : root;
                 String kycStatus = dataNode.has("kycStatus") ? dataNode.get("kycStatus").asText() : "NONE";
-                boolean isApproved = dataNode.has("isApproved") && dataNode.get("isApproved").asBoolean();
+                boolean isApproved = (dataNode.has("approved") && dataNode.get("approved").asBoolean())
+                        || (dataNode.has("isApproved") && dataNode.get("isApproved").asBoolean())
+                        || "APPROVED".equalsIgnoreCase(kycStatus);
 
                 KycVerificationStatus result = KycVerificationStatus.of(kycStatus, isApproved);
                 cache.put(queryId, new CachedStatus(result, Instant.now()));

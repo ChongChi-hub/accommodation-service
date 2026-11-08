@@ -59,13 +59,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
-                        .requestMatchers("/api/v1/rooms/**").permitAll()
+                        .requestMatchers("/api/v1/rooms", "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/locations/**").permitAll()
                         .requestMatchers("/api/v1/amenities/**").permitAll()
                         .requestMatchers("/api/v1/reviews/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/*/status").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/**", "/docs/**", "/api-docs/**", "/swagger-ui/**").permitAll()
                         // Landlord protected endpoints
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")

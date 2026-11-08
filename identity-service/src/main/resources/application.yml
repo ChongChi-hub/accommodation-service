@@ -44,3 +44,8 @@ springdoc:
   swagger-ui:
     path: /docs
 
+management:
+  health:
+    mail:
+      enabled: false
+
