@@ -23,25 +23,32 @@ public class RegisterUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoderPort passwordEncoder;
     private final TokenProviderPort tokenProvider;
+    private final vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
 
     public RegisterUseCase(UserRepository userRepository,
                            RefreshTokenRepository refreshTokenRepository,
                            PasswordEncoderPort passwordEncoder,
-                           TokenProviderPort tokenProvider) {
+                           TokenProviderPort tokenProvider,
+                           vn.cozynest.identity.application.port.RateLimiterPort rateLimiter) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
     public AuthResult execute(RegisterCommand command) {
+        rateLimiter.checkRegisterRateLimit(command.getIpAddress());
+
         if (userRepository.existsByEmail(command.getEmail())) {
             throw new IdentityDomainException("Email đã tồn tại trên hệ thống", "ERR_AUTH_EMAIL_EXISTS");
         }
         if (userRepository.existsByPhone(command.getPhone())) {
             throw new IdentityDomainException("Số điện thoại đã tồn tại trên hệ thống", "ERR_AUTH_PHONE_EXISTS");
         }
+
+        vn.cozynest.identity.domain.service.PasswordPolicyValidator.validate(command.getPassword(), command.getEmail());
 
         String passwordHash = passwordEncoder.encode(command.getPassword());
         UserRoleType role = UserRoleType.fromString(command.getRole());

@@ -2,6 +2,7 @@ package vn.cozynest.identity.infrastructure.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import vn.cozynest.identity.application.port.TokenProviderPort;
@@ -18,6 +19,9 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider implements TokenProviderPort {
 
+    public static final String ISSUER = "cozynest-identity";
+    public static final String AUDIENCE = "cozynest-web";
+
     private final RsaKeyProvider rsaKeyProvider;
     private final long expirationMs;
 
@@ -25,7 +29,7 @@ public class JwtTokenProvider implements TokenProviderPort {
         this(rsaKeyProvider, 900000L);
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public JwtTokenProvider(
             RsaKeyProvider rsaKeyProvider,
             @Value("${jwt.expiration-ms:900000}") long expirationMs) {
@@ -44,6 +48,8 @@ public class JwtTokenProvider implements TokenProviderPort {
 
         return Jwts.builder()
                 .header().keyId(rsaKeyProvider.getKeyId()).and()
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
                 .subject(user.getId())
                 .claim("email", user.getEmail())
                 .claim("fullName", user.getFullName())
@@ -73,7 +79,16 @@ public class JwtTokenProvider implements TokenProviderPort {
     @Override
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().verifyWith(rsaKeyProvider.getPublicKey()).build().parseSignedClaims(token);
+            var untrusted = Jwts.parser().build().parseSignedClaims(token);
+            String kid = untrusted.getHeader().getKeyId();
+            var publicKey = rsaKeyProvider.getPublicKey(kid);
+
+            Jwts.parser()
+                    .requireIssuer(ISSUER)
+                    .requireAudience(AUDIENCE)
+                    .verifyWith(publicKey)
+                    .build()
+                    .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -90,4 +105,3 @@ public class JwtTokenProvider implements TokenProviderPort {
         return claims.getSubject();
     }
 }
-

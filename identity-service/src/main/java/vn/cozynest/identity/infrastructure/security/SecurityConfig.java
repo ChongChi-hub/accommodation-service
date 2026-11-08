@@ -22,13 +22,16 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CookieCsrfProtectionFilter cookieCsrfFilter;
     private final SecurityAuthenticationEntryPoint authenticationEntryPoint;
     private final SecurityAccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          CookieCsrfProtectionFilter cookieCsrfFilter,
                           SecurityAuthenticationEntryPoint authenticationEntryPoint,
                           SecurityAccessDeniedHandler accessDeniedHandler) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.cookieCsrfFilter = cookieCsrfFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
     }
@@ -74,6 +77,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(cookieCsrfFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

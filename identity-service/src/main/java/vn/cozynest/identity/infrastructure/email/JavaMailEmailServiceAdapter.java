@@ -51,7 +51,7 @@ public class JavaMailEmailServiceAdapter implements EmailServicePort {
             mailSender.send(message);
             log.info("Password reset OTP email sent successfully to {}", toEmail);
         } catch (Exception e) {
-            log.warn("Failed to send OTP email to {}: {}. OTP code logged for dev: {}", toEmail, e.getMessage(), otpCode);
+            log.warn("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
         }
     }
 

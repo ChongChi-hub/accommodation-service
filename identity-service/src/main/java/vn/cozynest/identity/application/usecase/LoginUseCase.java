@@ -25,29 +25,37 @@ public class LoginUseCase {
     private final PasswordEncoderPort passwordEncoder;
     private final TokenProviderPort tokenProvider;
     private final LoginAttemptPort loginAttemptPort;
+    private final vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
+
+    private static final String DUMMY_BCRYPT_HASH = "$2a$12$7kPj5aXN62q.7XJjN8wGxeQJv9XW1Nq2g5U1rQ0M5J4L3K2H1G0F.";
 
     public LoginUseCase(UserRepository userRepository,
                         RefreshTokenRepository refreshTokenRepository,
                         PasswordEncoderPort passwordEncoder,
                         TokenProviderPort tokenProvider,
-                        LoginAttemptPort loginAttemptPort) {
+                        LoginAttemptPort loginAttemptPort,
+                        vn.cozynest.identity.application.port.RateLimiterPort rateLimiter) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.loginAttemptPort = loginAttemptPort;
+        this.rateLimiter = rateLimiter;
     }
 
     @Transactional
     public AuthResult execute(LoginCommand command) {
+        rateLimiter.checkLoginRateLimit(command.getIpAddress());
+
         if (loginAttemptPort.isBlocked(command.getEmail(), command.getIpAddress())) {
             throw new IdentityDomainException("Tài khoản hoặc địa chỉ IP đã bị tạm khóa do nhập sai mật khẩu nhiều lần liên tiếp. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
         }
 
         User user = userRepository.findByEmail(command.getEmail())
-                .orElseThrow(() -> {
+                .orElseGet(() -> {
                     loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
-                    return new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
+                    passwordEncoder.matches(command.getPassword(), DUMMY_BCRYPT_HASH);
+                    throw new IdentityDomainException("Email hoặc mật khẩu không chính xác", "ERR_AUTH_INVALID_CREDENTIALS");
                 });
 
         if (user.getStatus() == UserStatus.LOCKED) {

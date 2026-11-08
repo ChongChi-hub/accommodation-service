@@ -3,6 +3,7 @@ package vn.cozynest.identity.interfaces.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -11,7 +12,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.identity.application.dto.*;
+import vn.cozynest.identity.application.port.TokenProviderPort;
 import vn.cozynest.identity.application.usecase.*;
+import vn.cozynest.identity.domain.repository.RefreshTokenRepository;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -24,6 +27,9 @@ public class AuthController {
     private final ChangePasswordUseCase changePasswordUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenProviderPort tokenProvider;
+    private final boolean isProduction;
 
     public AuthController(RegisterUseCase registerUseCase,
                           LoginUseCase loginUseCase,
@@ -31,7 +37,10 @@ public class AuthController {
                           GetProfileUseCase getProfileUseCase,
                           ChangePasswordUseCase changePasswordUseCase,
                           ForgotPasswordUseCase forgotPasswordUseCase,
-                          ResetPasswordUseCase resetPasswordUseCase) {
+                          ResetPasswordUseCase resetPasswordUseCase,
+                          RefreshTokenRepository refreshTokenRepository,
+                          TokenProviderPort tokenProvider,
+                          @Value("${spring.profiles.active:dev}") String activeProfile) {
         this.registerUseCase = registerUseCase;
         this.loginUseCase = loginUseCase;
         this.refreshTokenUseCase = refreshTokenUseCase;
@@ -39,10 +48,17 @@ public class AuthController {
         this.changePasswordUseCase = changePasswordUseCase;
         this.forgotPasswordUseCase = forgotPasswordUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.tokenProvider = tokenProvider;
+        this.isProduction = activeProfile != null && (activeProfile.contains("prod") || activeProfile.contains("production"));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AuthResult>> register(@Valid @RequestBody RegisterCommand command) {
+    public ResponseEntity<ApiResponse<AuthResult>> register(@Valid @RequestBody RegisterCommand command,
+                                                             HttpServletRequest request) {
+        if (command.getIpAddress() == null) {
+            command.setIpAddress(request.getRemoteAddr());
+        }
         AuthResult result = registerUseCase.execute(command);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Đăng ký tài khoản thành công", result));
@@ -62,7 +78,7 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("cozynest_token", result.getToken())
                 .httpOnly(true)
-                .secure(false)
+                .secure(isProduction)
                 .path("/")
                 .sameSite("Lax")
                 .maxAge(86400)
@@ -105,9 +121,24 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestBody(required = false) RefreshTokenCommand command,
+            Authentication authentication,
+            HttpServletResponse response
+    ) {
+        if (command != null && command.getRefreshToken() != null && !command.getRefreshToken().isBlank()) {
+            String tokenHash = tokenProvider.hashToken(command.getRefreshToken());
+            refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(t -> {
+                t.revoke("LOGOUT");
+                refreshTokenRepository.save(t);
+            });
+        } else if (authentication != null && authentication.getPrincipal() instanceof String userId) {
+            refreshTokenRepository.revokeAllByUserId(userId);
+        }
+
         ResponseCookie cookie = ResponseCookie.from("cozynest_token", "")
                 .httpOnly(true)
+                .secure(isProduction)
                 .path("/")
                 .maxAge(0)
                 .sameSite("Lax")
@@ -132,4 +163,3 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.message("Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."));
     }
 }
-

@@ -6,6 +6,7 @@ import vn.cozynest.identity.infrastructure.security.RsaKeyProvider;
 
 import java.math.BigInteger;
 import java.security.interfaces.RSAPublicKey;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -21,16 +22,22 @@ public class JwksController {
 
     @GetMapping({"/api/v1/auth/jwks", "/.well-known/jwks.json"})
     public Map<String, Object> getJwks() {
-        RSAPublicKey publicKey = rsaKeyProvider.getPublicKey();
-        Map<String, Object> jwk = Map.of(
-                "kty", "RSA",
-                "use", "sig",
-                "alg", "RS256",
-                "kid", rsaKeyProvider.getKeyId(),
-                "n", encodeBigInt(publicKey.getModulus()),
-                "e", encodeBigInt(publicKey.getPublicExponent())
-        );
-        return Map.of("keys", List.of(jwk));
+        List<Map<String, Object>> keys = new ArrayList<>();
+        Map<String, RSAPublicKey> allKeys = rsaKeyProvider.getAllPublicKeys();
+
+        allKeys.forEach((kid, publicKey) -> {
+            Map<String, Object> jwk = Map.of(
+                    "kty", "RSA",
+                    "use", "sig",
+                    "alg", "RS256",
+                    "kid", kid,
+                    "n", encodeBigInt(publicKey.getModulus()),
+                    "e", encodeBigInt(publicKey.getPublicExponent())
+            );
+            keys.add(jwk);
+        });
+
+        return Map.of("keys", keys);
     }
 
     private static String encodeBigInt(BigInteger bigInt) {
@@ -43,4 +50,3 @@ public class JwksController {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
-

@@ -13,8 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -34,8 +33,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
+                // Parse header to get kid
+                var untrusted = Jwts.parser().build().parseSignedClaims(token);
+                String kid = untrusted.getHeader().getKeyId();
+                var publicKey = rsaKeyProvider.getPublicKey(kid);
+
                 Claims claims = Jwts.parser()
-                        .verifyWith(rsaKeyProvider.getPublicKey())
+                        .requireIssuer(JwtTokenProvider.ISSUER)
+                        .requireAudience(JwtTokenProvider.AUDIENCE)
+                        .verifyWith(publicKey)
                         .build()
                         .parseSignedClaims(token)
                         .getPayload();
@@ -43,11 +49,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String userId = claims.getSubject();
                 String rolesStr = claims.get("roles", String.class);
 
-                List<SimpleGrantedAuthority> authorities = List.of();
+                Set<SimpleGrantedAuthority> authorities = new HashSet<>();
                 if (rolesStr != null && !rolesStr.isBlank()) {
-                    authorities = Arrays.stream(rolesStr.split(","))
-                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.trim()))
-                            .toList();
+                    Arrays.stream(rolesStr.split(",")).map(String::trim).forEach(role -> {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                        mapRoleToPermissions(role, authorities);
+                    });
                 }
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -60,5 +67,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
-}
 
+    private void mapRoleToPermissions(String role, Set<SimpleGrantedAuthority> authorities) {
+        switch (role) {
+            case "ADMIN" -> {
+                authorities.add(new SimpleGrantedAuthority("admin:all"));
+                authorities.add(new SimpleGrantedAuthority("user:manage"));
+                authorities.add(new SimpleGrantedAuthority("kyc:review"));
+                authorities.add(new SimpleGrantedAuthority("room:moderate"));
+            }
+            case "MODERATOR" -> {
+                authorities.add(new SimpleGrantedAuthority("kyc:review"));
+                authorities.add(new SimpleGrantedAuthority("room:moderate"));
+            }
+            case "LANDLORD" -> {
+                authorities.add(new SimpleGrantedAuthority("room:create"));
+                authorities.add(new SimpleGrantedAuthority("room:manage"));
+                authorities.add(new SimpleGrantedAuthority("appointment:manage"));
+            }
+            case "TENANT" -> {
+                authorities.add(new SimpleGrantedAuthority("appointment:request"));
+                authorities.add(new SimpleGrantedAuthority("rental:request"));
+            }
+        }
+    }
+}

@@ -63,7 +63,7 @@ public class ForgotPasswordUseCase {
                 .id(UUID.randomUUID().toString())
                 .userId(user.getId())
                 .otpHash(otpHash)
-                .expiresAt(Instant.now().plus(15, ChronoUnit.MINUTES))
+                .expiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
                 .attempts(0)
                 .requestIp(command.getIpAddress() != null ? command.getIpAddress() : "127.0.0.1")
                 .createdAt(Instant.now())

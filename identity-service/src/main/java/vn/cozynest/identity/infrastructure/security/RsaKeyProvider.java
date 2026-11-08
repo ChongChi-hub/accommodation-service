@@ -1,17 +1,18 @@
 package vn.cozynest.identity.infrastructure.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class RsaKeyProvider {
@@ -26,14 +27,22 @@ public class RsaKeyProvider {
 
     private final RSAPrivateKey privateKey;
     private final RSAPublicKey publicKey;
+    private final Map<String, RSAPublicKey> publicKeys = new ConcurrentHashMap<>();
 
     public RsaKeyProvider() {
-        this(null, null);
+        this(null, null, "dev");
     }
 
+    @Autowired
     public RsaKeyProvider(
             @Value("${jwt.private-key:}") String privateKeyPem,
-            @Value("${jwt.public-key:}") String publicKeyPem) {
+            @Value("${jwt.public-key:}") String publicKeyPem,
+            @Value("${spring.profiles.active:dev}") String activeProfile) {
+        boolean isProd = activeProfile != null && (activeProfile.contains("prod") || activeProfile.contains("production"));
+        if (isProd && (privateKeyPem == null || privateKeyPem.isBlank())) {
+            throw new IllegalStateException("Production environment requires explicit jwt.private-key. Using fallback default RSA key is forbidden!");
+        }
+
         try {
             KeyFactory kf = KeyFactory.getInstance("RSA");
 
@@ -53,20 +62,29 @@ public class RsaKeyProvider {
 
             this.privateKey = (RSAPrivateKey) kf.generatePrivate(new PKCS8EncodedKeySpec(privBytes));
             this.publicKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
+            this.publicKeys.put(KEY_ID, this.publicKey);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize RSA keys for JWT", e);
         }
     }
 
-    public RSAPrivateKey getPrivateKey() {
-        return privateKey;
+    public void registerRotatedKey(String kid, RSAPublicKey rotatedPublicKey) {
+        if (kid != null && rotatedPublicKey != null) {
+            this.publicKeys.put(kid, rotatedPublicKey);
+        }
     }
 
-    public RSAPublicKey getPublicKey() {
-        return publicKey;
+    public RSAPrivateKey getPrivateKey() { return privateKey; }
+
+    public RSAPublicKey getPublicKey() { return publicKey; }
+
+    public RSAPublicKey getPublicKey(String kid) {
+        return publicKeys.getOrDefault(kid, this.publicKey);
     }
 
-    public String getKeyId() {
-        return KEY_ID;
+    public Map<String, RSAPublicKey> getAllPublicKeys() {
+        return Collections.unmodifiableMap(publicKeys);
     }
+
+    public String getKeyId() { return KEY_ID; }
 }

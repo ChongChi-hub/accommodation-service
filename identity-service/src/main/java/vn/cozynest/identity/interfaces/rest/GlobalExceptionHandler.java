@@ -17,7 +17,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IdentityDomainException.class)
     public ResponseEntity<ApiResponse<Void>> handleDomainException(IdentityDomainException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
-            case "ERR_AUTH_INVALID_CREDENTIALS", "ERR_AUTH_INVALID_PASSWORD" -> HttpStatus.UNAUTHORIZED;
+            case "ERR_AUTH_INVALID_CREDENTIALS", "ERR_AUTH_INVALID_PASSWORD",
+                 "ERR_AUTH_INVALID_TOKEN", "ERR_AUTH_TOKEN_EXPIRED" -> HttpStatus.UNAUTHORIZED;
             case "ERR_AUTH_ACCOUNT_LOCKED", "ERR_FORBIDDEN" -> HttpStatus.FORBIDDEN;
             case "ERR_AUTH_USER_NOT_FOUND", "ERR_KYC_NOT_FOUND", "ERR_KYC_IMAGE_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "ERR_AUTH_EMAIL_EXISTS", "ERR_AUTH_PHONE_EXISTS", "ERR_KYC_ID_NUMBER_DUPLICATE",
