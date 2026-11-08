@@ -22,6 +22,10 @@ services:
       retries: 5
     networks:
       - cozynest_network
+    profiles:
+      - infra
+      - core
+      - full
 
   redis:
     image: redis:7-alpine
@@ -33,6 +37,10 @@ services:
       - cozynest_redis_data:/data
     networks:
       - cozynest_network
+    profiles:
+      - infra
+      - core
+      - full
 
   mailpit:
     image: axllent/mailpit:latest
@@ -43,6 +51,10 @@ services:
       - "8025:8025" # Web UI
     networks:
       - cozynest_network
+    profiles:
+      - infra
+      - core
+      - full
 
   api-gateway:
     build:
@@ -64,6 +76,9 @@ services:
       - redis
     networks:
       - cozynest_network
+    profiles:
+      - core
+      - full
 
   identity-service:
     build:
@@ -95,6 +110,9 @@ services:
         condition: service_started
     networks:
       - cozynest_network
+    profiles:
+      - core
+      - full
 
   listing-service:
     build:
@@ -118,6 +136,9 @@ services:
         condition: service_healthy
     networks:
       - cozynest_network
+    profiles:
+      - core
+      - full
 
   booking-service:
     build:
@@ -139,6 +160,9 @@ services:
         condition: service_healthy
     networks:
       - cozynest_network
+    profiles:
+      - core
+      - full
 
   billing-service:
     build:
@@ -160,6 +184,8 @@ services:
         condition: service_healthy
     networks:
       - cozynest_network
+    profiles:
+      - full
 
   communication-service:
     build:
@@ -181,6 +207,8 @@ services:
         condition: service_healthy
     networks:
       - cozynest_network
+    profiles:
+      - full
 
   admin-service:
     build:
@@ -202,6 +230,8 @@ services:
         condition: service_healthy
     networks:
       - cozynest_network
+    profiles:
+      - full
 
   web:
     build:

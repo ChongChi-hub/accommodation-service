@@ -312,3 +312,26 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 ### 13.3 Đánh đổi Khi Đăng ký Email Trùng
 * **Quyết định**: Khi đăng ký bằng email đã tồn tại, trả về `400 Bad Request` kèm mã lỗi `ERR_AUTH_EMAIL_EXISTS` ("Email đã tồn tại trên hệ thống").
 * **Đánh đổi**: Thay vì gửi email ẩn thông báo trùng (gây chậm trễ và khó khăn lớn cho người dùng thực muốn đăng ký nhanh), hệ thống chấp nhận thông báo lỗi trực tiếp để tối ưu trải nghiệm người dùng (UX). Rủi ro brute-force quét email được triệt tiêu thông qua cơ chế Redis Rate Limiting nghiêm ngặt (tối đa 10 lần đăng ký / 1 phút / IP, quá ngưỡng trả về HTTP 429).
+
+
+## 14. Quyết Định Di Chuyển Node.js Sang Microservices [SERVICE-01]
+
+### 14.1 Phân Chia Microservices & Phạm Vi Nghiệp Vụ (DDD Bounded Contexts)
+* Hệ thống phân tách thành 6 microservices độc lập nghiệp vụ và 1 API Gateway:
+  1. `api-gateway` (Port 8080): Điểm đón tiếp duy nhất, quản lý CORS, chặn tuyệt đối `/internal/**`.
+  2. `identity-service` (Port 8081): Xác thực, người dùng, phân quyền RBAC, hồ sơ KYC CCCD và Sinh trắc học khuôn mặt.
+  3. `listing-service` (Port 8082): Tin đăng phòng trọ, danh mục tiện ích, tìm kiếm, lưu phòng (Bookmarks), đánh giá.
+  4. `booking-service` (Port 8083): Lịch hẹn xem phòng, yêu cầu thuê, hợp đồng điện tử.
+  5. `billing-service` (Port 8084): Chỉ số điện nước, hóa đơn, thanh toán.
+  6. `communication-service` (Port 8085): Trò chuyện thời gian thực, thông báo in-app.
+  7. `admin-service` (Port 8086): Kiểm duyệt, báo cáo vi phạm, thống kê hệ thống.
+
+### 14.2 Cô Lập Cơ Sở Dữ Liệu Tuyệt Đối (Database Isolation & Zero Cross-Schema FK)
+* Mỗi microservice sở hữu CSDL schema riêng biệt trên MySQL 9.1 (`cozynest_identity`, `cozynest_listing`, `cozynest_booking`, `cozynest_billing`, `cozynest_communication`, `cozynest_admin`).
+* Cấm hoàn toàn Foreign Key liên schema (xác thực qua truy vấn `information_schema.KEY_COLUMN_USAGE` trả về 0 liên kết).
+* Giao tiếp liên dịch vụ thực hiện qua REST API nội bộ hoặc Outbox Pattern, không chia sẻ database connection.
+
+### 14.3 Bỏ Có Chủ Đích Địa Giới Cấp Quận/Huyện
+* Áp dụng quy chuẩn địa giới hành chính 2 cấp (Tỉnh/Thành -> Phường/Xã).
+* Loại bỏ route `GET /api/v1/location/districts` và bảng `districts` trong nghiệp vụ. Phường/Xã liên kết trực tiếp với mã Tỉnh/Thành qua trường `province_code`.
+

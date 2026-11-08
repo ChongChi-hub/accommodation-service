@@ -57,14 +57,27 @@ He thong Backend Microservices cho nen tang thue tro **To Am**, thiet ke theo ng
 ./gradlew :listing-service:bootRun
 ```
 
-### 4. Khoi chay bang Docker Compose
+### 4. Khoi chay bang Docker Compose (Huong dan trong <= 10 phut)
+Cac dich vu ho tro 3 profile linh hoat:
+
 ```bash
-docker compose up -d --build
+# 1. Chi chay ha tang (MySQL, Redis, Mailpit)
+docker compose --profile infra up -d
+
+# 2. Chay cac dich vu cot loi (Infra + Gateway, Identity, Listing, Booking)
+docker compose --profile core up -d
+
+# 3. Chay toan bo he thong (Infra + 6 Microservices + Gateway + Next.js Web)
+docker compose --profile full up -d
+
+# 4. Kiem tra trang thai suc khoe toan bo microservices
+node scripts/wait-for-health.js
 ```
 
 ---
 
 ## Tai Lieu Ky Thuat
+* **Bao cao chuyen doi Node.js sang Spring Boot:** Xem tai [`docs/SERVICE-01_MIGRATION.md`](./docs/SERVICE-01_MIGRATION.md).
 * **Quy chuan phat trien:** Xem file [`AGENT.md`](./AGENT.md).
 * **Tai lieu dac ta (SRS):** Xem tai [`docs/SRS.md`](./docs/SRS.md).
 * **Quyet dinh kien truc (ADR):** Xem tai [`docs/DECISIONS.md`](./docs/DECISIONS.md).

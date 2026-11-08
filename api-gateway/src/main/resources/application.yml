@@ -6,6 +6,23 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:3000"
+              - "http://127.0.0.1:3000"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+              - HEAD
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       routes:
@@ -17,8 +34,10 @@ spring:
                 patterns:
                   - /api/v1/auth/**
                   - /api/v1/users/**
+                  - /api/v1/me/kyc/**
                   - /api/v1/landlord/kyc/**
                   - /api/v1/moderation/kyc/**
+                  - /api/v1/admin/kyc/**
                   - /.well-known/**
 
         - id: booking-service
