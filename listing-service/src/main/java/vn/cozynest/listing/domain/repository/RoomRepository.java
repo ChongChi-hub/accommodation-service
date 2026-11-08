@@ -41,4 +41,12 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     long countByLandlordIdAndDeletedAtIsNull(Long landlordId);
 
     long countByLandlordIdAndDeletedAtIsNullAndStatus(Long landlordId, String status);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Room r SET r.bookmarkCount = r.bookmarkCount + 1 WHERE r.id = :roomId")
+    int incrementBookmarkCount(@Param("roomId") Long roomId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Room r SET r.bookmarkCount = CASE WHEN r.bookmarkCount > 0 THEN r.bookmarkCount - 1 ELSE 0 END WHERE r.id = :roomId")
+    int decrementBookmarkCount(@Param("roomId") Long roomId);
 }

@@ -170,6 +170,7 @@ public class RoomQueryService {
                 .allowCooking(r.isAllowCooking())
                 .ratingAvg(r.getRatingAvg())
                 .reviewCount(r.getReviewCount())
+                .bookmarkCount(r.getBookmarkCount() != null ? r.getBookmarkCount() : 0)
                 .primaryImageUrl(primaryImg)
                 .imageUrls(images)
                 .amenities(ams)

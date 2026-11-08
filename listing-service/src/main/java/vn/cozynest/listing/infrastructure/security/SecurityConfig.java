@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/amenities/**").permitAll()
                         .requestMatchers("/api/v1/reviews/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/*/status").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/actuator/**", "/docs/**", "/api-docs/**", "/swagger-ui/**").permitAll()
                         // Landlord protected endpoints

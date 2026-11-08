@@ -41,6 +41,8 @@ public class RoomDto {
     private boolean allowCooking;
     private Double ratingAvg;
     private Integer reviewCount;
+    private Integer bookmarkCount;
+    private Boolean isBookmarked;
     private String primaryImageUrl;
     private List<String> imageUrls;
     private List<AmenityDto> amenities;

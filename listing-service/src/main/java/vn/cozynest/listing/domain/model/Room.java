@@ -115,6 +115,10 @@ public class Room {
     @Builder.Default
     private Integer viewCount = 0;
 
+    @Column(name = "bookmark_count", nullable = false)
+    @Builder.Default
+    private Integer bookmarkCount = 0;
+
     @Version
     @Column(name = "version", nullable = false)
     @Builder.Default
