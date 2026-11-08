@@ -390,3 +390,30 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
    - Kiểm duyệt viên bị cấm tuyệt đối việc tự duyệt hoặc tự từ chối hồ sơ của chính mình (`ERR_KYC_SELF_REVIEW_FORBIDDEN`, HTTP 403/409).
 9. **R9 (Toàn vẹn dữ liệu mẫu - Seed Integrity):**
    - Tất cả chủ trọ sở hữu phòng trong seed data (`u-landlord-01` đến `u-landlord-06`) đều ở trạng thái `APPROVED` và sở hữu đồng thời cả 2 vai trò `TENANT` và `LANDLORD`.
+
+---
+
+## 12. Quyết định Kiến trúc và Bảo vệ Dữ liệu Sinh trắc học (KYC-02: Xác thực khuôn mặt)
+
+### 12.1. Không tự xây dựng thuật toán nhận diện khuôn mặt
+* **Quyết định:** Nền tảng tuyệt đối **không tự viết thuật toán so khớp sinh trắc học** hay lưu trữ vector embedding / đặc trưng khuôn mặt của người dùng.
+* **Lý do:**
+  1. Bảo vệ dữ liệu cá nhân nhạy cảm theo **Nghị định 13/2023/NĐ-CP**. Việc lưu trữ embedding sinh trắc học đòi hỏi hạ tầng đạt chuẩn an toàn thông tin cấp độ cao và tiềm ẩn rủi ro lộ lọt nghiêm trọng.
+  2. Quyết định phê duyệt tính khớp giữa khuôn mặt và CCCD do **Kiểm duyệt viên con người** đối chiếu (`ManualReviewProvider`, mặc định) hoặc cổng cắm nhà cung cấp eKYC được cấp phép (`VendorFaceVerificationProvider`).
+
+### 12.2. Vai trò của Bộ phát hiện khuôn mặt trên Trình duyệt
+* **Quy tắc:** Bộ quét webcam và khung elip hướng dẫn trên trình duyệt **chỉ đóng vai trò hỗ trợ người dùng thực hiện đúng động tác**, cấm tuyệt đối mô tả nó là biện pháp bảo mật hay "chống giả mạo".
+* **Lý do:** Client-side JavaScript có thể bị can thiệp bởi DevTools, camera ảo hoặc extensions. Do đó cờ `liveness_client_flag` chỉ là dữ liệu bổ trợ để kiểm duyệt viên tham khảo.
+
+### 12.3. Điều kiện Phê duyệt KYC Tổng thể và Cổng Đăng tin
+* **Quy tắc:** Khi biến môi trường `FACE_REQUIRED=true` (mặc định), trạng thái KYC tổng thể `APPROVED` đòi hỏi đồng thời:
+  1. Giấy tờ tùy thân CCCD đã được duyệt (`user_verifications.status = APPROVED`).
+  2. Khuôn mặt sinh trắc học đã đạt (`face_verifications.status = PASSED`).
+* Cổng kiểm tra đăng tin `listing-service` thông qua endpoint nội bộ `/internal/users/{id}/kyc-status` bắt buộc `isApproved=true` mới cho phép đăng tin phòng trọ.
+
+### 12.4. Chính sách Lưu trữ An toàn và Tự động Tiêu hủy (Data Retention & Purge)
+* **Mã hóa:** Tất cả các khung hình chụp (`neutral`, `action_1`, `action_2`) đều được mã hóa bằng thuật toán `AES-GCM 256-bit` với khóa riêng `FACE_ENCRYPTION_KEY` trước khi lưu vào kho lưu trữ riêng tư.
+* **Thời hạn lưu trữ:** Khung hình của hồ sơ đã có kết quả (`PASSED` hoặc `FAILED`) chỉ được lưu trữ tối đa `FACE_RETENTION_DAYS=30` ngày. Hết hạn, tác vụ định kỳ `FaceCleanupScheduler` sẽ xóa vĩnh viễn tệp ảnh mã hóa khỏi ổ đĩa và cập nhật `deleted_at` trong cơ sở dữ liệu.
+* **Quyền rút đồng ý:** Người dùng có quyền xóa ngay lập tức mọi khung hình đã lưu thông qua nút "Xóa dữ liệu ảnh sinh trắc học" hoặc gọi API `DELETE /api/v1/me/kyc/face/consent`.
+* **Nhật ký kiểm toán vĩnh viễn:** Bảng `face_access_logs` (append-only) ghi lại từng lượt truy cập, stream khung hình hoặc quyết định của kiểm duyệt viên (actorId, role, frameId, timestamp, IP, User-Agent) và không bao giờ bị xóa.
+

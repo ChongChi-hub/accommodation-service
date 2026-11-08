@@ -154,23 +154,9 @@ public class LandlordFaceVerificationUseCase {
         }
 
         List<FaceVerificationFrame> newFrames = new ArrayList<>();
-        // 1. Process Neutral frame
-        byte[] neutralSanitized = imageValidator.validateAndSanitize(neutralFrame);
-        String neutralKey = "face/" + verification.getId() + "/neutral_" + UUID.randomUUID() + ".enc";
-        storagePort.store(neutralKey, cryptoService.encrypt(neutralSanitized));
-        newFrames.add(FaceVerificationFrame.create(
-                verification.getId(), "NEUTRAL", neutralKey, cryptoService.computeSha256(neutralSanitized), neutralSanitized.length
-        ));
-
-        // 2. Process Action frames
+        storeFrame(verification.getId(), "NEUTRAL", neutralFrame, newFrames);
         for (int i = 0; i < actionFrames.size(); i++) {
-            String purpose = requiredActions.get(i);
-            byte[] actionSanitized = imageValidator.validateAndSanitize(actionFrames.get(i));
-            String actionKey = "face/" + verification.getId() + "/" + purpose.toLowerCase() + "_" + UUID.randomUUID() + ".enc";
-            storagePort.store(actionKey, cryptoService.encrypt(actionSanitized));
-            newFrames.add(FaceVerificationFrame.create(
-                    verification.getId(), purpose, actionKey, cryptoService.computeSha256(actionSanitized), actionSanitized.length
-            ));
+            storeFrame(verification.getId(), requiredActions.get(i), actionFrames.get(i), newFrames);
         }
 
         frameRepository.saveAll(newFrames);
@@ -251,6 +237,13 @@ public class LandlordFaceVerificationUseCase {
                 .submittedAt(v.getUpdatedAt())
                 .reviewedAt(v.getReviewedAt())
                 .build();
+    }
+
+    private void storeFrame(String fvId, String purpose, MultipartFile file, List<FaceVerificationFrame> list) {
+        byte[] bytes = imageValidator.validateAndSanitize(file);
+        String key = "face/" + fvId + "/" + purpose.toLowerCase() + "_" + UUID.randomUUID() + ".enc";
+        storagePort.store(key, cryptoService.encrypt(bytes));
+        list.add(FaceVerificationFrame.create(fvId, purpose, key, cryptoService.computeSha256(bytes), bytes.length));
     }
 }
 
