@@ -1,84 +1,84 @@
-# To Am - Backend Microservices Architecture (`accommodation-service`)
+# Cozynest (Tổ Ấm) - Backend Microservices Architecture (`accommodation-service`)
 
-He thong Backend Microservices cho nen tang thue tro **To Am**, thiet ke theo nguyen ly **Domain-Driven Design (DDD)** tren nen **Java 25 LTS & Spring Boot 4.1.2**.
+Hệ thống Backend Microservices cho nền tảng thuê trọ **Cozynest (Tổ Ấm)**, thiết kế theo nguyên lý **Domain-Driven Design (DDD)** và **Hexagonal Architecture (Ports & Adapters)** trên nền **Java 25 LTS & Spring Boot 4.1.2**.
 
 ---
 
-## Danh Sach Microservices & Cong Port
+## 1. Danh Sách Microservices & Cổng Port
 
-| Service | Port | Database Schema | Chuc Nang Chinh |
+| Service | Port | Database Schema | Công Nghệ & Trách Nhiệm Chính |
 |---|---|---|---|
-| **`api-gateway`** | `8080` | - | Dinh tuyen trung tam, CORS, Rate Limit, gop OpenAPI `/docs` |
-| **`identity-service`** | `8081` | `cozynest_identity` | Tai khoan, vai tro (RBAC), Dang ky, Dang nhap, JWT, Refresh Token, KYC |
-| **`listing-service`** | `8082` | `cozynest_listing` | Phong tro, loai phong, dia gioi DVHCVN, tien nghi, anh, danh gia |
-| **`booking-service`** | `8083` | `cozynest_booking` | Lich hen xem phong, yeu cau thue, hop dong dien tu |
-| **`billing-service`** | `8084` | `cozynest_billing` | Chi so dien nuoc (cong to), hoa don hang thang, thanh toan |
-| **`communication-service`** | `8085` | `cozynest_communication` | Tin nhan hoi thoai thoi gian thuc, thong bao in-app |
-| **`admin-service`** | `8086` | `cozynest_admin` | Thong ke bang dieu khien, kiem duyet tin/KYC, bao cao vi pham |
+| **`api-gateway`** | `8080` | - | Định tuyến trung tâm, Reactive Gateway, CORS duy nhất, Rate Limiting (Redis), truyền dẫn `X-Request-ID` / `traceparent`, gộp OpenAPI Swagger `/docs`. |
+| **`identity-service`** | `8081` | `cozynest_identity` | Tài khoản, xác thực JWT (RS256 với JWKS), Refresh Token Rotation, BCrypt(12) với dynamic dummy hash chống timing attack, Google GIS OAuth2, luồng đăng ký Tenant-first, eKYC CCCD & khuôn mặt (AES-256 GCM). |
+| **`listing-service`** | `8082` | `cozynest_listing` | Quản lý phòng trọ, danh mục tiện nghi, bảng phí dịch vụ, vị trí bản đồ, bookmark phòng yêu thích (idempotent), cập nhật trạng thái phòng (Available, Rented, Maintenance). |
+| **`booking-service`** | `8083` | `cozynest_booking` | Quản lý lịch hẹn xem phòng ([APPT-01], [APPT-02] phê duyệt/từ chối kèm lý do), yêu cầu thuê phòng, hợp đồng điện tử. |
+| **`billing-service`** | `8084` | `cozynest_billing` | Quản lý chỉ số điện nước, chu kỳ hóa đơn, đối soát công nợ và tích hợp mã thanh toán VietQR. |
+| **`communication-service`** | `8085` | `cozynest_communication` | Hội thoại tin nhắn giữa Người thuê và Chủ trọ, thông báo in-app, cảnh báo email. |
+| **`admin-service`** | `8086` | `cozynest_admin` | Thống kê số liệu sàn, kiểm duyệt phòng trọ & hồ sơ KYC, xử lý khiếu nại tranh chấp, Audit Logs. |
 
 ---
 
-## Tai Khoan Demo (Moi truong Dev)
+## 2. Tài Khoản Thử Nghiệm Mặc Định (Môi Trường Dev)
 
-| Vai tro | Email | Mat khau |
-|---|---|---|
-| **Nguoi thue (Tenant)** | `tenant@cozynest.vn` | `password123` |
-| **Chu tro (Landlord)** | `landlord@cozynest.vn` | `password123` |
-| **Kiem duyet vien (Moderator)** | `moderator@cozynest.vn` | `password123` |
-| **Quan tri vien (Admin)** | `admin@cozynest.vn` | `password123` |
+> Mọi mật khẩu tài khoản demo đều được thiết lập chuẩn: `password123`.
+
+| Vai trò | Email | Mật khẩu | Mô tả quyền hạn |
+|---|---|---|---|
+| **Người thuê (Tenant)** | `tenant@cozynest.vn` | `password123` | Tìm kiếm phòng, lưu phòng yêu thích, đặt lịch hẹn, gửi yêu cầu thuê, theo dõi hợp đồng và hóa đơn. |
+| **Chủ trọ (Landlord)** | `landlord@cozynest.vn` | `password123` | Đăng tin phòng trọ, quản lý phòng, duyệt/hủy lịch hẹn xem phòng ([APPT-02]), tạo hợp đồng. |
+| **Kiểm duyệt (Moderator)** | `moderator@cozynest.vn` | `password123` | Kiểm duyệt hồ sơ eKYC (CCCD 2 mặt, sinh trắc khuôn mặt), phê duyệt tin đăng phòng mới. |
+| **Quản trị (Admin)** | `admin@cozynest.vn` | `password123` | Quản trị toàn sàn, phân quyền người dùng, xem nhat ký kiểm toán và trạng thái hệ thống. |
 
 ---
 
-## Huong Dan Cai Dat & Khoi Chay
+## 3. Kiến Trúc & Tiêu Chuẩn Bảo Mật
 
-### 1. Yeu cau he thong
-* **Java:** Java 25 LTS (Gradle Toolchain se tu dong nhan dien hoac tai Temurin 25).
-* **MySQL:** 9.7 LTS hoac 8.0+ (Port `3306`).
-* **Redis:** 7.x (Port `6379`).
+- **Mật khẩu & Chống Dò Quét**: `BCryptPasswordEncoder(12)`, giới hạn độ dài chuẩn $\le 72$ bytes, tự động re-encode khi nâng cấp cost hash (`upgradeEncoding`). So sánh email không tồn tại bằng `dummyBcryptHash` sinh động khi khởi động để triệt tiêu chênh lệch thời gian (độ lệch thực nghiệm $\le 2.56\%$).
+- **Cơ chế CORS Tập Trung**: API Gateway là chủ thể duy nhất quản lý CORS (`AllowedOrigins: http://localhost:3000`), downstream microservices vô hiệu hóa CORS để tránh lỗi trùng lặp `Access-Control-Allow-Origin` trên trình duyệt.
+- **Xác Thực Khóa Downstream (JWKS)**: Token JWT ký RS256 bởi `identity-service`, công khai qua `/.well-known/jwks.json`. Downstream xác thực theo ma trận 7 kịch bản: hợp lệ (200), hết hạn (401), chữ ký sai (401), alg=none (401), thiếu kid/aud (401), hỗ trợ xoay khóa đa kid.
+- **Cô Lập Cơ Sở Dữ Liệu**: Mỗi microservice sở hữu schema riêng và kết nối qua tài khoản MySQL độc lập (`identity_user`, `listing_user`, v.v.), được chứng minh bằng kiểm thử tự động Testcontainers.
+- **Chuẩn Hóa Múi Giờ**: Toàn bộ cơ sở dữ liệu và entities sử dụng chuẩn UTC (`serverTimezone=UTC`, Java `Instant`), kiểm thử qua ranh giới nửa đêm (`23:59:59` -> `00:00:00`).
 
-### 2. Bien dich & Kiem thu kien truc DDD
+---
+
+## 4. Hướng Dẫn Cài Đặt & Khởi Chạy
+
+### Yêu Cầu Hệ Thống
+- **Java**: Java 25 LTS (Gradle Toolchain tự động nhận diện).
+- **MySQL**: 9.7 LTS hoặc 8.0+ (Cổng `3306` hoặc Docker `5555`).
+- **Redis**: 7.x (Cổng `6379`).
+- **Mailpit**: Cổng SMTP `1025`, Cổng Web UI `8025`.
+
+### Khởi Chạy Nhanh Bằng Docker Compose
 ```bash
-# Bien dich toan bo cac service
-./gradlew clean build -x test
-
-# Chay kiem thu tu dong (Unit Test & ArchUnit DDD)
-./gradlew test
-```
-
-### 3. Chay tung service doc lap
-```bash
-# Chay API Gateway
-./gradlew :api-gateway:bootRun
-
-# Chay Identity Service
-./gradlew :identity-service:bootRun
-
-# Chay Listing Service
-./gradlew :listing-service:bootRun
-```
-
-### 4. Khoi chay bang Docker Compose (Huong dan trong <= 10 phut)
-Cac dich vu ho tro 3 profile linh hoat:
-
-```bash
-# 1. Chi chay ha tang (MySQL, Redis, Mailpit)
+# 1. Khởi chạy toàn bộ hạ tầng (MySQL, Redis, Mailpit)
 docker compose --profile infra up -d
 
-# 2. Chay cac dich vu cot loi (Infra + Gateway, Identity, Listing, Booking)
+# 2. Khởi chạy các dịch vụ cốt lõi (Infra + Gateway, Identity, Listing, Booking)
 docker compose --profile core up -d
 
-# 3. Chay toan bo he thong (Infra + 6 Microservices + Gateway + Next.js Web)
-docker compose --profile full up -d
+# 3. Kiểm tra trạng thái sức khỏe các service
+curl -i http://localhost:8080/actuator/health
+```
 
-# 4. Kiem tra trang thai suc khoe toan bo microservices
-node scripts/wait-for-health.js
+### Biên Dịch & Chạy Kiểm Thử Tự Động
+```bash
+# Chạy toàn bộ 282 tests kiểm thử tự động không dùng build cache
+./gradlew clean test --no-build-cache
+
+# Chạy riêng từng service
+./gradlew :api-gateway:bootRun
+./gradlew :identity-service:bootRun
+./gradlew :listing-service:bootRun
+./gradlew :booking-service:bootRun
 ```
 
 ---
 
-## Tai Lieu Ky Thuat
-* **Bao cao chuyen doi Node.js sang Spring Boot:** Xem tai [`docs/SERVICE-01_MIGRATION.md`](./docs/SERVICE-01_MIGRATION.md).
-* **Quy chuan phat trien:** Xem file [`AGENT.md`](./AGENT.md).
-* **Tai lieu dac ta (SRS):** Xem tai [`docs/SRS.md`](./docs/SRS.md).
-* **Quyet dinh kien truc (ADR):** Xem tai [`docs/DECISIONS.md`](./docs/DECISIONS.md).
-* **Schema cu tham chieu:** Xem tai [`docs/legacy/schema.sql`](./docs/legacy/schema.sql).
+## 5. Tài Liệu Kỹ Thuật Liên Quan
+- **Báo cáo Chuyển đổi Microservices**: [`docs/SERVICE-01_MIGRATION.md`](./docs/SERVICE-01_MIGRATION.md)
+- **Quy tắc & Quyết định Kiến trúc (ADR)**: [`docs/DECISIONS.md`](./docs/DECISIONS.md)
+- **Đặc tả Yêu cầu Nghiệp vụ (SRS)**: [`docs/SRS.md`](./docs/SRS.md)
+- **Báo cáo Đối chiếu & Khắc phục Nền tảng (P-CHECK-A)**: [`docs/audit/P-CHECK-A.md`](./docs/audit/P-CHECK-A.md)
+- **Báo cáo eKYC Khuôn Mặt (KYC-02)**: [`docs/audit/KYC-02.md`](./docs/audit/KYC-02.md)
+- **Báo cáo Lịch Hẹn Xem Phòng (APPT-02)**: [`docs/audit/APPT-02.md`](./docs/audit/APPT-02.md)
