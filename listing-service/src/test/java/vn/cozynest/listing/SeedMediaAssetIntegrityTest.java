@@ -57,16 +57,15 @@ class SeedMediaAssetIntegrityTest {
         );
 
         Color[][] palettes = {
-                {new Color(30, 41, 59), new Color(15, 118, 110)},
-                {new Color(30, 58, 138), new Color(13, 148, 136)},
-                {new Color(19, 78, 74), new Color(20, 184, 166)},
-                {new Color(67, 56, 202), new Color(147, 51, 234)},
-                {new Color(120, 53, 15), new Color(217, 119, 6)}
+                {new Color(15, 118, 110), new Color(13, 148, 136)}, // Teal
+                {new Color(180, 83, 9), new Color(217, 119, 6)},    // Amber
+                {new Color(19, 78, 74), new Color(45, 212, 191)},   // Emerald/Teal
+                {new Color(68, 64, 60), new Color(120, 113, 108)}   // Stone
         };
 
         for (String key : EXTRACTED_KEYS) {
             int width = key.contains("thumb") ? 320 : (key.contains("medium") ? 960 : 1600);
-            int height = key.contains("thumb") ? 180 : (key.contains("medium") ? 540 : 900);
+            int height = key.contains("thumb") ? 240 : (key.contains("medium") ? 720 : 1200);
             int pIdx = Math.abs(key.hashCode() % palettes.length);
 
             byte[] bytes = renderPlaceholder(width, height, palettes[pIdx], "Tổ Ấm - " + key);
@@ -102,11 +101,6 @@ class SeedMediaAssetIntegrityTest {
         g.setColor(new Color(255, 255, 255, 20));
         for (int i = 0; i < width; i += 60) g.drawLine(i, 0, i, height);
         for (int j = 0; j < height; j += 60) g.drawLine(0, j, width, j);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, Math.max(14, width / 35)));
-        FontMetrics fm = g.getFontMetrics();
-        g.drawString(title, (width - fm.stringWidth(title)) / 2, height / 2);
         g.dispose();
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

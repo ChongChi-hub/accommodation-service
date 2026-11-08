@@ -15,3 +15,4 @@ for (const db of dbs) {
   console.log(`=== ${db} (${tables.length} tables) ===`);
   console.log(tables.join(', '));
 }
+

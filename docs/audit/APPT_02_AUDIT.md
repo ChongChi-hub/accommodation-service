@@ -39,3 +39,4 @@
 | **14** | Phía người thuê: /tenant/appointments (chỉ đọc) thấy trạng thái và lý do mới. Việc tenant TẠO lịch KHÔNG thuộc thẻ này: dùng fixture/seed trong test, không thêm tính năng đặt lịch; nút đặt lịch ở trang phòng vẫn DEMO-STATIC | `TenantAppointmentController.java`, `/tenant/appointments` page | Test endpoint GET của tenant, đảm bảo nút đặt lịch trang phòng giữ DEMO-STATIC | Đang kiểm chứng |
 | **15** | E2E (backend thật): chủ trọ confirm -> người thuê thấy CONFIRMED và có thông báo; decline thiếu lý do bị chặn; decline có lý do -> người thuê thấy lý do; confirm lịch trùng -> thông báo xung đột | Kiểm tra luồng E2E qua Gateway port 8080 | Script/test E2E gọi qua gateway kiểm tra chéo 2 bên | Đang kiểm chứng |
 | **16** | Ảnh chụp 4 chế độ xem + 3 modal + rỗng/lỗi, 1440 và 390, light/dark, vi/en; tự phê bình 3 điểm CHƯA TỐT mỗi ảnh và sửa | Chụp màn hình bằng script/Playwright | Đánh giá 3 điểm chưa tốt và hoàn thiện | Đang kiểm chứng |
+

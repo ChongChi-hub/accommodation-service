@@ -24,3 +24,4 @@ for (const file of files) {
 
 console.log(`Found ${allRoutes.length} legacy routes:`);
 allRoutes.forEach(r => console.log(`${r.method.padEnd(6)} ${r.fullPath.padEnd(45)} (${r.file})`));
+

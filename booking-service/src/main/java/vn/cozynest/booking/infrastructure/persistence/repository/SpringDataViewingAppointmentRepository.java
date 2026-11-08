@@ -101,3 +101,4 @@ public interface SpringDataViewingAppointmentRepository
             @Param("end") Instant end
     );
 }
+

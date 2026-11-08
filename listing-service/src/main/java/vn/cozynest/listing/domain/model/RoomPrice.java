@@ -46,3 +46,4 @@ public class RoomPrice {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

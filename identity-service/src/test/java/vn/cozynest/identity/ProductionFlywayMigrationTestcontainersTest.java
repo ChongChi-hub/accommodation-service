@@ -58,6 +58,21 @@ class ProductionFlywayMigrationTestcontainersTest {
                     rs.next();
                     assertThat(rs.getInt(1)).isZero();
                 }
+
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM face_verifications")) {
+                    rs.next();
+                    assertThat(rs.getInt(1)).isZero();
+                }
+
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM face_verification_frames")) {
+                    rs.next();
+                    assertThat(rs.getInt(1)).isZero();
+                }
+
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM face_access_logs")) {
+                    rs.next();
+                    assertThat(rs.getInt(1)).isZero();
+                }
             }
         } catch (Exception e) {
             System.err.println("Testcontainers execution error: " + e.getMessage());

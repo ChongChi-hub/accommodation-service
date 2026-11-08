@@ -105,3 +105,4 @@ VALUES
 -- 7. Add is_verified_tenant to reviews
 ALTER TABLE reviews
     ADD COLUMN is_verified_tenant BOOLEAN NOT NULL DEFAULT TRUE AFTER rating;
+

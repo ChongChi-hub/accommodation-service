@@ -35,12 +35,14 @@ class LoginUseCaseTest {
     private TokenProviderPort tokenProvider;
     @Mock
     private vn.cozynest.identity.application.port.LoginAttemptPort loginAttemptPort;
+    @Mock
+    private vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
 
     private LoginUseCase loginUseCase;
 
     @BeforeEach
     void setUp() {
-        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, passwordEncoder, tokenProvider, loginAttemptPort);
+        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter);
     }
 
     @Test

@@ -21,3 +21,4 @@ public class BannerDto {
     private Integer sortOrder;
     private boolean active;
 }
+

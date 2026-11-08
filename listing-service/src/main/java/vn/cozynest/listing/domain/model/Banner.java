@@ -51,3 +51,4 @@ public class Banner {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

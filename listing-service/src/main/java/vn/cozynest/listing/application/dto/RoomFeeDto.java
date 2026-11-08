@@ -21,3 +21,4 @@ public class RoomFeeDto {
     private boolean metered;
     private String meterType;
 }
+

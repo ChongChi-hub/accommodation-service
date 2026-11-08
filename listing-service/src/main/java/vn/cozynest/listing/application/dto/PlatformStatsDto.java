@@ -15,3 +15,4 @@ public class PlatformStatsDto {
     private long totalReviews;
     private long happyTenants;
 }
+

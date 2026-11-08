@@ -48,7 +48,7 @@ public class HomeDataService {
                     .imageUrl(imageUrl)
                     .roomCount(count)
                     .build();
-        }).collect(Collectors.toList());
+        }).limit(6).collect(Collectors.toList());
     }
 
     public List<BannerDto> getBanners() {
@@ -80,3 +80,4 @@ public class HomeDataService {
                 .build();
     }
 }
+

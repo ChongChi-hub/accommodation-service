@@ -77,3 +77,4 @@ public class RoomDetailDto {
     private LandlordSnapshotDto landlord;
     private List<ReviewDto> reviews;
 }
+

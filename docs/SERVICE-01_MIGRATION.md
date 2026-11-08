@@ -464,3 +464,4 @@ Tổng kết chạy kiểm thử tự động toàn bộ 8 modules (`node script
 | 17 | Địa giới hành chính 2 cấp chuẩn hóa | Loại bỏ hoàn toàn cấp Quận/Huyện, API chỉ nhận `provinceCode` và `wardCode` | **TICK** |
 | 18 | Hợp đồng hiển thị công khai & KYC Gate | Chỉ phòng PUBLISHED hiển thị public; Landlord cần APPROVED mới được publish | **TICK** |
 | 19 | Tài liệu hướng dẫn khởi động trong 10 phút | Cập nhật `README.md` với các lệnh một dòng và hướng dẫn môi trường sạch | **TICK** |
+

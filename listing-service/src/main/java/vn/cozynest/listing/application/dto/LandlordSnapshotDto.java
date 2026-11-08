@@ -26,3 +26,4 @@ public class LandlordSnapshotDto {
     private Integer roomCount;
     private LocalDateTime joinedAt;
 }
+

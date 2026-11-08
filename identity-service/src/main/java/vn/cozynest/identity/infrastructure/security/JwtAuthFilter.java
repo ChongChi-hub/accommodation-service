@@ -33,15 +33,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             try {
-                // Parse header to get kid
-                var untrusted = Jwts.parser().build().parseSignedClaims(token);
-                String kid = untrusted.getHeader().getKeyId();
-                var publicKey = rsaKeyProvider.getPublicKey(kid);
-
                 Claims claims = Jwts.parser()
+                        .keyLocator(header -> {
+                            String kid = header instanceof io.jsonwebtoken.JwsHeader jwsHeader ? jwsHeader.getKeyId() : null;
+                            return rsaKeyProvider.getPublicKey(kid);
+                        })
                         .requireIssuer(JwtTokenProvider.ISSUER)
                         .requireAudience(JwtTokenProvider.AUDIENCE)
-                        .verifyWith(publicKey)
                         .build()
                         .parseSignedClaims(token)
                         .getPayload();

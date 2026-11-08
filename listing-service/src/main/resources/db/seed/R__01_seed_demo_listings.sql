@@ -60,16 +60,16 @@ ON DUPLICATE KEY UPDATE title=VALUES(title);
 
 -- Seed Room Images
 INSERT INTO room_images (room_id, image_url, is_primary, display_order) VALUES
-(1, 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80', true, 1),
-(1, 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80', false, 2),
-(1, 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80', false, 3),
-(2, 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80', true, 1),
-(2, 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80', false, 2),
-(3, 'https://images.unsplash.com/photo-1502005229762-ee1b2b93e083?auto=format&fit=crop&w=1200&q=80', true, 1),
-(3, 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80', false, 2),
-(4, 'https://images.unsplash.com/photo-1554995207-c18c203602cb?auto=format&fit=crop&w=1200&q=80', true, 1),
-(5, 'https://images.unsplash.com/photo-1536376072261-38c75010e6c9?auto=format&fit=crop&w=1200&q=80', true, 1),
-(6, 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80', true, 1)
+(1, '/uploads/rooms/r1_1.webp', true, 1),
+(1, '/uploads/rooms/r1_2.webp', false, 2),
+(1, '/uploads/rooms/r1_3.webp', false, 3),
+(2, '/uploads/rooms/r2_1.webp', true, 1),
+(2, '/uploads/rooms/r2_2.webp', false, 2),
+(3, '/uploads/rooms/r3_1.webp', true, 1),
+(3, '/uploads/rooms/r3_2.webp', false, 2),
+(4, '/uploads/rooms/r4_1.webp', true, 1),
+(5, '/uploads/rooms/r5_1.webp', true, 1),
+(6, '/uploads/rooms/r6_1.webp', true, 1)
 ON DUPLICATE KEY UPDATE image_url=VALUES(image_url);
 
 -- Seed Room Amenities

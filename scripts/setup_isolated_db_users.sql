@@ -18,3 +18,4 @@ CREATE USER IF NOT EXISTS 'admin_user'@'%' IDENTIFIED BY 'admin_pass123';
 GRANT ALL PRIVILEGES ON cozynest_admin.* TO 'admin_user'@'%';
 
 FLUSH PRIVILEGES;
+

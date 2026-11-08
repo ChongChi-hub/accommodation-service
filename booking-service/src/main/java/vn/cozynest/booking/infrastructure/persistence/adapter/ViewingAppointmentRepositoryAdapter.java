@@ -172,3 +172,4 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
         };
     }
 }
+

@@ -18,3 +18,4 @@ WHERE REFERENCED_TABLE_SCHEMA IS NOT NULL
 const res = execSync(`docker exec -i cozynest_mysql mysql -uroot -prootpassword123 -e "${query.trim().replace(/\n/g, ' ')}"`).toString();
 console.log('Cross-schema foreign keys:');
 console.log(res.trim() || 'NONE (Zero cross-schema foreign keys found!)');
+

@@ -12,3 +12,4 @@ public interface SpringDataAppointmentStatusHistoryRepository
 
     List<AppointmentStatusHistoryJpaEntity> findByAppointmentIdOrderByCreatedAtAsc(String appointmentId);
 }
+

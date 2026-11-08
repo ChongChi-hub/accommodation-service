@@ -9,3 +9,4 @@ public interface RoomPriceRepository extends JpaRepository<RoomPrice, Long> {
     List<RoomPrice> findByRoomId(Long roomId);
     void deleteByRoomId(Long roomId);
 }
+

@@ -5,7 +5,7 @@ spring:
   application:
     name: identity-service
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cozynest_identity}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cozynest_identity}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -29,6 +29,7 @@ spring:
             enable: false
   flyway:
     enabled: true
+    encoding: UTF-8
     baseline-on-migrate: true
     locations: classpath:db/migration
     ignore-missing-migrations: true
@@ -43,6 +44,22 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /docs
+
+face:
+  verification-enabled: ${FACE_VERIFICATION_ENABLED:true}
+  provider: ${FACE_PROVIDER:manual}
+  required: ${FACE_REQUIRED:true}
+  retention-days: ${FACE_RETENTION_DAYS:30}
+  max-attempts-per-day: ${FACE_MAX_ATTEMPTS_PER_DAY:3}
+  cleanup:
+    enabled: ${FACE_CLEANUP_ENABLED:false}
+    cron: "0 0 3 * * ?"
+  storage:
+    directory: ${FACE_STORAGE_DIRECTORY:./storage/face_private}
+  encryption-key: ${FACE_ENCRYPTION_KEY:}
+  vendor:
+    base-url: ${FACE_VENDOR_BASE_URL:}
+    api-key: ${FACE_VENDOR_API_KEY:}
 
 management:
   health:

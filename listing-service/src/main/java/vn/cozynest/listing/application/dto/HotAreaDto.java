@@ -17,3 +17,4 @@ public class HotAreaDto {
     private String imageUrl;
     private Long roomCount;
 }
+

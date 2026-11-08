@@ -71,9 +71,11 @@ public class SecurityConfig {
                                 "/.well-known/jwks.json",
                                 "/internal/**",
                                 "/actuator/health",
+                                "/v3/api-docs/**",
                                 "/docs/**",
                                 "/api-docs/**",
-                                "/swagger-ui/**"
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

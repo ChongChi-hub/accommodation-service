@@ -31,3 +31,4 @@ public class AppointmentStatusHistoryRepositoryAdapter implements AppointmentSta
                 .stream().map(AppointmentPersistenceMapper::toDomain).toList();
     }
 }
+

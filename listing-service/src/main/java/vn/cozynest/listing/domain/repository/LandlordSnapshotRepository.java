@@ -8,3 +8,4 @@ import java.util.Optional;
 public interface LandlordSnapshotRepository extends JpaRepository<LandlordSnapshot, Long> {
     Optional<LandlordSnapshot> findByLandlordId(Long landlordId);
 }
+

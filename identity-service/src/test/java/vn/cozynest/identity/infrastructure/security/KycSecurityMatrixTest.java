@@ -53,6 +53,13 @@ class KycSecurityMatrixTest {
     @BeforeEach
     void setUp() {
         verificationRepository = mock(UserVerificationRepository.class);
+        vn.cozynest.identity.domain.repository.FaceVerificationRepository faceVerificationRepository = mock(vn.cozynest.identity.domain.repository.FaceVerificationRepository.class);
+        when(faceVerificationRepository.findByUserId(anyString())).thenReturn(java.util.Optional.of(
+                new vn.cozynest.identity.domain.model.FaceVerification(
+                        "fv-1", "u-1", "uv-1", "manual", vn.cozynest.identity.domain.model.FaceVerificationStatus.PASSED,
+                        true, null, null, null, 1, null, null, null, null, null, null, 0L, null, null
+                )
+        ));
         accessLogRepository = mock(KycAccessLogRepository.class);
         when(accessLogRepository.save(any(KycAccessLog.class))).thenAnswer(i -> {
             KycAccessLog log = i.getArgument(0);
@@ -60,7 +67,7 @@ class KycSecurityMatrixTest {
             return log;
         });
 
-        InternalUserService internalService = new InternalUserService(verificationRepository);
+        InternalUserService internalService = new InternalUserService(verificationRepository, faceVerificationRepository, true);
         internalUserController = new InternalUserController(internalService, "CozyNestInternalServiceKeySecret2026", null);
 
         KycPrivateStoragePort kycStorage = mock(KycPrivateStoragePort.class);
