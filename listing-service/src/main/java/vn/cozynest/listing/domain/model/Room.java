@@ -72,6 +72,18 @@ public class Room {
     @Column(nullable = false)
     private Double area;
 
+    @Column(name = "floor")
+    @Builder.Default
+    private Integer floor = 2;
+
+    @Column(name = "bedrooms")
+    @Builder.Default
+    private Integer bedrooms = 1;
+
+    @Column(name = "bathrooms")
+    @Builder.Default
+    private Integer bathrooms = 1;
+
     @Column(name = "max_occupants", nullable = false)
     private Integer maxOccupants;
 
@@ -96,6 +108,22 @@ public class Room {
     @Column(nullable = false, length = 30)
     private String status;
 
+    @Column(name = "publication_status", nullable = false, length = 30)
+    @Builder.Default
+    private String publicationStatus = "PUBLISHED";
+
+    @Column(name = "occupancy_status", nullable = false, length = 30)
+    @Builder.Default
+    private String occupancyStatus = "AVAILABLE";
+
+    @Column(name = "gender_preference", length = 30)
+    @Builder.Default
+    private String genderPreference = "ALL";
+
+    @Column(name = "furnishing", length = 30)
+    @Builder.Default
+    private String furnishing = "FULL";
+
     @Column(name = "is_approved", nullable = false)
     private boolean approved;
 
@@ -105,11 +133,38 @@ public class Room {
     @Column(name = "allow_cooking", nullable = false)
     private boolean allowCooking;
 
+    @Column(name = "curfew", length = 100)
+    @Builder.Default
+    private String curfew = "Giờ giấc tự do, khóa vân tay riêng";
+
+    @Column(name = "available_date")
+    private java.time.LocalDate availableDate;
+
+    @Column(name = "min_lease_months")
+    @Builder.Default
+    private Integer minLeaseMonths = 6;
+
     @Column(name = "rating_avg")
     private Double ratingAvg;
 
     @Column(name = "review_count")
     private Integer reviewCount;
+
+    @Column(name = "rating_cleanliness")
+    @Builder.Default
+    private Double ratingCleanliness = 4.9;
+
+    @Column(name = "rating_location")
+    @Builder.Default
+    private Double ratingLocation = 4.8;
+
+    @Column(name = "rating_price_quality")
+    @Builder.Default
+    private Double ratingPriceQuality = 4.7;
+
+    @Column(name = "rating_security")
+    @Builder.Default
+    private Double ratingSecurity = 5.0;
 
     @Column(name = "view_count", nullable = false)
     @Builder.Default
@@ -148,11 +203,13 @@ public class Room {
         joinColumns = @JoinColumn(name = "room_id"),
         inverseJoinColumns = @JoinColumn(name = "amenity_id")
     )
+    @org.hibernate.annotations.BatchSize(size = 50)
     @Builder.Default
     private Set<Amenity> amenities = new HashSet<>();
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id")
+    @org.hibernate.annotations.BatchSize(size = 50)
     @Builder.Default
     private Set<RoomImage> images = new HashSet<>();
 

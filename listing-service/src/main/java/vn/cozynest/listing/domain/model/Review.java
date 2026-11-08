@@ -33,6 +33,10 @@ public class Review {
     @Column(nullable = false)
     private int rating;
 
+    @Column(name = "is_verified_tenant", nullable = false)
+    @Builder.Default
+    private boolean verifiedTenant = true;
+
     @Column(columnDefinition = "TEXT")
     private String comment;
 

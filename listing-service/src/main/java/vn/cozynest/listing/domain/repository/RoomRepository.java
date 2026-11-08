@@ -24,6 +24,44 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
 
     Optional<Room> findByIdAndLandlordIdAndDeletedAtIsNull(Long id, Long landlordId);
 
+    Optional<Room> findBySlugAndDeletedAtIsNull(String slug);
+
+    Optional<Room> findByIdAndDeletedAtIsNull(Long id);
+
+    @Query("""
+        SELECT r FROM Room r
+        WHERE r.provinceCode = :provinceCode
+          AND r.id != :roomId
+          AND r.deletedAt IS NULL
+          AND r.hiddenAt IS NULL
+          AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+          AND r.price BETWEEN :minPrice AND :maxPrice
+        ORDER BY r.ratingAvg DESC, r.id DESC
+    """)
+    List<Room> findSimilarRooms(
+        @Param("provinceCode") String provinceCode,
+        @Param("roomId") Long roomId,
+        @Param("minPrice") java.math.BigDecimal minPrice,
+        @Param("maxPrice") java.math.BigDecimal maxPrice,
+        Pageable pageable
+    );
+
+    @Query("""
+        SELECT p.code, p.name, p.fullName, p.slug, p.imageUrl, COUNT(r.id)
+        FROM Province p
+        LEFT JOIN Room r ON r.provinceCode = p.code AND r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+        GROUP BY p.code, p.name, p.fullName, p.slug, p.imageUrl
+        ORDER BY COUNT(r.id) DESC
+    """)
+    List<Object[]> findHotAreas();
+
+    @Query("SELECT COUNT(r) FROM Room r WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')")
+    long countActiveRooms();
+
+    @Query("SELECT COUNT(DISTINCT r.landlordId) FROM Room r WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true")
+    long countVerifiedLandlords();
+
     @Query("""
         SELECT r FROM Room r
         WHERE r.landlordId = :landlordId

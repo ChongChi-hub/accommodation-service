@@ -51,6 +51,7 @@ spring:
                   - /uploads/**
                   - /api/v1/landlord/**
                   - /api/v1/media/**
+                  - /api/v1/cms/**
 
         - id: billing-service
           uri: ${BILLING_SERVICE_URL:http://localhost:8084}

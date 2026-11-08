@@ -25,10 +25,16 @@ public class Province {
     @Column(name = "name_en", length = 100)
     private String nameEn;
 
+    @Column(length = 100)
+    private String slug;
+
     @Column(name = "full_name", length = 150)
     private String fullName;
 
     @Column(name = "full_name_en", length = 150)
     private String fullNameEn;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 }
 

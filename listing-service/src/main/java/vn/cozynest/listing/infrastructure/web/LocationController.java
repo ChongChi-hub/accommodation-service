@@ -18,6 +18,13 @@ import java.util.List;
 public class LocationController {
 
     private final LocationService locationService;
+    private final vn.cozynest.listing.application.service.HomeDataService homeDataService;
+
+    @GetMapping("/hot-areas")
+    @Operation(summary = "Lấy danh sách các tỉnh/thành phố có nhiều phòng trọ nhất (khu vực hot)")
+    public ResponseEntity<ApiResponse<List<vn.cozynest.listing.application.dto.HotAreaDto>>> getHotAreas() {
+        return ResponseEntity.ok(ApiResponse.success(homeDataService.getHotAreas()));
+    }
 
     @GetMapping("/provinces")
     @Operation(summary = "Lấy danh sách tỉnh/thành phố")

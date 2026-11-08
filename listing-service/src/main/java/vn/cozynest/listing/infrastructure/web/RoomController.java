@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.common.dto.PaginationResponse;
 import vn.cozynest.listing.application.dto.*;
+import vn.cozynest.listing.application.service.HomeDataService;
+import vn.cozynest.listing.application.service.RoomDetailService;
 import vn.cozynest.listing.application.service.RoomQueryService;
 
 import java.math.BigDecimal;
@@ -21,6 +23,8 @@ import java.util.List;
 public class RoomController {
 
     private final RoomQueryService roomQueryService;
+    private final RoomDetailService roomDetailService;
+    private final HomeDataService homeDataService;
 
     @GetMapping
     @Operation(summary = "Tìm kiếm danh sách phòng trọ theo bộ lọc")
@@ -72,17 +76,30 @@ public class RoomController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Xem chi tiết một phòng trọ")
-    public ResponseEntity<ApiResponse<RoomDto>> getRoomById(@PathVariable Long id) {
-        RoomDto room = roomQueryService.getRoomById(id);
+    @GetMapping("/stats")
+    @Operation(summary = "Lấy thống kê nền tảng cho trang chủ")
+    public ResponseEntity<ApiResponse<PlatformStatsDto>> getPlatformStats() {
+        return ResponseEntity.ok(ApiResponse.success(homeDataService.getPlatformStats()));
+    }
+
+    @GetMapping("/{slugOrId}")
+    @Operation(summary = "Xem chi tiết một phòng trọ theo slug hoặc id")
+    public ResponseEntity<ApiResponse<RoomDetailDto>> getRoomDetail(@PathVariable String slugOrId) {
+        RoomDetailDto room = roomDetailService.getRoomDetail(slugOrId);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin phòng thành công", room));
+    }
+
+    @GetMapping("/{id}/similar")
+    @Operation(summary = "Gợi ý phòng tương tự cùng khu vực và mức giá")
+    public ResponseEntity<ApiResponse<List<RoomDto>>> getSimilarRooms(@PathVariable Long id) {
+        List<RoomDto> rooms = roomDetailService.getSimilarRooms(id);
+        return ResponseEntity.ok(ApiResponse.success(rooms));
     }
 
     @GetMapping("/{id}/recommendations")
     @Operation(summary = "Gợi ý phòng tương tự cùng khu vực")
     public ResponseEntity<ApiResponse<List<RoomDto>>> getRecommendations(@PathVariable Long id) {
-        List<RoomDto> rooms = roomQueryService.getRecommendations(id);
+        List<RoomDto> rooms = roomDetailService.getSimilarRooms(id);
         return ResponseEntity.ok(ApiResponse.success(rooms));
     }
 }

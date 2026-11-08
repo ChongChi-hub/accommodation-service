@@ -46,5 +46,17 @@ public class RoomDto {
     private String primaryImageUrl;
     private List<String> imageUrls;
     private List<AmenityDto> amenities;
+    private String slug;
+    private String publicationStatus;
+    private String occupancyStatus;
+    private String genderPreference;
+    private String furnishing;
+    private String provinceName;
+    private String wardName;
+    private String roomTypeName;
+    private RoomImageDto coverImage;
+    private List<AmenityDto> highlightAmenities;
+    @Builder.Default
+    private Boolean isLandlordVerified = true;
 }
 

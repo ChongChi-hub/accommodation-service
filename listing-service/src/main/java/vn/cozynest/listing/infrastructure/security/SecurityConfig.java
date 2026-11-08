@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/locations/**").permitAll()
                         .requestMatchers("/api/v1/amenities/**").permitAll()
                         .requestMatchers("/api/v1/reviews/**").permitAll()
+                        .requestMatchers("/api/v1/cms/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/*/status").permitAll()
                         .requestMatchers("/uploads/**").permitAll()

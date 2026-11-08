@@ -57,7 +57,7 @@ public class ApiGatewayApplication {
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(identityServiceUrl))
                 .route("listing-service", r -> r
-                        .path("/api/v1/rooms", "/api/v1/rooms/**", "/api/v1/locations/**", "/api/v1/amenities/**", "/api/v1/reviews/**", "/api/v1/bookmarks/**", "/api/v1/upload/**", "/uploads/**", "/api/v1/landlord/**", "/api/v1/media/**")
+                        .path("/api/v1/rooms", "/api/v1/rooms/**", "/api/v1/locations/**", "/api/v1/amenities/**", "/api/v1/reviews/**", "/api/v1/bookmarks/**", "/api/v1/upload/**", "/uploads/**", "/api/v1/landlord/**", "/api/v1/media/**", "/api/v1/cms/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(listingServiceUrl))
