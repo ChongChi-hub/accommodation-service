@@ -13,12 +13,13 @@ build/
 logs/
 .tmp/
 
-# Uploads & storage directory
-uploads/
-/uploads
-storage/
-/storage
+# Uploads & storage runtime directories (only root and service runtime media folders, never src/)
+/storage/
+/uploads/
 listing-service/storage/
+listing-service/listing-service/
+identity-service/storage/
+identity-service/uploads/
 
 # IDE & OS
 .idea/
@@ -26,4 +27,3 @@ listing-service/storage/
 .vscode/
 .DS_Store
 Thumbs.db
-
