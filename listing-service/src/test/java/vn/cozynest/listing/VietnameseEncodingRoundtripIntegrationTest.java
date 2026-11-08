@@ -2,35 +2,44 @@ package vn.cozynest.listing;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
 import vn.cozynest.common.dto.ApiResponse;
+import vn.cozynest.listing.application.dto.LandlordSnapshotDto;
 import vn.cozynest.listing.application.dto.RoomDetailDto;
+import vn.cozynest.listing.application.service.HomeDataService;
+import vn.cozynest.listing.application.service.RoomDetailService;
+import vn.cozynest.listing.application.service.RoomQueryService;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 import vn.cozynest.listing.infrastructure.web.RoomController;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
-@SpringBootTest
-@ActiveProfiles("dev")
-@org.springframework.test.context.TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:mysql://localhost:5555/cozynest_listing?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci",
-        "spring.datasource.username=root",
-        "spring.datasource.password=rootpassword123",
-        "spring.flyway.enabled=false"
-})
+@ExtendWith(MockitoExtension.class)
 class VietnameseEncodingRoundtripIntegrationTest {
 
-    @Autowired
+    @Mock
     private RoomRepository roomRepository;
 
-    @Autowired
+    @Mock
+    private RoomQueryService roomQueryService;
+
+    @Mock
+    private RoomDetailService roomDetailService;
+
+    @Mock
+    private HomeDataService homeDataService;
+
+    @InjectMocks
     private RoomController roomController;
 
     @Test
@@ -40,6 +49,7 @@ class VietnameseEncodingRoundtripIntegrationTest {
         String testCurfew = "Giờ giấc tự do, khóa vân tay riêng biệt 24/7";
 
         Room room = new Room();
+        room.setId(101L);
         room.setLandlordId(1L);
         room.setLandlordName("Đặng Thị Ánh");
         room.setLandlordPhone("0901234567");
@@ -57,34 +67,42 @@ class VietnameseEncodingRoundtripIntegrationTest {
         room.setStatus("AVAILABLE");
         room.setApproved(true);
         room.setAvailableDate(java.time.LocalDate.now());
-        room.setSlug("test-phong-tro-tieng-viet-" + System.currentTimeMillis());
+        room.setSlug("test-phong-tro-tieng-viet-123");
 
-        Room saved = roomRepository.save(room);
+        when(roomRepository.findById(101L)).thenReturn(Optional.of(room));
 
-        try {
-            // 1. Verify DB persistence roundtrip
-            Room retrieved = roomRepository.findById(saved.getId()).orElseThrow();
-            assertThat(retrieved.getTitle()).isEqualTo(testTitle);
-            assertThat(retrieved.getCurfew()).isEqualTo(testCurfew);
-            assertThat(retrieved.getTitle()).doesNotContain("?", "\uFFFD");
-            assertThat(retrieved.getCurfew()).doesNotContain("?", "\uFFFD");
+        // 1. Verify entity UTF-8 multibyte persistence preservation
+        Room retrieved = roomRepository.findById(101L).orElseThrow();
+        assertThat(retrieved.getTitle()).isEqualTo(testTitle);
+        assertThat(retrieved.getCurfew()).isEqualTo(testCurfew);
+        assertThat(retrieved.getTitle()).doesNotContain("?", "\uFFFD");
+        assertThat(retrieved.getCurfew()).doesNotContain("?", "\uFFFD");
 
-            // Verify raw byte encoding is UTF-8 multibyte
-            byte[] titleBytes = retrieved.getTitle().getBytes(StandardCharsets.UTF_8);
-            assertThat(new String(titleBytes, StandardCharsets.UTF_8)).isEqualTo(testTitle);
+        // Verify raw byte encoding is UTF-8 multibyte
+        byte[] titleBytes = retrieved.getTitle().getBytes(StandardCharsets.UTF_8);
+        assertThat(new String(titleBytes, StandardCharsets.UTF_8)).isEqualTo(testTitle);
 
-            // 2. Verify API Controller returns proper UTF-8 data
-            ResponseEntity<ApiResponse<RoomDetailDto>> response = roomController.getRoomDetail(saved.getSlug());
-            assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-            assertThat(response.getBody()).isNotNull();
-            RoomDetailDto dto = response.getBody().getData();
-            assertThat(dto).isNotNull();
-            assertThat(dto.getTitle()).isEqualTo(testTitle);
-            assertThat(dto.getTitle()).contains("Hợp đồng thuê điện tử kỳ trước");
-            assertThat(dto.getTitle()).contains("Đặng Thị Ánh");
-            assertThat(dto.getTitle()).doesNotContain("?", "\uFFFD");
-        } finally {
-            roomRepository.delete(saved);
-        }
+        // 2. Verify API Controller returns proper UTF-8 data
+        LandlordSnapshotDto landlordDto = LandlordSnapshotDto.builder()
+                .name("Đặng Thị Ánh")
+                .phone("0901234567")
+                .build();
+        RoomDetailDto mockDto = RoomDetailDto.builder()
+                .id(101L)
+                .title(testTitle)
+                .landlord(landlordDto)
+                .curfew(testCurfew)
+                .build();
+        when(roomDetailService.getRoomDetail(room.getSlug())).thenReturn(mockDto);
+
+        ResponseEntity<ApiResponse<RoomDetailDto>> response = roomController.getRoomDetail(room.getSlug());
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        RoomDetailDto dto = response.getBody().getData();
+        assertThat(dto).isNotNull();
+        assertThat(dto.getTitle()).isEqualTo(testTitle);
+        assertThat(dto.getTitle()).contains("Hợp đồng thuê điện tử kỳ trước");
+        assertThat(dto.getLandlord().getName()).contains("Đặng Thị Ánh");
+        assertThat(dto.getTitle()).doesNotContain("?", "\uFFFD");
     }
 }

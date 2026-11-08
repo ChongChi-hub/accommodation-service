@@ -33,5 +33,5 @@ jobs:
       - name: Build and Test Backend Services
         run: |
           chmod +x gradlew
-          ./gradlew clean build test
+          ./gradlew clean build --no-daemon
 
