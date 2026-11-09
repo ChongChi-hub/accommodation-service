@@ -106,6 +106,12 @@ public class RoomController {
         return ResponseEntity.ok(ApiResponse.success(homeDataService.getPlatformStats()));
     }
 
+    @GetMapping("/facets")
+    @Operation(summary = "Lấy các giá trị phân loại phòng để lọc và đếm số lượng")
+    public ResponseEntity<ApiResponse<RoomFacetsDto>> getRoomFacets() {
+        return ResponseEntity.ok(ApiResponse.success(roomQueryService.getFacets()));
+    }
+
     @GetMapping("/{slugOrId}")
     @Operation(summary = "Xem chi tiết một phòng trọ theo slug hoặc id")
     public ResponseEntity<ApiResponse<RoomDetailDto>> getRoomDetail(@PathVariable String slugOrId) {

@@ -28,6 +28,9 @@ class HomeDataServiceTest {
     @Mock
     private ReviewRepository reviewRepository;
 
+    @Mock
+    private vn.cozynest.listing.domain.repository.CmsArticleRepository cmsArticleRepository;
+
     @InjectMocks
     private HomeDataService homeDataService;
 

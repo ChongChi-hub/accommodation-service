@@ -120,6 +120,7 @@ public class LandlordRoomManagementService {
         room.setArea(req.getArea());
         if (req.getMaxOccupants() != null) room.setMaxOccupants(req.getMaxOccupants());
         room.setPrice(req.getPrice());
+        if (req.getPriceUnit() != null && !req.getPriceUnit().isBlank()) room.setPriceUnit(req.getPriceUnit());
         if (req.getDeposit() != null) room.setDeposit(req.getDeposit());
         if (req.getElectricityCost() != null) room.setElectricityCost(req.getElectricityCost());
         if (req.getWaterCost() != null) room.setWaterCost(req.getWaterCost());
@@ -158,6 +159,7 @@ public class LandlordRoomManagementService {
                 .area(req.getArea())
                 .maxOccupants(req.getMaxOccupants() != null ? req.getMaxOccupants() : 2)
                 .price(req.getPrice())
+                .priceUnit(req.getPriceUnit() != null && !req.getPriceUnit().isBlank() ? req.getPriceUnit() : "ROOM")
                 .deposit(req.getDeposit() != null ? req.getDeposit() : java.math.BigDecimal.ZERO)
                 .electricityCost(req.getElectricityCost())
                 .waterCost(req.getWaterCost())

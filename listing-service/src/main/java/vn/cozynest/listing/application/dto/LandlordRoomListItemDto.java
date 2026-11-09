@@ -20,6 +20,7 @@ public class LandlordRoomListItemDto {
     private String address;
     private String shortAddress;
     private BigDecimal price;
+    private String priceUnit;
     private BigDecimal deposit;
     private Double area;
     private String status;
