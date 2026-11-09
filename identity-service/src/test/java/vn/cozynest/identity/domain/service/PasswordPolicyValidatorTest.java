@@ -35,7 +35,7 @@ class PasswordPolicyValidatorTest {
     @Test
     @DisplayName("Accept valid password exactly 72 bytes or less")
     void shouldAcceptValidPasswordWithin72Bytes() {
-        String exactly72Bytes = "A".repeat(72);
+        String exactly72Bytes = "AbCdEfGh".repeat(9);
         assertThatCode(() -> PasswordPolicyValidator.validate(exactly72Bytes, "user@test.vn"))
                 .doesNotThrowAnyException();
 

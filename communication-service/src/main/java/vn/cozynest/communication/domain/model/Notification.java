@@ -21,4 +21,11 @@ public class Notification {
     private String linkUrl;
     private LocalDateTime readAt;
     private LocalDateTime createdAt;
+
+    public void markAsRead(LocalDateTime timestamp) {
+        if (!this.read) {
+            this.read = true;
+            this.readAt = timestamp != null ? timestamp : LocalDateTime.now();
+        }
+    }
 }

@@ -49,6 +49,7 @@ public class RegisterUseCase {
 
         String normalizedEmail = command.getEmail() != null ? command.getEmail().trim().toLowerCase() : "";
         String normalizedPhone = normalizePhone(command.getPhone());
+        String normalizedFullName = command.getFullName() != null ? command.getFullName().trim().replaceAll("\\s+", " ") : "";
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IdentityDomainException("Email đã tồn tại trên hệ thống", "ERR_AUTH_EMAIL_EXISTS");
@@ -57,7 +58,7 @@ public class RegisterUseCase {
             throw new IdentityDomainException("Số điện thoại đã tồn tại trên hệ thống", "ERR_AUTH_PHONE_EXISTS");
         }
 
-        vn.cozynest.identity.domain.service.PasswordPolicyValidator.validate(command.getPassword(), normalizedEmail);
+        vn.cozynest.identity.domain.service.PasswordPolicyValidator.validate(command.getPassword(), normalizedEmail, normalizedFullName);
 
         // Role whitelisting: only TENANT or LANDLORD self-registration choices are allowed
         String roleStr = command.getRole() != null ? command.getRole().trim().toUpperCase() : "TENANT";
@@ -68,7 +69,7 @@ public class RegisterUseCase {
         String passwordHash = passwordEncoder.encode(command.getPassword());
 
         // R1: All self-registered accounts receive TENANT role only
-        User newUser = User.createNew(normalizedEmail, normalizedPhone, passwordHash, command.getFullName(), UserRoleType.TENANT);
+        User newUser = User.createNew(normalizedEmail, normalizedPhone, passwordHash, normalizedFullName, UserRoleType.TENANT);
         User savedUser = userRepository.save(newUser);
 
         // R2: Choosing LANDLORD creates an application in AWAITING_KYC

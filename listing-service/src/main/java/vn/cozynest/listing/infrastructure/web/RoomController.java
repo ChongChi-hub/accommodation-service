@@ -29,31 +29,55 @@ public class RoomController {
     @GetMapping
     @Operation(summary = "Tìm kiếm danh sách phòng trọ theo bộ lọc")
     public ResponseEntity<ApiResponse<List<RoomDto>>> searchRooms(
+            @RequestParam(required = false) String q,
             @RequestParam(required = false) String provinceCode,
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) String provinceSlug,
             @RequestParam(required = false) String districtCode,
+            @RequestParam(required = false) String wardCode,
             @RequestParam(required = false) String roomTypeCode,
+            @RequestParam(required = false) String type,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) BigDecimal priceMin,
+            @RequestParam(required = false) BigDecimal priceMax,
             @RequestParam(required = false) Double minArea,
             @RequestParam(required = false) Double maxArea,
+            @RequestParam(required = false) Double areaMin,
+            @RequestParam(required = false) Double areaMax,
             @RequestParam(required = false) Integer occupants,
             @RequestParam(required = false) Boolean allowPets,
             @RequestParam(required = false) Boolean allowCooking,
+            @RequestParam(required = false) String sort,
             @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "12") Integer size
     ) {
+        String effectiveProvinceCode = (provinceCode != null && !provinceCode.isBlank()) ? provinceCode : null;
+        String effectiveProvinceSlug = (provinceSlug != null && !provinceSlug.isBlank())
+                ? provinceSlug
+                : (effectiveProvinceCode == null && province != null && !province.isBlank() ? province : null);
+        String effectiveRoomType = (roomTypeCode != null && !roomTypeCode.isBlank()) ? roomTypeCode : type;
+
         RoomFilterParams params = RoomFilterParams.builder()
-                .provinceCode(provinceCode)
+                .q(q)
+                .provinceCode(effectiveProvinceCode)
+                .provinceSlug(effectiveProvinceSlug)
                 .districtCode(districtCode)
-                .roomTypeCode(roomTypeCode)
+                .wardCode(wardCode)
+                .roomTypeCode(effectiveRoomType)
                 .minPrice(minPrice)
                 .maxPrice(maxPrice)
+                .priceMin(priceMin)
+                .priceMax(priceMax)
                 .minArea(minArea)
                 .maxArea(maxArea)
+                .areaMin(areaMin)
+                .areaMax(areaMax)
                 .occupants(occupants)
                 .allowPets(allowPets)
                 .allowCooking(allowCooking)
+                .sort(sort)
                 .sortBy(sortBy)
                 .page(page)
                 .size(size)

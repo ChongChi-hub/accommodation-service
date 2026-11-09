@@ -244,4 +244,31 @@ class PasswordResetUseCaseTest {
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> resetPasswordUseCase.execute(command));
         assertEquals("ERR_AUTH_OTP_EXPIRED", ex.getErrorCode());
     }
+
+    @Test
+    @DisplayName("Forgot password throws 503 ERR_AUTH_SERVICE_UNAVAILABLE when mail service is disabled")
+    void forgotPasswordFailsWhenMailServiceUnavailable() {
+        doThrow(new IdentityDomainException("Mail disabled", "ERR_AUTH_SERVICE_UNAVAILABLE"))
+                .when(emailService).ensureAvailable();
+
+        ForgotPasswordCommand command = ForgotPasswordCommand.builder()
+                .email("tenant@cozynest.vn")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> forgotPasswordUseCase.execute(command));
+        assertEquals("ERR_AUTH_SERVICE_UNAVAILABLE", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Forgot password performs dummy password encode when email does not exist for timing parity")
+    void forgotPasswordTimingParityDummyEncode() {
+        when(userRepository.findByEmail("nonexistent@cozynest.vn")).thenReturn(Optional.empty());
+
+        ForgotPasswordCommand command = ForgotPasswordCommand.builder()
+                .email("nonexistent@cozynest.vn")
+                .build();
+
+        assertDoesNotThrow(() -> forgotPasswordUseCase.execute(command));
+        verify(passwordEncoder).encode("000000");
+    }
 }

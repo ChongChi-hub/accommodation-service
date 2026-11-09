@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface ProvinceRepository extends JpaRepository<Province, Long> {
     List<Province> findAllByOrderByNameAsc();
+    java.util.Optional<Province> findBySlugIgnoreCase(String slug);
+    java.util.Optional<Province> findByCodeIgnoreCase(String code);
 }
 

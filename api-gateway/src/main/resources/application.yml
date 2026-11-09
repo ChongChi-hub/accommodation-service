@@ -34,6 +34,7 @@ spring:
                 patterns:
                   - /api/v1/auth/**
                   - /api/v1/users/**
+                  - /api/v1/me
                   - /api/v1/me/**
                   - /api/v1/me/kyc/**
                   - /api/v1/landlord/kyc/**
@@ -63,6 +64,8 @@ spring:
                 patterns:
                   - /api/v1/rooms
                   - /api/v1/rooms/**
+                  - /api/v1/room-types
+                  - /api/v1/room-types/**
                   - /api/v1/locations/**
                   - /api/v1/amenities/**
                   - /api/v1/reviews/**
@@ -90,6 +93,7 @@ spring:
               args:
                 patterns:
                   - /api/v1/communication/**
+                  - /api/v1/notifications
                   - /api/v1/notifications/**
                   - /api/v1/chat/**
 

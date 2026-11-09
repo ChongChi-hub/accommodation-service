@@ -40,11 +40,16 @@ public class VerifyEmailUseCase {
 
     @Transactional
     public void sendVerificationOtp(String email) {
-        if (email == null || email.isBlank()) return;
+        emailService.ensureAvailable();
+        if (email == null || email.isBlank()) {
+            passwordEncoder.encode("000000");
+            return;
+        }
         String normalizedEmail = email.trim().toLowerCase();
         Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
         if (userOpt.isEmpty()) {
-            return; // Anti-enumeration
+            passwordEncoder.encode("000000");
+            return; // Anti-enumeration + timing equalization
         }
 
         User user = userOpt.get();

@@ -17,16 +17,21 @@ spring:
       hibernate:
         format_sql: false
   mail:
-    host: ${SMTP_HOST:localhost}
-    port: ${SMTP_PORT:1025}
-    username: ${SMTP_USER:}
-    password: ${SMTP_PASSWORD:}
+    host: ${MAIL_HOST:${SMTP_HOST:localhost}}
+    port: ${MAIL_PORT:${SMTP_PORT:1025}}
+    username: ${MAIL_USERNAME:${SMTP_USER:}}
+    password: ${MAIL_PASSWORD:${SMTP_PASSWORD:}}
     properties:
       mail:
         smtp:
-          auth: false
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: false
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
+mail:
+  enabled: ${MAIL_ENABLED:true}
+  from: ${MAIL_FROM:no-reply@cozynest.vn}
+  from-name: ${MAIL_FROM_NAME:Tổ Ấm}
   flyway:
     enabled: true
     encoding: UTF-8
