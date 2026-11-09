@@ -47,7 +47,7 @@ public class LandlordProfileJpaEntity {
 
     @Version
     @Column(name = "version", nullable = false)
-    private Long version;
+    private Long version = 0L;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

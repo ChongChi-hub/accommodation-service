@@ -75,7 +75,46 @@ curl -i http://localhost:8080/actuator/health
 
 ---
 
-## 5. Tài Liệu Kỹ Thuật Liên Quan
+## 5. Hướng Dẫn Cấu Hình Gửi Email Thật (SMTP Production)
+
+Môi trường phát triển cục bộ (Dev) mặc định định tuyến email vào **Mailpit** (`localhost:1025`, Web UI kiểm tra tại `http://localhost:8025`).  
+Khi triển khai môi trường thực tế (Production) hoặc muốn thử nghiệm gửi email thật tới hộp thư của bạn:
+
+### Các bước lấy Mật khẩu ứng dụng (App Password):
+1. **Google Gmail**:
+   - Truy cập **Tài khoản Google** $\rightarrow$ **Bảo mật** (Security).
+   - Đảm bảo đã bật **Xác minh 2 bước** (2-Step Verification).
+   - Tìm kiếm mục **Mật khẩu ứng dụng** (App Passwords) hoặc truy cập trực tiếp `myaccount.google.com/apppasswords`.
+   - Đặt tên ứng dụng là `Cozynest Platform` $\rightarrow$ Nhấn **Tạo** (Generate).
+   - Sao chép chuỗi mật khẩu 16 ký tự (dạng `abcd efgh ijkl mnop`).
+2. **Microsoft Outlook / Office 365**:
+   - Truy cập trang quản lý tài khoản Microsoft $\rightarrow$ Bảo mật nâng cao $\rightarrow$ Mật khẩu ứng dụng.
+3. **Cập nhật tệp `.env`**:
+   ```ini
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=your-real-email@gmail.com
+   MAIL_PASSWORD=your_16_char_app_password
+   MAIL_FROM=your-real-email@gmail.com
+   MAIL_FROM_NAME="Tổ Ấm"
+   MAIL_SMTP_AUTH=true
+   MAIL_SMTP_STARTTLS=true
+   MAIL_ENABLED=true
+   ```
+   > **Lưu ý bảo mật & Chống Thư rác (Spam):**
+   > - Tuyệt đối **KHÔNG** sử dụng mật khẩu đăng nhập chính của tài khoản email.
+   > - Chỉ nên cấu hình gửi từ địa chỉ email chính chủ hoặc tên miền đã được xác minh SPF/DKIM để tránh email bị đưa vào hộp thư rác (Spam/Junk).
+
+### Kiểm Tra Kết Nối SMTP Bằng Script Tự Động:
+Hệ thống cung cấp script PowerShell an toàn, tự động ẩn mật khẩu và phân tích lỗi chi tiết:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/mail-check.ps1 -ToEmail "your-email@example.com"
+```
+
+---
+
+## 6. Tài Liệu Kỹ Thuật Liên Quan
+- **Đặc tả Quy tắc Kiểm tra Dữ liệu (AUTH-VALIDATION)**: [`docs/AUTH_VALIDATION.md`](./docs/AUTH_VALIDATION.md)
 - **Báo cáo Chuyển đổi Microservices**: [`docs/SERVICE-01_MIGRATION.md`](./docs/SERVICE-01_MIGRATION.md)
 - **Quy tắc & Quyết định Kiến trúc (ADR)**: [`docs/DECISIONS.md`](./docs/DECISIONS.md)
 - **Đặc tả Yêu cầu Nghiệp vụ (SRS)**: [`docs/SRS.md`](./docs/SRS.md)

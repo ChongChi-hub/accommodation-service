@@ -105,6 +105,15 @@ services:
       REDIS_PORT: 6379
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@cozynest.vn}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Tổ Ấm}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
     depends_on:
       mysql:
         condition: service_healthy

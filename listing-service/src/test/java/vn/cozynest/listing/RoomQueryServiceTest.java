@@ -6,16 +6,25 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.cozynest.listing.application.dto.RoomDto;
+import vn.cozynest.listing.application.dto.RoomFilterParams;
 import vn.cozynest.listing.application.service.RoomQueryService;
+import vn.cozynest.listing.domain.model.Province;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.repository.AmenityRepository;
+import vn.cozynest.listing.domain.repository.ProvinceRepository;
 import vn.cozynest.listing.domain.repository.ReviewRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +38,9 @@ class RoomQueryServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private ProvinceRepository provinceRepository;
 
     @InjectMocks
     private RoomQueryService roomQueryService;
@@ -53,6 +65,46 @@ class RoomQueryServiceTest {
         assertEquals(1L, result.getId());
         assertEquals("Phòng trọ tiện nghi", result.getTitle());
         verify(roomRepository, times(1)).findById(1L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void shouldSearchRoomsWithQueryAndProvinceSlugAndSizeCap() {
+        Room mockRoom = Room.builder()
+                .id(2L)
+                .slug("studio-cau-giay-2")
+                .roomTypeCode("STUDIO")
+                .provinceCode("HN")
+                .title("Studio Cầu Giấy")
+                .price(new BigDecimal("4200000"))
+                .area(28.0)
+                .maxOccupants(2)
+                .approved(true)
+                .status("PUBLISHED")
+                .build();
+
+        when(provinceRepository.findBySlugIgnoreCase("ha-noi"))
+                .thenReturn(Optional.of(Province.builder().code("HN").name("Hà Nội").slug("ha-noi").build()));
+        when(provinceRepository.findAll())
+                .thenReturn(List.of(Province.builder().code("HN").name("Hà Nội").slug("ha-noi").build()));
+        when(roomRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(mockRoom)));
+
+        RoomFilterParams params = RoomFilterParams.builder()
+                .q("cau giay %_")
+                .provinceSlug("ha-noi")
+                .roomTypeCode("can-ho")
+                .priceMax(new BigDecimal("5000000"))
+                .sort("priceAsc")
+                .page(0)
+                .size(100)
+                .build();
+
+        Page<RoomDto> page = roomQueryService.searchRooms(params);
+
+        assertEquals(1, page.getTotalElements());
+        assertEquals("Hà Nội", page.getContent().get(0).getProvinceName());
+        verify(roomRepository).findAll(any(Specification.class), argThat((Pageable p) -> p.getPageSize() == 50));
     }
 }
 

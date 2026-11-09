@@ -1,5 +1,6 @@
 package vn.cozynest.identity.interfaces.rest;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -19,16 +20,25 @@ public class GlobalExceptionHandler {
         HttpStatus status = switch (ex.getErrorCode()) {
             case "ERR_AUTH_INVALID_CREDENTIALS", "ERR_AUTH_INVALID_PASSWORD",
                  "ERR_AUTH_INVALID_TOKEN", "ERR_AUTH_TOKEN_EXPIRED", "ERR_INVALID_GOOGLE_TOKEN" -> HttpStatus.UNAUTHORIZED;
-            case "ERR_AUTH_ACCOUNT_LOCKED", "ERR_FORBIDDEN", "ERR_USER_DELETED", "ERR_USER_SUSPENDED" -> HttpStatus.FORBIDDEN;
+            case "ERR_AUTH_ACCOUNT_LOCKED", "ERR_AUTH_USER_LOCKED", "ERR_AUTH_TEMPORARY_LOCKED",
+                 "ERR_FORBIDDEN", "ERR_USER_DELETED", "ERR_USER_SUSPENDED" -> HttpStatus.FORBIDDEN;
             case "ERR_AUTH_USER_NOT_FOUND", "ERR_KYC_NOT_FOUND", "ERR_KYC_IMAGE_NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "ERR_AUTH_EMAIL_EXISTS", "ERR_AUTH_PHONE_EXISTS", "ERR_KYC_ID_NUMBER_DUPLICATE",
                  "ERR_PROFILE_VERSION_CONFLICT", "ERR_PROFILE_PHONE_DUPLICATE" -> HttpStatus.CONFLICT;
-            case "ERR_KYC_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_COOLDOWN" -> HttpStatus.TOO_MANY_REQUESTS;
-            case "ERR_GOOGLE_NOT_CONFIGURED" -> HttpStatus.SERVICE_UNAVAILABLE;
+            case "ERR_KYC_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_EXCEEDED", "ERR_RATE_LIMIT_COOLDOWN",
+                 "ERR_LOGIN_RATE_LIMIT_EXCEEDED", "ERR_REGISTER_RATE_LIMIT_EXCEEDED" -> HttpStatus.TOO_MANY_REQUESTS;
+            case "ERR_GOOGLE_NOT_CONFIGURED", "ERR_AUTH_SERVICE_UNAVAILABLE" -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.BAD_REQUEST;
         };
 
+        HttpHeaders headers = new HttpHeaders();
+        if (status == HttpStatus.TOO_MANY_REQUESTS) {
+            String retryAfter = "ERR_LOGIN_RATE_LIMIT_EXCEEDED".equals(ex.getErrorCode()) ? "300" : "60";
+            headers.set(HttpHeaders.RETRY_AFTER, retryAfter);
+        }
+
         return ResponseEntity.status(status)
+                .headers(headers)
                 .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
     }
 
@@ -55,4 +65,3 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Đã xảy ra lỗi hệ thống: " + ex.getMessage(), "ERR_INTERNAL_SERVER_ERROR"));
     }
 }
-

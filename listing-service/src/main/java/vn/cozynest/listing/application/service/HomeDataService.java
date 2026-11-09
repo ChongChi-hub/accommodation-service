@@ -24,6 +24,11 @@ public class HomeDataService {
     private final ReviewRepository reviewRepository;
 
     public List<HotAreaDto> getHotAreas() {
+        return getHotAreas(8, false);
+    }
+
+    public List<HotAreaDto> getHotAreas(int limit, boolean nonEmptyOnly) {
+        int safeLimit = Math.min(Math.max(limit, 1), 20);
         List<Object[]> rows = roomRepository.findHotAreas();
         return rows.stream().map(row -> {
             String code = (String) row[0];
@@ -37,7 +42,7 @@ public class HomeDataService {
                 slug = code.toLowerCase();
             }
             if (imageUrl == null || imageUrl.isBlank()) {
-                imageUrl = "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80";
+                imageUrl = "/uploads/locations/fallback.webp";
             }
 
             return HotAreaDto.builder()
@@ -48,7 +53,9 @@ public class HomeDataService {
                     .imageUrl(imageUrl)
                     .roomCount(count)
                     .build();
-        }).limit(6).collect(Collectors.toList());
+        }).filter(dto -> !nonEmptyOnly || dto.getRoomCount() > 0)
+                .limit(safeLimit)
+                .collect(Collectors.toList());
     }
 
     public List<BannerDto> getBanners() {

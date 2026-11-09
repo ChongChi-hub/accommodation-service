@@ -25,7 +25,7 @@ async function runTest() {
       email,
       phone,
       password: initialPassword,
-      fullName: 'E2E Test User',
+      fullName: 'End-to-End Test User',
       role: 'TENANT'
     })
   });

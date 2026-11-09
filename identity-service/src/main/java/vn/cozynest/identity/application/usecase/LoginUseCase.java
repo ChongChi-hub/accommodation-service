@@ -64,7 +64,16 @@ public class LoginUseCase {
             throw new IdentityDomainException("Tài khoản hoặc IP của bạn đã bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.", "ERR_AUTH_TEMPORARY_LOCKED");
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(command.getEmail().trim().toLowerCase());
+        String rawIdentifier = command.getEmail() != null ? command.getEmail().trim() : "";
+        Optional<User> userOpt;
+        if (rawIdentifier.contains("@")) {
+            userOpt = userRepository.findByEmail(rawIdentifier.toLowerCase());
+        } else {
+            String normalizedPhone = normalizePhone(rawIdentifier);
+            userOpt = normalizedPhone != null
+                    ? userRepository.findByPhone(normalizedPhone).or(() -> userRepository.findByPhone(rawIdentifier))
+                    : Optional.empty();
+        }
         if (userOpt.isEmpty()) {
             passwordEncoder.matches(command.getPassword(), dummyBcryptHash);
             loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), false);
@@ -127,5 +136,17 @@ public class LoginUseCase {
                 .emailVerified(user.getEmailVerifiedAt() != null)
                 .landlordApplication(LandlordApplicationSummaryDto.fromDomain(lp))
                 .build();
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) return null;
+        String cleaned = phone.replaceAll("[\\s\\-\\.]", "");
+        if (cleaned.startsWith("0")) {
+            return "+84" + cleaned.substring(1);
+        }
+        if (!cleaned.startsWith("+")) {
+            return "+84" + cleaned;
+        }
+        return cleaned;
     }
 }

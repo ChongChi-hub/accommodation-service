@@ -45,8 +45,13 @@ public class ForgotPasswordUseCase {
         // Enforce rate limiting by email and IP address
         rateLimiter.checkForgotPasswordRateLimit(command.getEmail(), command.getIpAddress());
 
+        // Fail fast if email service is disabled or unconfigured in production
+        emailService.ensureAvailable();
+
         Optional<User> userOpt = userRepository.findByEmail(command.getEmail().trim().toLowerCase());
         if (userOpt.isEmpty()) {
+            // Constant-time execution padding: execute dummy BCrypt hash so timing delta <= 15%
+            passwordEncoder.encode("000000");
             // Anti-enumeration: Return silently without revealing user does not exist
             return;
         }

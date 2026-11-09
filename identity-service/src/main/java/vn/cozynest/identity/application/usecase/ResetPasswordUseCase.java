@@ -60,7 +60,7 @@ public class ResetPasswordUseCase {
             throw new IdentityDomainException("Mật khẩu mới không được trùng với mật khẩu gần nhất", "ERR_AUTH_OLD_PASSWORD_REUSE");
         }
 
-        vn.cozynest.identity.domain.service.PasswordPolicyValidator.validate(command.getNewPassword(), user.getEmail());
+        vn.cozynest.identity.domain.service.PasswordPolicyValidator.validate(command.getNewPassword(), user.getEmail(), user.getFullName());
 
         // OTP is correct
         token.markUsed();

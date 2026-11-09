@@ -22,8 +22,11 @@ public class LocationController {
 
     @GetMapping("/hot-areas")
     @Operation(summary = "Lấy danh sách các tỉnh/thành phố có nhiều phòng trọ nhất (khu vực hot)")
-    public ResponseEntity<ApiResponse<List<vn.cozynest.listing.application.dto.HotAreaDto>>> getHotAreas() {
-        return ResponseEntity.ok(ApiResponse.success(homeDataService.getHotAreas()));
+    public ResponseEntity<ApiResponse<List<vn.cozynest.listing.application.dto.HotAreaDto>>> getHotAreas(
+            @RequestParam(defaultValue = "8") int limit,
+            @RequestParam(defaultValue = "false") boolean nonEmptyOnly
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(homeDataService.getHotAreas(limit, nonEmptyOnly)));
     }
 
     @GetMapping("/provinces")

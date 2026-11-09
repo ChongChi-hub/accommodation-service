@@ -1,0 +1,86 @@
+{
+  "email": {
+    "valid": [
+      "user@cozynest.vn",
+      "tenant.test@gmail.com",
+      "landlord+room1@sub.domain.vn",
+      "a@b.co",
+      "student.hust.edu@edu.vn"
+    ],
+    "invalid": [
+      "",
+      "   ",
+      "plainaddress",
+      "@missingusername.com",
+      "username@.com",
+      "user name@cozynest.vn",
+      "user@domain..com",
+      "extremely_long_email_exceeding_two_hundred_and_fifty_four_characters_limit_allowed_by_rfc_standards_for_safe_database_storage_and_smtp_transport_headers_testing_boundary_conditions_and_buffer_overflows_antipatterns_in_modern_web_systems_strictly_rejected_always@test.vn"
+    ]
+  },
+  "phone": {
+    "valid": [
+      "",
+      "0901234567",
+      "0987654321",
+      "0321234567",
+      "0701234567",
+      "0861234567",
+      "+84901234567",
+      "+84321234567"
+    ],
+    "invalid": [
+      "123456",
+      "0123456789",
+      "090123456789",
+      "abcdefghij",
+      "090 123 4567",
+      "+1234567890"
+    ]
+  },
+  "fullName": {
+    "valid": [
+      "Nguyễn Văn A",
+      "Trần Thị Bích Ngọc",
+      "Đặng Lê Nguyên Vũ",
+      "John O'Connor",
+      "Jean-Luc Picard",
+      "Dr. Nguyen"
+    ],
+    "invalid": [
+      "",
+      "A",
+      "   ",
+      "User123",
+      "Nguyễn @ Văn",
+      "Ten<script>",
+      "Tên Người Dùng Quá Dài Vượt Quá Sáu Mươi Ký Tự Theo Chuẩn Giới Hạn Nghiệp Vụ Của Hệ Thống Tổ Ấm"
+    ]
+  },
+  "password": {
+    "valid": [
+      "CorrectHorseBattery99",
+      "ToAm@NhaDep2026",
+      "matkhauco123!@#",
+      "NguyenVanA_SecurePass!",
+      "87654321_Valid",
+      "TổẤmNhàĐẹpTổẤmNhàĐẹpTổẤmNhàĐẹpViệtNamxxxxxxxxx"
+    ],
+    "invalid": [
+      "",
+      "short",
+      "1234567",
+      "12345678",
+      "password",
+      "password123",
+      "admin123",
+      "aaaaaaaa",
+      "11111111",
+      "tenant@cozynest.vn",
+      "tenant",
+      "Nguyễn Văn A",
+      "TổẤmNhàĐẹpTổẤmNhàĐẹpTổẤmNhàĐẹpViệtNamxxxxxxxxxx",
+      "Mật khẩu quá dài vượt quá bảy mươi hai byte UTF-8 bằng các ký tự tiếng Việt có dấu đặc thù như ế, ắ, ộ, ử"
+    ]
+  }
+}

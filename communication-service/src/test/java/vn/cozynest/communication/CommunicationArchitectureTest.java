@@ -16,7 +16,27 @@ public class CommunicationArchitectureTest {
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
     @ArchTest
+    static final ArchRule domainMustNotDependOnJakartaPersistence =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("jakarta.persistence..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnSpringFramework =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("org.springframework..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnOuterLayers =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAnyPackage("..application..", "..interfaces..");
+
+    @ArchTest
     static final ArchRule applicationMustNotDependOnInfrastructure =
             noClasses().that().resideInAPackage("..application..")
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
+
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnInterfaces =
+            noClasses().that().resideInAPackage("..application..")
+                    .should().dependOnClassesThat().resideInAPackage("..interfaces..");
 }

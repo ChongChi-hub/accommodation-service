@@ -50,10 +50,9 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     @Query("""
         SELECT p.code, p.name, p.fullName, p.slug, p.imageUrl, COUNT(r.id)
         FROM Province p
-        JOIN Room r ON r.provinceCode = p.code AND r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
-        GROUP BY p.code, p.name, p.fullName, p.slug, p.imageUrl
-        HAVING COUNT(r.id) > 0
-        ORDER BY COUNT(r.id) DESC
+        LEFT JOIN Room r ON r.provinceCode = p.code AND r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+        GROUP BY p.code, p.name, p.fullName, p.slug, p.imageUrl, p.id
+        ORDER BY COUNT(r.id) DESC, CASE WHEN p.slug IS NOT NULL THEN 0 ELSE 1 END, p.id ASC
     """)
     List<Object[]> findHotAreas();
 
