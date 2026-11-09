@@ -4,14 +4,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.BannerDto;
+import vn.cozynest.listing.application.dto.CmsArticleDto;
 import vn.cozynest.listing.application.dto.HotAreaDto;
 import vn.cozynest.listing.application.dto.PlatformStatsDto;
 import vn.cozynest.listing.domain.model.Banner;
+import vn.cozynest.listing.domain.model.CmsArticle;
 import vn.cozynest.listing.domain.repository.BannerRepository;
+import vn.cozynest.listing.domain.repository.CmsArticleRepository;
 import vn.cozynest.listing.domain.repository.ReviewRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +26,7 @@ public class HomeDataService {
     private final RoomRepository roomRepository;
     private final BannerRepository bannerRepository;
     private final ReviewRepository reviewRepository;
+    private final CmsArticleRepository cmsArticleRepository;
 
     public List<HotAreaDto> getHotAreas() {
         return getHotAreas(8, false);
@@ -73,18 +78,51 @@ public class HomeDataService {
                 .collect(Collectors.toList());
     }
 
+    public List<CmsArticleDto> getArticles() {
+        return cmsArticleRepository.findByActiveTrueOrderBySortOrderAscPublishedAtDesc().stream()
+                .map(this::toArticleDto)
+                .collect(Collectors.toList());
+    }
+
+    public CmsArticleDto getArticleBySlug(String slug) {
+        return cmsArticleRepository.findBySlugAndActiveTrue(slug)
+                .map(this::toArticleDto)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy bài viết: " + slug));
+    }
+
     public PlatformStatsDto getPlatformStats() {
         long activeRooms = roomRepository.countActiveRooms();
+        long provincesWithRooms = roomRepository.countActiveProvinces();
         long verifiedLandlords = roomRepository.countVerifiedLandlords();
         long totalReviews = reviewRepository.count();
         long happyTenants = activeRooms * 2 + totalReviews;
 
         return PlatformStatsDto.builder()
                 .activeRooms(activeRooms)
+                .provincesWithRooms(provincesWithRooms)
                 .verifiedLandlords(verifiedLandlords > 0 ? verifiedLandlords : 1)
                 .totalReviews(totalReviews)
                 .happyTenants(happyTenants)
                 .build();
     }
-}
 
+    private CmsArticleDto toArticleDto(CmsArticle a) {
+        return CmsArticleDto.builder()
+                .id(a.getId())
+                .slug(a.getSlug())
+                .titleVi(a.getTitleVi())
+                .titleEn(a.getTitleEn())
+                .summaryVi(a.getSummaryVi())
+                .summaryEn(a.getSummaryEn())
+                .contentVi(a.getContentVi())
+                .contentEn(a.getContentEn())
+                .category(a.getCategory())
+                .readingMinutes(a.getReadingMinutes())
+                .imageUrl(a.getImageUrl())
+                .imageAltVi(a.getImageAltVi())
+                .imageAltEn(a.getImageAltEn())
+                .publishedAt(a.getPublishedAt())
+                .sortOrder(a.getSortOrder())
+                .build();
+    }
+}

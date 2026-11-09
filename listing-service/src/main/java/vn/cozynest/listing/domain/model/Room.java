@@ -90,6 +90,10 @@ public class Room {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "price_unit", nullable = false, length = 16)
+    @Builder.Default
+    private String priceUnit = "ROOM";
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal deposit;
 

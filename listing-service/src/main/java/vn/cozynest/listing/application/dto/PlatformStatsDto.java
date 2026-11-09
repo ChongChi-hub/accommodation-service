@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PlatformStatsDto {
     private long activeRooms;
+    private long provincesWithRooms;
     private long verifiedLandlords;
     private long totalReviews;
     private long happyTenants;
 }
-

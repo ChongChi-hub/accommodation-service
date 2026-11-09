@@ -30,6 +30,8 @@ public class RoomDto {
     private Double area;
     private Integer maxOccupants;
     private BigDecimal price;
+    @Builder.Default
+    private String priceUnit = "ROOM";
     private BigDecimal deposit;
     private BigDecimal electricityCost;
     private BigDecimal waterCost;

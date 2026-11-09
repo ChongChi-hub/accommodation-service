@@ -40,6 +40,7 @@ public class RoomDetailDto {
     private Integer maxOccupants;
 
     private BigDecimal price;
+    private String priceUnit;
     private BigDecimal deposit;
     private BigDecimal electricityCost;
     private BigDecimal waterCost;

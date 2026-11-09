@@ -35,6 +35,7 @@ public class LandlordRoomDetailDto {
     private Double area;
     private Integer maxOccupants;
     private BigDecimal price;
+    private String priceUnit;
     private BigDecimal deposit;
     private BigDecimal electricityCost;
     private BigDecimal waterCost;

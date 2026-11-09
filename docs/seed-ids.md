@@ -50,6 +50,15 @@
 | **8** | `room-00000001-0000-0000-0000-000000000008` | Studio view Landmark 81, Phường 5, TP.HCM | `u-landlord-01` | `RENTED` |
 | ... | ... | *(Tổng cộng 78 phòng phủ khắp 6 thành phố trực thuộc Trung ương theo Nghị quyết 202/2025/QH15)* | ... | ... |
 
+### 2.1 Phòng Dữ Liệu Mở Rộng 4 Loại Hình & 8 Tỉnh Thành (Seed R__04: IDs 201 - 232)
+
+| Mã số (ID) | UUID Tham chiếu | Nhóm loại hình | Tỉnh/Thành | Đơn vị giá | Giá niêm yết | Trạng thái |
+| :---: | :--- | :--- | :--- | :--- | :--- | :--- |
+| **201 - 208** | `room-...0201` đến `0208` | Nhà nguyên căn (`FULL_HOUSE`) | HN, HCM, DNG, HP, HUE, BDG, BN, CT | `ROOM` (/tháng) | 6.5M - 15.0M | `PUBLISHED` |
+| **209 - 216** | `room-...0209` đến `0216` | Ở ghép (`SHARED`) | HN, HCM, DNG, CT, HUE, BDG, HP, BN | `BED` (/giường/tháng) | 1.2M - 2.2M | `PUBLISHED` |
+| **217 - 224** | `room-...0217` đến `0224` | Phòng trọ (`SINGLE`, `HOMESTAY`) | HUE, BDG, BN, HP, CT, HN, HCM, DNG | `ROOM` (/tháng) | 2.1M - 2.95M | `PUBLISHED` |
+| **225 - 232** | `room-...0225` đến `0232` | Căn hộ (`MINI_APARTMENT`, `STUDIO`, `APARTMENT`) | HUE, BDG, BN, HP, CT, HN, HCM, DNG | `ROOM` (/tháng) | 3.8M - 6.0M | `PUBLISHED` |
+
 ---
 
 ## 3. Quy Trình Thuê & Hợp Đồng (`cozynest_booking`)
