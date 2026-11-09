@@ -260,7 +260,7 @@ INSERT INTO rooms (
 -- Exactly 1 is_cover=1 AND is_primary=1 per room!
 -- ==============================================================================
 INSERT INTO room_images (
-    room_id, image_url, thumb_url, medium_url, large_url, is_cover, is_primary, sort_order, display_order, created_at
+    room_id, image_url, thumb_key, medium_key, large_key, is_cover, is_primary, sort_order, display_order, created_at
 )
 SELECT
     r.id,

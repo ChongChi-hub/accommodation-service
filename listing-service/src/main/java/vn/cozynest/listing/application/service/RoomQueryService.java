@@ -23,6 +23,7 @@ public class RoomQueryService {
     private final AmenityRepository amenityRepository;
     private final ReviewRepository reviewRepository;
     private final ProvinceRepository provinceRepository;
+    private final LandlordSnapshotRepository landlordSnapshotRepository;
     private final RoomDtoMapper roomDtoMapper;
     private final RoomSpecificationBuilder roomSpecificationBuilder;
 
@@ -49,7 +50,22 @@ public class RoomQueryService {
         Map<String, String> provinceNames = buildProvinceNameMap();
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        return roomRepository.findAll(spec, pageable).map(r -> roomDtoMapper.toDto(r, provinceNames));
+        Page<Room> roomPage = roomRepository.findAll(spec, pageable);
+        List<Long> landlordIds = roomPage.getContent().stream()
+                .map(Room::getLandlordId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, Boolean> landlordVerifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null) ? Map.of() :
+                landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
+                        .collect(Collectors.toMap(
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId,
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified,
+                                (a, b) -> a
+                        ));
+
+        return roomPage.map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap));
     }
 
     public RoomDto getRoomById(Long id) {
@@ -58,14 +74,25 @@ public class RoomQueryService {
         if (room.isDeleted() || room.isHidden() || (!room.isPublished() && !"AVAILABLE".equalsIgnoreCase(room.getStatus()))) {
             throw new NoSuchElementException("Phòng không tồn tại hoặc đã tạm dừng hiển thị: " + id);
         }
-        return roomDtoMapper.toDto(room);
+        boolean isVerified = false;
+        if (room.getLandlordId() != null && landlordSnapshotRepository != null) {
+            isVerified = landlordSnapshotRepository.findByLandlordId(room.getLandlordId())
+                    .map(vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified)
+                    .orElse(false);
+        }
+        Map<Long, Boolean> map = (room.getLandlordId() != null) ? Map.of(room.getLandlordId(), isVerified) : Map.of();
+        return roomDtoMapper.toDto(room, buildProvinceNameMap(), map);
     }
 
     public List<RoomDto> getRecommendations(Long roomId) {
         Room current = roomRepository.findById(roomId).orElse(null);
         String provinceCode = current != null ? current.getProvinceCode() : "HN";
-        return roomRepository.findRecommendations(provinceCode, roomId, PageRequest.of(0, 4))
-                .stream().map(roomDtoMapper::toDto).collect(Collectors.toList());
+        List<Room> recs = roomRepository.findRecommendations(provinceCode, roomId, PageRequest.of(0, 4));
+        List<Long> landlordIds = recs.stream().map(Room::getLandlordId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, Boolean> verifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null) ? Map.of() :
+                landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
+                        .collect(Collectors.toMap(vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId, vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified, (a, b) -> a));
+        return recs.stream().map(r -> roomDtoMapper.toDto(r, Map.of(), verifiedMap)).collect(Collectors.toList());
     }
 
     public List<AmenityDto> getAllAmenities() {
@@ -138,7 +165,7 @@ public class RoomQueryService {
                         .build())
                 .collect(Collectors.toList());
 
-        long phongTroCount = typeCountMap.getOrDefault("SINGLE", 0L) + typeCountMap.getOrDefault("HOMESTAY", 0L);
+        long phongTroCount = typeCountMap.getOrDefault("SINGLE", 0L);
         long nhaNguyenCanCount = typeCountMap.getOrDefault("FULL_HOUSE", 0L);
         long canHoCount = typeCountMap.getOrDefault("MINI_APARTMENT", 0L) + typeCountMap.getOrDefault("STUDIO", 0L) + typeCountMap.getOrDefault("APARTMENT", 0L);
         long oGhepCount = typeCountMap.getOrDefault("SHARED", 0L);

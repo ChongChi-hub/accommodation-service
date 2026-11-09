@@ -40,6 +40,9 @@ class SeedHomeCoverageTest {
     @Mock
     private CmsArticleRepository cmsArticleRepository;
 
+    @Mock
+    private vn.cozynest.listing.domain.repository.LandlordSnapshotRepository landlordSnapshotRepository;
+
     @Spy
     private RoomDtoMapper roomDtoMapper = new RoomDtoMapper();
 
@@ -90,7 +93,7 @@ class SeedHomeCoverageTest {
         assertEquals(4, facets.getCategories().size());
 
         RoomFacetsDto.FacetItemDto phongTro = facets.getCategories().stream().filter(c -> "phong-tro".equals(c.getCode())).findFirst().orElseThrow();
-        assertEquals(26L, phongTro.getCount()); // 20 SINGLE + 6 HOMESTAY
+        assertEquals(20L, phongTro.getCount()); // 20 SINGLE (HOMESTAY excluded in LIST-1)
 
         RoomFacetsDto.FacetItemDto nhaNguyenCan = facets.getCategories().stream().filter(c -> "nha-nguyen-can".equals(c.getCode())).findFirst().orElseThrow();
         assertEquals(8L, nhaNguyenCan.getCount()); // 8 FULL_HOUSE

@@ -26,11 +26,14 @@ public class RoomFilterParams {
     private BigDecimal priceMax;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private String priceUnit;
     private Double areaMin;
     private Double areaMax;
     private Double minArea;
     private Double maxArea;
+    private Integer bedrooms;
     private Integer occupants;
+    private Integer minAvailableSpots;
     private List<Long> amenityIds;
     @Builder.Default
     private String amenityMode = "all"; // all | any

@@ -87,6 +87,12 @@ public class Room {
     @Column(name = "max_occupants", nullable = false)
     private Integer maxOccupants;
 
+    @Column(name = "available_spots")
+    private Integer availableSpots;
+
+    @Column(name = "total_spots")
+    private Integer totalSpots;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 

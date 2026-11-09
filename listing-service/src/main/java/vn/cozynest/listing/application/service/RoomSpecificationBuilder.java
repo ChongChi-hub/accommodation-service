@@ -52,20 +52,42 @@ public class RoomSpecificationBuilder {
             if (params.getEffectivePriceMax() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("price"), params.getEffectivePriceMax()));
             }
+            if (params.getPriceUnit() != null && !params.getPriceUnit().isBlank()) {
+                predicates.add(cb.equal(root.get("priceUnit"), params.getPriceUnit().trim().toUpperCase(Locale.ROOT)));
+            }
             if (params.getEffectiveAreaMin() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("area"), params.getEffectiveAreaMin()));
             }
             if (params.getEffectiveAreaMax() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("area"), params.getEffectiveAreaMax()));
             }
+            if (params.getBedrooms() != null && params.getBedrooms() > 0) {
+                if (params.getBedrooms() >= 4) {
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("bedrooms"), 4));
+                } else {
+                    predicates.add(cb.equal(root.get("bedrooms"), params.getBedrooms()));
+                }
+            }
             if (params.getOccupants() != null && params.getOccupants() > 0) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("maxOccupants"), params.getOccupants()));
+            }
+            if (params.getMinAvailableSpots() != null && params.getMinAvailableSpots() > 0) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("availableSpots"), params.getMinAvailableSpots()));
             }
             if (params.getAllowPets() != null) {
                 predicates.add(cb.equal(root.get("allowPets"), params.getAllowPets()));
             }
             if (params.getAllowCooking() != null) {
                 predicates.add(cb.equal(root.get("allowCooking"), params.getAllowCooking()));
+            }
+            if (params.getFurnishing() != null && !params.getFurnishing().isBlank()) {
+                predicates.add(cb.equal(root.get("furnishing"), params.getFurnishing().trim().toUpperCase(Locale.ROOT)));
+            }
+            if (params.getGenderPreference() != null && !params.getGenderPreference().isBlank() && !"ALL".equalsIgnoreCase(params.getGenderPreference())) {
+                predicates.add(cb.or(
+                        cb.equal(root.get("genderPreference"), params.getGenderPreference().trim().toUpperCase(Locale.ROOT)),
+                        cb.equal(root.get("genderPreference"), "ALL")
+                ));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -98,10 +120,7 @@ public class RoomSpecificationBuilder {
             String trimmed = token.trim();
             if (trimmed.isEmpty()) continue;
             switch (trimmed.toLowerCase(Locale.ROOT)) {
-                case "phong-tro" -> {
-                    codes.add("SINGLE");
-                    codes.add("HOMESTAY");
-                }
+                case "phong-tro" -> codes.add("SINGLE"); // LIST-1: Only SINGLE for phong-tro, exclude HOMESTAY
                 case "nha-nguyen-can" -> codes.add("FULL_HOUSE");
                 case "can-ho" -> {
                     codes.add("MINI_APARTMENT");
@@ -125,4 +144,3 @@ public class RoomSpecificationBuilder {
         return trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }
-

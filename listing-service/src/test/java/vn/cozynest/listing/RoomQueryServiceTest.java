@@ -42,6 +42,9 @@ class RoomQueryServiceTest {
     @Mock
     private ProvinceRepository provinceRepository;
 
+    @Mock
+    private vn.cozynest.listing.domain.repository.LandlordSnapshotRepository landlordSnapshotRepository;
+
     @org.mockito.Spy
     private vn.cozynest.listing.application.service.RoomDtoMapper roomDtoMapper = new vn.cozynest.listing.application.service.RoomDtoMapper();
 

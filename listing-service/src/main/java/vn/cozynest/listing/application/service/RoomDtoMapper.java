@@ -13,10 +13,14 @@ import java.util.stream.Collectors;
 public class RoomDtoMapper {
 
     public RoomDto toDto(Room r) {
-        return toDto(r, Map.of());
+        return toDto(r, Map.of(), Map.of());
     }
 
     public RoomDto toDto(Room r, Map<String, String> provinceNames) {
+        return toDto(r, provinceNames, Map.of());
+    }
+
+    public RoomDto toDto(Room r, Map<String, String> provinceNames, Map<Long, Boolean> landlordVerifiedMap) {
         List<String> images = r.getImages().stream()
                 .sorted(Comparator.comparingInt(img -> img.getDisplayOrder() != null ? img.getDisplayOrder() : 0))
                 .map(RoomImage::getImageUrl)
@@ -36,6 +40,11 @@ public class RoomDtoMapper {
                 .category(a.getCategory())
                 .build()).collect(Collectors.toList());
 
+        boolean isVerified = false;
+        if (landlordVerifiedMap != null && r.getLandlordId() != null) {
+            isVerified = Boolean.TRUE.equals(landlordVerifiedMap.get(r.getLandlordId()));
+        }
+
         return RoomDto.builder()
                 .id(r.getId())
                 .slug(r.getSlug())
@@ -54,7 +63,11 @@ public class RoomDtoMapper {
                 .latitude(r.getLatitude())
                 .longitude(r.getLongitude())
                 .area(r.getArea())
+                .floor(r.getFloor())
+                .bedrooms(r.getBedrooms())
                 .maxOccupants(r.getMaxOccupants())
+                .availableSpots(r.getAvailableSpots())
+                .totalSpots(r.getTotalSpots())
                 .price(r.getPrice())
                 .priceUnit(r.getPriceUnit() != null ? r.getPriceUnit() : "ROOM")
                 .deposit(r.getDeposit())
@@ -66,13 +79,17 @@ public class RoomDtoMapper {
                 .approved(r.isApproved())
                 .allowPets(r.isAllowPets())
                 .allowCooking(r.isAllowCooking())
+                .genderPreference(r.getGenderPreference())
+                .furnishing(r.getFurnishing())
                 .ratingAvg(r.getRatingAvg())
                 .reviewCount(r.getReviewCount())
                 .bookmarkCount(r.getBookmarkCount() != null ? r.getBookmarkCount() : 0)
                 .primaryImageUrl(primaryImg)
                 .imageUrls(images)
                 .amenities(ams)
+                .isLandlordVerified(isVerified)
+                .createdAt(r.getCreatedAt())
+                .publishedAt(r.getPublishedAt())
                 .build();
     }
 }
-
