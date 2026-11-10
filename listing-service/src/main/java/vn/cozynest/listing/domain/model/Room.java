@@ -87,8 +87,18 @@ public class Room {
     @Column(name = "max_occupants", nullable = false)
     private Integer maxOccupants;
 
+    @Column(name = "available_spots")
+    private Integer availableSpots;
+
+    @Column(name = "total_spots")
+    private Integer totalSpots;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+
+    @Column(name = "price_unit", nullable = false, length = 16)
+    @Builder.Default
+    private String priceUnit = "ROOM";
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal deposit;

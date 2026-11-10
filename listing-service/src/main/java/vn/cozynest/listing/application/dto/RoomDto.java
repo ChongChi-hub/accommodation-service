@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -28,8 +29,14 @@ public class RoomDto {
     private Double latitude;
     private Double longitude;
     private Double area;
+    private Integer floor;
+    private Integer bedrooms;
     private Integer maxOccupants;
+    private Integer availableSpots;
+    private Integer totalSpots;
     private BigDecimal price;
+    @Builder.Default
+    private String priceUnit = "ROOM";
     private BigDecimal deposit;
     private BigDecimal electricityCost;
     private BigDecimal waterCost;
@@ -57,6 +64,7 @@ public class RoomDto {
     private RoomImageDto coverImage;
     private List<AmenityDto> highlightAmenities;
     @Builder.Default
-    private Boolean isLandlordVerified = true;
+    private Boolean isLandlordVerified = false;
+    private LocalDateTime createdAt;
+    private LocalDateTime publishedAt;
 }
-

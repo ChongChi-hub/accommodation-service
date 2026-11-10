@@ -27,6 +27,9 @@ public class RoomFacetsDto {
     @Builder.Default
     private List<FacetItemDto> roomTypes = new ArrayList<>();
 
+    @Builder.Default
+    private List<FacetItemDto> categories = new ArrayList<>();
+
     @Data
     @Builder
     @NoArgsConstructor

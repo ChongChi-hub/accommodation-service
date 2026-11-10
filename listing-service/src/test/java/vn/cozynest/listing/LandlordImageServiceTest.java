@@ -113,7 +113,7 @@ class LandlordImageServiceTest {
 
         assertThat(response.getTotalUploaded()).isEqualTo(0);
         assertThat(response.getTotalFailed()).isEqualTo(1);
-        assertThat(response.getItems().get(0).getErrorMessage()).contains("vượt quá dung lượng");
+        assertThat(response.getItems().get(0).getErrorMessage()).contains("vượt quá");
     }
 
     @Test

@@ -59,8 +59,50 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     @Query("SELECT COUNT(r) FROM Room r WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')")
     long countActiveRooms();
 
+    @Query("SELECT COUNT(DISTINCT r.provinceCode) FROM Room r WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')")
+    long countActiveProvinces();
+
     @Query("SELECT COUNT(DISTINCT r.landlordId) FROM Room r WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true")
     long countVerifiedLandlords();
+
+    @Query("""
+        SELECT r.roomTypeCode, COUNT(r.id)
+        FROM Room r
+        WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+        GROUP BY r.roomTypeCode
+    """)
+    List<Object[]> countActiveByRoomTypeCode();
+
+    @Query("""
+        SELECT MIN(r.price), MAX(r.price)
+        FROM Room r
+        WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+    """)
+    List<Object[]> findActivePriceRange();
+
+    @Query("""
+        SELECT a.id, a.code, a.name, COUNT(r.id)
+        FROM Room r
+        JOIN r.amenities a
+        WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+        GROUP BY a.id, a.code, a.name
+        ORDER BY COUNT(r.id) DESC
+    """)
+    List<Object[]> countActiveByAmenity();
+
+    @Query("""
+        SELECT p.code, p.name, COUNT(r.id)
+        FROM Room r
+        JOIN Province p ON p.code = r.provinceCode
+        WHERE r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+        GROUP BY p.code, p.name
+        ORDER BY COUNT(r.id) DESC
+    """)
+    List<Object[]> countActiveByProvince();
 
     @Query("""
         SELECT r FROM Room r

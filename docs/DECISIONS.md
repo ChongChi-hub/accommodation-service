@@ -421,29 +421,66 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
 
 ---
 
-## 13. Quyết định Pháp lý, Dòng tiền & Kiến trúc Sprint 3 (LEGAL-02, HARDEN-01, SAGA-01)
+## 13. Quyết định Pháp lý & Mô hình Dòng tiền (LEGAL-02 / ADR-008)
 
-### 13.1. Quyết định Mô hình Dòng tiền và Pháp lý Trung gian Thanh toán (LEGAL-02)
-* **Căn cứ pháp lý:** Nghị định 52/2024/NĐ-CP về thanh toán không dùng tiền mặt, Nghị định 117/2025/NĐ-CP về quản lý thuế trên nền tảng số, và Luật Giao dịch điện tử số 20/2023/QH15.
-* **Quyết định mô hình tiền:**
-  1. Nền tảng "Tổ Ấm" **không trực tiếp phát hành ví điện tử giữ tiền của công chúng** (không thuộc đối tượng trung gian thanh toán trái phép theo NĐ 52/2024/NĐ-CP).
-  2. Mọi giao dịch nạp cọc, thanh toán hóa đơn đều sử dụng cổng thanh toán đối tác có phép (PayOS / VietQR dynamic QR / VNPay sandbox).
-  3. Dòng tiền cọc được giữ trong tài khoản đảm bảo (Escrow Account) và được hạch toán minh bạch thông qua Sổ Cái Kế Toán Kép (Double-entry Ledger Engine) nội bộ với quy tắc bảo toàn số dư nghiêm ngặt (`Sum(DEBIT) == Sum(CREDIT)`).
-  4. Sàn chỉ thu Phí dịch vụ nền tảng (Platform Fee) và chịu nghĩa vụ kê khai, nộp thuế GTGT cho khoản thu phí dịch vụ này.
-  5. Thu nhập cho thuê trọ thuộc về Chủ trọ. Hệ thống lưu trữ hồ sơ thuế (CCCD, Họ tên, STK) để cung cấp bảng kê cho cơ quan thuế theo NĐ 117/2025/NĐ-CP.
+> **Mã định danh:** `ADR-008`  
+> **Chủ đề:** Mô hình Kiến trúc Dòng tiền, Giữ cọc (Escrow) & Trách nhiệm Thuế  
+> **Trạng thái:** `PENDING_EXTERNAL_LEGAL_REVIEW` (Chờ ý kiến tư vấn chính thức từ Luật sư và Kiểm toán viên độc lập)  
+> **Ngày ghi nhận:** 09/11/2026  
+> **Tài liệu tham chiếu:** `docs/legal/LEGAL-02-PAYMENT-TAX-LEGAL-ASSESSMENT.md`
 
-### 13.2. Giá trị Pháp lý Hợp đồng Điện tử & Chữ Ký OTP (CONTRACT-BE)
-* **Quy chuẩn ký hợp đồng:**
-  1. Hợp đồng thuê nhà điện tử được khởi tạo với nội dung đầy đủ các điều khoản thuê, thông tin 2 bên, giá thuê, tiền cọc và chu kỳ thanh toán.
-  2. Nội dung hợp đồng được băm bằng thuật toán SHA-256 (`document_hash`) trước khi ký để chống sửa đổi trái phép.
-  3. Quá trình ký kết thực hiện thông qua mã xác thực OTP gửi tới SĐT/Email đã đăng ký và xác minh của Người thuê và Chủ trọ.
-  4. Hệ thống lưu vết nhật ký ký kết bất biến (Immutable Signature Audit Trail): IP máy khách, User-Agent, thời điểm UTC, mã băm OTP và trạng thái ký.
+### 13.1. Bối cảnh & Căn cứ Pháp lý
+1. Tổ Ấm vận hành sàn thương mại điện tử kết nối cho thuê nhà ở. Các giao dịch có giá trị lớn bao gồm: Tiền đặt cọc hợp đồng, Tiền thuê phòng hàng tháng, Tiền dịch vụ tiện ích, Phí gói VIP và Phí dịch vụ sàn.
+2. Theo **Nghị định 52/2024/NĐ-CP** (hiệu lực 01/07/2024), việc nhận tiền của khách hàng vào tài khoản của doanh nghiệp, lưu giữ và chi trả theo lệnh cấu thành Dịch vụ trung gian thanh toán (thu hộ, chi hộ, ví điện tử) bắt buộc phải có Giấy phép của Ngân hàng Nhà nước.
+3. Theo **Luật Quản lý thuế số 56/2024/QH15**, sàn TMĐT có chức năng thanh toán có trách nhiệm khấu trừ, nộp thuế thay cho cá nhân kinh doanh. Trong khi đó, theo **Thông tư 40/2021/TT-BTC**, cá nhân cho thuê tài sản có doanh thu $\le 100$ triệu đồng/năm thuộc diện miễn thuế GTGT và TNCN.
 
-### 13.3. Chuẩn hóa Khóa chính và Định dạng Tiền tệ (HARDEN-01)
+### 13.2. Quyết định Định hướng Kiến trúc
+1. **BÁC BỎ HOÀN TOÀN MÔ HÌNH NỀN TẢNG TỰ GIỮ CỌC (MÔ HÌNH D):**  
+   Tuyệt đối không sử dụng tài khoản ngân hàng của Công ty Tổ Ấm để nhận và tạm giữ tiền cọc của người thuê. Không xây dựng tính năng "Ví nội bộ" (In-house Wallet) cho phép người dùng nạp tiền vào hệ thống.
+2. **ÁP DỤNG MÔ HÌNH CHUYỂN KHOẢN TRỰC TIẾP P2P (MÔ HÌNH A) VÀ CỔNG CÓ PHÉP CHO SPRINT 3:**  
+   - Người thuê chuyển khoản tiền cọc và tiền thuê trực tiếp vào số tài khoản ngân hàng chính chủ của Chủ trọ thông qua mã VietQR động do hệ thống sinh, hoặc cổng đối tác có phép.
+   - Hệ thống tạo mã tham chiếu giao dịch chuẩn `TOAM-REF-xxxxxx` để theo dõi và hỗ trợ hai bên ghi nhận trạng thái thanh toán.
+   - Tổ Ấm không tham gia vào dòng tiền thanh toán tiền phòng/tiền cọc, do đó không phát sinh trách nhiệm khấu trừ thuế tiền thuê nhà. Nguồn thu duy nhất của Tổ Ấm là Phí dịch vụ đăng tin / Gói VIP xuất hóa đơn GTGT đầy đủ.
+3. **ĐỊNH HƯỚNG MÔ HÌNH B CHO TƯƠNG LAI (TÍCH HỢP ĐỐI TÁC TRUNG GIAN THANH TOÁN CÓ GIẤY PHÉP NHNN):**  
+   Khi có nhu cầu cung cấp dịch vụ giữ cọc bảo đảm (Escrow), Tổ Ấm sẽ ký hợp đồng hợp tác với Tổ chức Trung gian thanh toán hoặc Ngân hàng được NHNN cấp phép để tiền cọc được lưu giữ trên Tài khoản đảm bảo thanh toán của đối tác.
+
+---
+
+## 14. Quyết định Bằng chứng Pháp lý Hợp đồng Điện tử & Ký số (LEGAL-02 / ADR-010)
+
+> **Mã định danh:** `ADR-010`  
+> **Chủ đề:** Bằng chứng Hợp đồng Điện tử, Tính toàn vẹn Dữ liệu & Ký xác thực OTP  
+> **Trạng thái:** `PENDING_EXTERNAL_LEGAL_REVIEW`  
+> **Ngày ghi nhận:** 09/11/2026  
+> **Tài liệu tham chiếu:** `docs/legal/LEGAL-02-PAYMENT-TAX-LEGAL-ASSESSMENT.md`
+
+### 14.1. Căn cứ Pháp lý
+1. **Luật Nhà ở 2023 (Điều 163, 164):** Hợp đồng thuê nhà ở lập thành văn bản, không bắt buộc công chứng, chứng thực.
+2. **Luật Giao dịch điện tử 2023 (Điều 9, 12, 22):** Thông điệp dữ liệu có giá trị như văn bản gốc nếu bảo đảm tính toàn vẹn và khả năng truy cập hoàn chỉnh. Mã OTP qua SMS/Email là phương thức xác thực điện tử thể hiện sự chấp thuận của các bên.
+
+### 14.2. Chuẩn hóa Kỹ thuật Lưu vết Chứng cứ (Technical Evidentiary Standard)
+1. **Tạo Snapshot Bất biến:** Tại thời điểm các bên xác nhận ký, hệ thống kết xuất toàn văn nội dung hợp đồng và lưu trữ dưới dạng bản chụp bất biến (Immutable Snapshot).
+2. **Mã băm SHA-256:** Mỗi bản chụp hợp đồng được băm bằng thuật toán `SHA-256` trên toàn bộ nội dung văn bản kèm thông tin phiên bản để chứng minh văn bản không bị can thiệp sau khi ký.
+3. **Nhật ký Ký số (Append-only Signature Audit Trail):** Bảng `contract_signatures` bắt buộc lưu trữ:
+   - `contract_id`, `version`, `document_hash` (SHA-256).
+   - `signer_id`, `signer_role` (`TENANT` / `LANDLORD`).
+   - `auth_method` (`OTP_SMS` / `OTP_EMAIL`).
+   - `ip_address`, `user_agent`, `signed_at` (UTC timestamp).
+   - Tuyệt đối không lưu mã OTP thô (chỉ lưu mã băm OTP hoặc trạng thái xác thực).
+4. **Định danh Chủ thể trước khi ký:** Cả Người thuê và Chủ trọ đều phải hoàn thành xác thực danh tính (eKYC CCCD) và số điện thoại trước khi được phép kích hoạt luồng ký hợp đồng điện tử.
+
+---
+
+## 15. Quy chuẩn Kỹ thuật & Kiến trúc Hệ thống Sprint 3 (HARDEN-01, SAGA-01, LEDGER-02)
+
+### 15.1. Chuẩn hóa Khóa chính và Định dạng Tiền tệ (HARDEN-01)
 * **Khóa chính:** Toàn bộ bảng dữ liệu mới sử dụng UUID v7 (chuỗi 36 ký tự `VARCHAR(36)` hoặc `BINARY(16)`), đại diện bằng `UUID` trong Java và chuỗi UUID trên API.
 * **Tiền tệ:** Toàn bộ số tiền đều dùng kiểu số nguyên `BIGINT` (đơn vị Việt Nam Đồng - VND). Tuyệt đối không dùng `FLOAT` hay `DOUBLE` để tránh sai số làm tròn.
 * **Thời gian:** Mọi mốc thời gian lưu trữ ở dạng UTC `DATETIME(3)` trong DB và `Instant` trong Java.
 
-### 13.4. Giao dịch Xuyên Service (SAGA-01) & Transactional Outbox (BROKER-01)
+### 15.2. Hạch toán Kế toán Kép (LEDGER-02)
+* Mọi giao dịch nội bộ được hạch toán qua Sổ Cái Kép (Double-entry Ledger Engine) với ràng buộc bảo toàn số dư nghiêm ngặt (`Sum(DEBIT) == Sum(CREDIT)`).
+
+### 15.3. Giao dịch Xuyên Service (SAGA-01) & Transactional Outbox (BROKER-01)
 * Vòng đời đặt thuê khép kín: `Rental Request` -> `Holding Deposit` -> `Electronic Contract` -> `Room RENTED`.
 * Áp dụng Transactional Outbox Pattern kết hợp Saga Orchestrator đảm bảo tính nhất quán cuối cùng (Eventual Consistency) và các bước bù trừ tự động khi gặp sự cố mạng hoặc hết hạn giao dịch.

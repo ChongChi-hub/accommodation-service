@@ -42,6 +42,8 @@ public class UpdateRoomRequest {
     @Positive(message = "Giá thuê phải lớn hơn 0")
     private BigDecimal price;
 
+    private String priceUnit;
+
     private BigDecimal deposit;
     private BigDecimal electricityCost;
     private BigDecimal waterCost;
