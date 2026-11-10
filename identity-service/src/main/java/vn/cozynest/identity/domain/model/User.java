@@ -17,6 +17,8 @@ public class User {
     private LocalDate dateOfBirth;
     private UserStatus status;
     private Instant emailVerifiedAt;
+    private Instant phoneVerifiedAt;
+    private boolean twoFactorEnabled;
     private Instant lastLoginAt;
     private final Set<UserRoleType> roles;
     private final Instant createdAt;
@@ -25,6 +27,15 @@ public class User {
     public User(String id, String email, String phone, String passwordHash, String fullName,
                 String avatarUrl, String gender, LocalDate dateOfBirth, UserStatus status,
                 Instant emailVerifiedAt, Instant lastLoginAt, Set<UserRoleType> roles,
+                Instant createdAt, Instant updatedAt) {
+        this(id, email, phone, passwordHash, fullName, avatarUrl, gender, dateOfBirth, status,
+                emailVerifiedAt, null, false, lastLoginAt, roles, createdAt, updatedAt);
+    }
+
+    public User(String id, String email, String phone, String passwordHash, String fullName,
+                String avatarUrl, String gender, LocalDate dateOfBirth, UserStatus status,
+                Instant emailVerifiedAt, Instant phoneVerifiedAt, boolean twoFactorEnabled,
+                Instant lastLoginAt, Set<UserRoleType> roles,
                 Instant createdAt, Instant updatedAt) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.email = email;
@@ -36,6 +47,8 @@ public class User {
         this.dateOfBirth = dateOfBirth;
         this.status = status != null ? status : UserStatus.ACTIVE;
         this.emailVerifiedAt = emailVerifiedAt;
+        this.phoneVerifiedAt = phoneVerifiedAt;
+        this.twoFactorEnabled = twoFactorEnabled;
         this.lastLoginAt = lastLoginAt;
         this.roles = roles != null ? new HashSet<>(roles) : new HashSet<>();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
@@ -89,6 +102,27 @@ public class User {
         this.updatedAt = Instant.now();
     }
 
+    public void verifyPhoneNow() {
+        this.phoneVerifiedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void enableTwoFactor() {
+        this.twoFactorEnabled = true;
+        this.updatedAt = Instant.now();
+    }
+
+    public void disableTwoFactor() {
+        this.twoFactorEnabled = false;
+        this.updatedAt = Instant.now();
+    }
+
+    public void updatePhoneNumber(String phone) {
+        this.phone = phone;
+        this.phoneVerifiedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
     public void clearPassword() {
         this.passwordHash = null;
         this.updatedAt = Instant.now();
@@ -138,6 +172,9 @@ public class User {
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public UserStatus getStatus() { return status; }
     public Instant getEmailVerifiedAt() { return emailVerifiedAt; }
+    public Instant getPhoneVerifiedAt() { return phoneVerifiedAt; }
+    public boolean isPhoneVerified() { return phoneVerifiedAt != null; }
+    public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
     public Instant getLastLoginAt() { return lastLoginAt; }
     public Set<UserRoleType> getRoles() { return Set.copyOf(roles); }
     public Instant getCreatedAt() { return createdAt; }

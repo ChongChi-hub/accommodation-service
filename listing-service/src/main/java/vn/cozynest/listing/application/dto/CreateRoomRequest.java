@@ -50,5 +50,10 @@ public class CreateRoomRequest {
 
     private Boolean allowPets;
     private Boolean allowCooking;
+
+    private String houseRules;
+    private java.time.LocalDate availableDate;
+    private Integer minLeaseMonths;
+
     private Boolean submitForReview;
 }

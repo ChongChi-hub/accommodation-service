@@ -107,6 +107,25 @@ public class LandlordRoomManagementService {
             throw new RoomVersionConflictException("Dữ liệu phòng đã bị thay đổi bởi phiên làm việc khác. Vui lòng tải lại trang.");
         }
 
+        if (room.isRented()) {
+            boolean criticalChanged = (req.getPrice() != null && req.getPrice().compareTo(room.getPrice()) != 0)
+                    || (req.getAddress() != null && !req.getAddress().equalsIgnoreCase(room.getAddress()));
+            if (criticalChanged) {
+                throw new IllegalStateException("Không thể sửa đổi giá thuê hoặc địa chỉ khi phòng đang ở trạng thái RENTED.");
+            }
+        }
+
+        boolean criticalChanged = (req.getPrice() != null && req.getPrice().compareTo(room.getPrice()) != 0)
+                || (req.getAddress() != null && !req.getAddress().equalsIgnoreCase(room.getAddress()));
+        if (room.isApproved() && criticalChanged) {
+            String fromStatus = room.getStatus();
+            room.setApproved(false);
+            room.setStatus("PENDING_REVIEW");
+            recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId,
+                    "Hệ thống tự động chuyển sang chờ duyệt lại do thay đổi thông tin quan trọng", LocalDateTime.now());
+            log.info("Room {} reset to PENDING_REVIEW due to critical change", roomId);
+        }
+
         room.setTitle(req.getTitle());
         room.setTitleSearch(LandlordRoomQueryService.removeAccents(req.getTitle().toLowerCase()));
         room.setDescription(req.getDescription());
@@ -127,6 +146,9 @@ public class LandlordRoomManagementService {
         if (req.getServiceCost() != null) room.setServiceCost(req.getServiceCost());
         if (req.getAllowPets() != null) room.setAllowPets(req.getAllowPets());
         if (req.getAllowCooking() != null) room.setAllowCooking(req.getAllowCooking());
+        if (req.getHouseRules() != null) room.setHouseRules(req.getHouseRules());
+        if (req.getAvailableDate() != null) room.setAvailableDate(req.getAvailableDate());
+        if (req.getMinLeaseMonths() != null) room.setMinLeaseMonths(req.getMinLeaseMonths());
         room.setUpdatedAt(LocalDateTime.now());
 
         log.info("Landlord {} updated room {}", landlordId, roomId);
@@ -167,6 +189,9 @@ public class LandlordRoomManagementService {
                 .approved(false)
                 .allowPets(Boolean.TRUE.equals(req.getAllowPets()))
                 .allowCooking(Boolean.TRUE.equals(req.getAllowCooking()))
+                .houseRules(req.getHouseRules())
+                .availableDate(req.getAvailableDate() != null ? req.getAvailableDate() : java.time.LocalDate.now())
+                .minLeaseMonths(req.getMinLeaseMonths() != null ? req.getMinLeaseMonths() : 6)
                 .viewCount(0)
                 .ratingAvg(0.0)
                 .reviewCount(0)

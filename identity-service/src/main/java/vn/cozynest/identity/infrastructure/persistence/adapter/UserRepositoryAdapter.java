@@ -77,6 +77,8 @@ public class UserRepositoryAdapter implements UserRepository {
                 entity.getDateOfBirth(),
                 UserStatus.valueOf(entity.getStatus()),
                 entity.getEmailVerifiedAt(),
+                entity.getPhoneVerifiedAt(),
+                entity.isTwoFactorEnabled(),
                 entity.getLastLoginAt(),
                 roles,
                 entity.getCreatedAt(),
@@ -110,6 +112,8 @@ public class UserRepositoryAdapter implements UserRepository {
                 .dateOfBirth(domain.getDateOfBirth())
                 .status(domain.getStatus().name())
                 .emailVerifiedAt(domain.getEmailVerifiedAt())
+                .phoneVerifiedAt(domain.getPhoneVerifiedAt())
+                .twoFactorEnabled(domain.isTwoFactorEnabled())
                 .lastLoginAt(domain.getLastLoginAt())
                 .roles(roleEntities)
                 .createdAt(domain.getCreatedAt())

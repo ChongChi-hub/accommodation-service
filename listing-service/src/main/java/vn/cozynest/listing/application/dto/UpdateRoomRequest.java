@@ -51,6 +51,10 @@ public class UpdateRoomRequest {
     private Boolean allowPets;
     private Boolean allowCooking;
 
+    private String houseRules;
+    private java.time.LocalDate availableDate;
+    private Integer minLeaseMonths;
+
     private Long version;
 }
 

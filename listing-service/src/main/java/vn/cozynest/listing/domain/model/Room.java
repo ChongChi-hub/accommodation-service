@@ -137,6 +137,16 @@ public class Room {
     @Builder.Default
     private String curfew = "Giờ giấc tự do, khóa vân tay riêng";
 
+    @Column(name = "house_rules", columnDefinition = "TEXT")
+    private String houseRules;
+
+    @Column(name = "is_verified_ownership", nullable = false)
+    @Builder.Default
+    private boolean verifiedOwnership = false;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
     @Column(name = "available_date")
     private java.time.LocalDate availableDate;
 

@@ -417,3 +417,33 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
 * **Quyền rút đồng ý:** Người dùng có quyền xóa ngay lập tức mọi khung hình đã lưu thông qua nút "Xóa dữ liệu ảnh sinh trắc học" hoặc gọi API `DELETE /api/v1/me/kyc/face/consent`.
 * **Nhật ký kiểm toán vĩnh viễn:** Bảng `face_access_logs` (append-only) ghi lại từng lượt truy cập, stream khung hình hoặc quyết định của kiểm duyệt viên (actorId, role, frameId, timestamp, IP, User-Agent) và không bao giờ bị xóa.
 
+
+
+---
+
+## 13. Quyết định Pháp lý, Dòng tiền & Kiến trúc Sprint 3 (LEGAL-02, HARDEN-01, SAGA-01)
+
+### 13.1. Quyết định Mô hình Dòng tiền và Pháp lý Trung gian Thanh toán (LEGAL-02)
+* **Căn cứ pháp lý:** Nghị định 52/2024/NĐ-CP về thanh toán không dùng tiền mặt, Nghị định 117/2025/NĐ-CP về quản lý thuế trên nền tảng số, và Luật Giao dịch điện tử số 20/2023/QH15.
+* **Quyết định mô hình tiền:**
+  1. Nền tảng "Tổ Ấm" **không trực tiếp phát hành ví điện tử giữ tiền của công chúng** (không thuộc đối tượng trung gian thanh toán trái phép theo NĐ 52/2024/NĐ-CP).
+  2. Mọi giao dịch nạp cọc, thanh toán hóa đơn đều sử dụng cổng thanh toán đối tác có phép (PayOS / VietQR dynamic QR / VNPay sandbox).
+  3. Dòng tiền cọc được giữ trong tài khoản đảm bảo (Escrow Account) và được hạch toán minh bạch thông qua Sổ Cái Kế Toán Kép (Double-entry Ledger Engine) nội bộ với quy tắc bảo toàn số dư nghiêm ngặt (`Sum(DEBIT) == Sum(CREDIT)`).
+  4. Sàn chỉ thu Phí dịch vụ nền tảng (Platform Fee) và chịu nghĩa vụ kê khai, nộp thuế GTGT cho khoản thu phí dịch vụ này.
+  5. Thu nhập cho thuê trọ thuộc về Chủ trọ. Hệ thống lưu trữ hồ sơ thuế (CCCD, Họ tên, STK) để cung cấp bảng kê cho cơ quan thuế theo NĐ 117/2025/NĐ-CP.
+
+### 13.2. Giá trị Pháp lý Hợp đồng Điện tử & Chữ Ký OTP (CONTRACT-BE)
+* **Quy chuẩn ký hợp đồng:**
+  1. Hợp đồng thuê nhà điện tử được khởi tạo với nội dung đầy đủ các điều khoản thuê, thông tin 2 bên, giá thuê, tiền cọc và chu kỳ thanh toán.
+  2. Nội dung hợp đồng được băm bằng thuật toán SHA-256 (`document_hash`) trước khi ký để chống sửa đổi trái phép.
+  3. Quá trình ký kết thực hiện thông qua mã xác thực OTP gửi tới SĐT/Email đã đăng ký và xác minh của Người thuê và Chủ trọ.
+  4. Hệ thống lưu vết nhật ký ký kết bất biến (Immutable Signature Audit Trail): IP máy khách, User-Agent, thời điểm UTC, mã băm OTP và trạng thái ký.
+
+### 13.3. Chuẩn hóa Khóa chính và Định dạng Tiền tệ (HARDEN-01)
+* **Khóa chính:** Toàn bộ bảng dữ liệu mới sử dụng UUID v7 (chuỗi 36 ký tự `VARCHAR(36)` hoặc `BINARY(16)`), đại diện bằng `UUID` trong Java và chuỗi UUID trên API.
+* **Tiền tệ:** Toàn bộ số tiền đều dùng kiểu số nguyên `BIGINT` (đơn vị Việt Nam Đồng - VND). Tuyệt đối không dùng `FLOAT` hay `DOUBLE` để tránh sai số làm tròn.
+* **Thời gian:** Mọi mốc thời gian lưu trữ ở dạng UTC `DATETIME(3)` trong DB và `Instant` trong Java.
+
+### 13.4. Giao dịch Xuyên Service (SAGA-01) & Transactional Outbox (BROKER-01)
+* Vòng đời đặt thuê khép kín: `Rental Request` -> `Holding Deposit` -> `Electronic Contract` -> `Room RENTED`.
+* Áp dụng Transactional Outbox Pattern kết hợp Saga Orchestrator đảm bảo tính nhất quán cuối cùng (Eventual Consistency) và các bước bù trừ tự động khi gặp sự cố mạng hoặc hết hạn giao dịch.
