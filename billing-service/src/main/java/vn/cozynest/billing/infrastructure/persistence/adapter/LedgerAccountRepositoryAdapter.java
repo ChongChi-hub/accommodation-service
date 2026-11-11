@@ -37,6 +37,11 @@ public class LedgerAccountRepositoryAdapter implements LedgerAccountRepository {
     }
 
     @Override
+    public Optional<LedgerAccount> findByAccountNumberForUpdate(String accountNumber) {
+        return repository.findByAccountNumberForUpdate(accountNumber).map(this::toDomain);
+    }
+
+    @Override
     public Optional<LedgerAccount> findByOwnerIdAndType(String ownerId, AccountType type) {
         return repository.findByOwnerIdAndAccountType(ownerId, type.name()).map(this::toDomain);
     }

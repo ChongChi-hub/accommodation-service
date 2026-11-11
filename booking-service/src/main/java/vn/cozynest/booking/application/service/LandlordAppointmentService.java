@@ -116,7 +116,7 @@ public class LandlordAppointmentService {
         checkVersion(req != null ? req.version() : null, appointment.getVersion());
 
         boolean force = req != null && Boolean.TRUE.equals(req.force());
-        List<ViewingAppointment> overlapping = appointmentRepository.findOverlappingConfirmed(
+        List<ViewingAppointment> overlapping = appointmentRepository.findOverlappingConfirmedForUpdate(
                 landlordId, appointment.getScheduledStart(), appointment.getScheduledEnd(), appointment.getId());
 
         if (!overlapping.isEmpty() && !force) {

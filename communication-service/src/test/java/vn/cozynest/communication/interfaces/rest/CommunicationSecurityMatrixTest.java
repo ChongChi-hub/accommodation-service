@@ -82,6 +82,7 @@ class CommunicationSecurityMatrixTest {
     private String generateToken(String userId, List<String> roles, long ttlMillis) {
         return Jwts.builder()
                 .subject(userId)
+                .audience().add("cozynest-web").and()
                 .claim("roles", String.join(",", roles))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))

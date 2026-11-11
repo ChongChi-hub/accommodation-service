@@ -20,6 +20,9 @@ spring:
     locations: classpath:db/migration
     ignore-missing-migrations: true
 
+jwt:
+  public-key: ${JWT_PUBLIC_KEY:}
+
 management:
   endpoints:
     web:

@@ -69,6 +69,19 @@ public class InvoiceJpaEntity {
     @Builder.Default
     private String status = "ISSUED";
 
+    @Column(name = "invoice_type", nullable = false, length = 30)
+    @Builder.Default
+    private String invoiceType = "STANDARD";
+
+    @Column(name = "reference_invoice_id", length = 36)
+    private String referenceInvoiceId;
+
+    @Column(name = "credit_note_reason", length = 255)
+    private String creditNoteReason;
+
+    @Column(name = "overdue_notified_at")
+    private Instant overdueNotifiedAt;
+
     @Version
     @Column(nullable = false)
     @Builder.Default

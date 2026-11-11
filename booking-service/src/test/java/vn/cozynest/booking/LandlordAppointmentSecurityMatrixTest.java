@@ -47,6 +47,7 @@ class LandlordAppointmentSecurityMatrixTest {
     private String generateToken(String userId, List<String> roles) {
         return Jwts.builder()
                 .subject(userId)
+                .audience().add("cozynest-web").and()
                 .claim("roles", String.join(",", roles))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 3600000))

@@ -5,6 +5,9 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import vn.cozynest.billing.domain.model.LedgerAccount;
+import vn.cozynest.billing.domain.model.PostingDirection;
+
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 @AnalyzeClasses(packages = "vn.cozynest.billing", importOptions = {ImportOption.DoNotIncludeTests.class})
@@ -16,7 +19,23 @@ public class BillingArchitectureTest {
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
     @ArchTest
+    static final ArchRule domainMustNotDependOnJakartaPersistence =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("jakarta.persistence..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnSpringFramework =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("org.springframework..");
+
+    @ArchTest
     static final ArchRule applicationMustNotDependOnInfrastructure =
             noClasses().that().resideInAPackage("..application..")
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
+
+    @ArchTest
+    static final ArchRule ledgerBalanceMutationsOnlyViaLedgerService =
+            noClasses().that().doNotHaveSimpleName("LedgerService")
+                    .and().doNotHaveSimpleName("LedgerAccount")
+                    .should().callMethod(LedgerAccount.class, "applyPosting", PostingDirection.class, long.class);
 }

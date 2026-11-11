@@ -22,6 +22,8 @@ public class UserTwoFactorRepositoryAdapter implements UserTwoFactorRepository {
                 .userId(domain.getUserId())
                 .totpSecret(domain.getTotpSecret())
                 .enabled(domain.isEnabled())
+                .failedAttempts(domain.getFailedAttempts())
+                .lockedUntil(domain.getLockedUntil())
                 .backupCodesJson(domain.getBackupCodesJson())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
@@ -45,6 +47,8 @@ public class UserTwoFactorRepositoryAdapter implements UserTwoFactorRepository {
                 entity.getUserId(),
                 entity.getTotpSecret(),
                 entity.isEnabled(),
+                entity.getFailedAttempts(),
+                entity.getLockedUntil(),
                 entity.getBackupCodesJson(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()

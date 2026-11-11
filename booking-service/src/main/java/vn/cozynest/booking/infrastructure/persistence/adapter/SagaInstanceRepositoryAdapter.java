@@ -32,5 +32,10 @@ public class SagaInstanceRepositoryAdapter implements SagaInstanceRepository {
     public List<SagaInstance> findByStatus(String status) {
         return repository.findByStatus(status).stream().map(ContractPersistenceMapper::toDomain).toList();
     }
+
+    @Override
+    public List<SagaInstance> findStuckInProgressBefore(java.time.Instant cutoff) {
+        return repository.findStuckInProgressBefore(cutoff).stream().map(ContractPersistenceMapper::toDomain).toList();
+    }
 }
 

@@ -1,5 +1,6 @@
 package vn.cozynest.identity.interfaces.rest;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -8,10 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.identity.application.dto.InternalKycStatusResponse;
+import vn.cozynest.identity.application.dto.InternalPhoneStatusResponse;
+import vn.cozynest.identity.application.dto.InternalVerifyOtpRequest;
 import vn.cozynest.identity.application.service.InternalUserService;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/internal/users")
@@ -47,6 +51,30 @@ public class InternalUserController {
 
         InternalKycStatusResponse response = internalUserService.getKycStatus(userId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{id}/phone-status")
+    public ResponseEntity<ApiResponse<InternalPhoneStatusResponse>> getPhoneStatus(
+            @PathVariable("id") String userId,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(internalUserService.getPhoneStatus(userId)));
+    }
+
+    @PostMapping("/{id}/verify-otp")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> verifyOtp(
+            @PathVariable("id") String userId,
+            @Valid @RequestBody InternalVerifyOtpRequest request,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        boolean verified = internalUserService.verifyPhoneOtpForUser(userId, request.otpCode());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("verified", verified)));
     }
 
     private boolean isKeyValid(String serviceKey) {

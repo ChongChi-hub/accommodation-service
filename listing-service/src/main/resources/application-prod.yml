@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME:cozynest_listing}?useSSL=true&requireSSL=true&serverTimezone=UTC&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
+    username: ${LISTING_DB_USER}
+    password: ${LISTING_DB_PASS}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+
+app:
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY}
+
+storage:
+  private-dir: ${PRIVATE_STORAGE_DIR:/var/cozynest/private-storage}
+  hmac-secret: ${STORAGE_HMAC_SECRET}
+  aes-key-base64: ${STORAGE_AES_KEY_BASE64}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+

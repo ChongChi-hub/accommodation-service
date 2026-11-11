@@ -2,6 +2,7 @@ package vn.cozynest.booking.interfaces.rest;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.booking.application.dto.CreateRentalRequestDto;
 import vn.cozynest.booking.application.dto.RentalRequestDto;
@@ -18,61 +19,64 @@ public class RentalRequestController {
     private final RentalRequestService rentalRequestService;
     private final UserContextResolver userContextResolver;
 
-    public RentalRequestController(RentalRequestService rentalRequestService,
-                                   UserContextResolver userContextResolver) {
+    public RentalRequestController(RentalRequestService rentalRequestService, UserContextResolver userContextResolver) {
         this.rentalRequestService = rentalRequestService;
         this.userContextResolver = userContextResolver;
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
     public ResponseEntity<ApiResponse<RentalRequestDto>> createRentalRequest(
-            @Valid @RequestBody CreateRentalRequestDto dto) {
+            @Valid @RequestBody CreateRentalRequestDto dto
+    ) {
         String tenantId = userContextResolver.getCurrentUserId();
-        RentalRequestDto result = rentalRequestService.createRequest(tenantId, dto);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.createRequest(tenantId, dto)));
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
     public ResponseEntity<ApiResponse<RentalRequestDto>> approveRentalRequest(
             @PathVariable String id,
-            @RequestParam(required = false) String contractId) {
+            @RequestParam(required = false) String contractId
+    ) {
         String landlordId = userContextResolver.getCurrentUserId();
-        RentalRequestDto result = rentalRequestService.approveRequest(landlordId, id, contractId);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.approveRequest(landlordId, id, contractId)));
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
     public ResponseEntity<ApiResponse<RentalRequestDto>> rejectRentalRequest(@PathVariable String id) {
         String landlordId = userContextResolver.getCurrentUserId();
-        RentalRequestDto result = rentalRequestService.rejectRequest(landlordId, id);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.rejectRequest(landlordId, id)));
     }
 
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RentalRequestDto>> cancelRentalRequest(@PathVariable String id) {
-        String tenantId = userContextResolver.getCurrentUserId();
-        RentalRequestDto result = rentalRequestService.cancelRequest(tenantId, id);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        String actorId = userContextResolver.getCurrentUserId();
+        boolean isAdmin = userContextResolver.hasRole("ADMIN");
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.cancelRequest(actorId, isAdmin, id)));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RentalRequestDto>> getRentalRequest(@PathVariable String id) {
-        RentalRequestDto result = rentalRequestService.getRequestById(id);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        String actorId = userContextResolver.getCurrentUserId();
+        boolean isAdmin = userContextResolver.hasRole("ADMIN");
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.getRequestById(id, actorId, isAdmin)));
     }
 
     @GetMapping("/tenant")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<RentalRequestDto>>> getTenantRequests() {
         String tenantId = userContextResolver.getCurrentUserId();
-        List<RentalRequestDto> results = rentalRequestService.getTenantRequests(tenantId);
-        return ResponseEntity.ok(ApiResponse.success(results));
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.getTenantRequests(tenantId)));
     }
 
     @GetMapping("/landlord")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<RentalRequestDto>>> getLandlordRequests() {
         String landlordId = userContextResolver.getCurrentUserId();
-        List<RentalRequestDto> results = rentalRequestService.getLandlordRequests(landlordId);
-        return ResponseEntity.ok(ApiResponse.success(results));
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.getLandlordRequests(landlordId)));
     }
 }
-

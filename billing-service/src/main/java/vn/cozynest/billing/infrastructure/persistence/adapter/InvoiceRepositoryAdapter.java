@@ -6,6 +6,7 @@ import vn.cozynest.billing.domain.repository.InvoiceRepository;
 import vn.cozynest.billing.infrastructure.persistence.entity.InvoiceJpaEntity;
 import vn.cozynest.billing.infrastructure.persistence.repository.SpringDataInvoiceRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,9 +20,7 @@ public class InvoiceRepositoryAdapter implements InvoiceRepository {
 
     @Override
     public Invoice save(Invoice domain) {
-        InvoiceJpaEntity entity = toEntity(domain);
-        InvoiceJpaEntity saved = repository.save(entity);
-        return toDomain(saved);
+        return toDomain(repository.save(toEntity(domain)));
     }
 
     @Override
@@ -49,52 +48,43 @@ public class InvoiceRepositoryAdapter implements InvoiceRepository {
         return repository.findByContractIdOrderByPeriodMonthDesc(contractId).stream().map(this::toDomain).toList();
     }
 
-    private Invoice toDomain(InvoiceJpaEntity entity) {
+    @Override
+    public List<Invoice> findByUtilityReadingId(String utilityReadingId) {
+        return repository.findByUtilityReadingId(utilityReadingId).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<Invoice> findByContractIdAndPeriodMonth(String contractId, LocalDate periodMonth) {
+        return repository.findByContractIdAndPeriodMonth(contractId, periodMonth).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<Invoice> findOverdueCandidates(LocalDate today) {
+        return repository.findOverdueCandidates(today).stream().map(this::toDomain).toList();
+    }
+
+    private Invoice toDomain(InvoiceJpaEntity e) {
         return new Invoice(
-                entity.getId(),
-                entity.getInvoiceCode(),
-                entity.getContractId(),
-                entity.getUtilityReadingId(),
-                entity.getTenantId(),
-                entity.getLandlordId(),
-                entity.getPeriodMonth(),
-                entity.getBaseRent(),
-                entity.getElectricityAmount(),
-                entity.getWaterAmount(),
-                entity.getServiceAmount(),
-                entity.getOtherAmount(),
-                entity.getTotalAmount(),
-                entity.getPaidAmount(),
-                entity.getDueDate(),
-                entity.getStatus(),
-                entity.getVersion(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                e.getId(), e.getInvoiceCode(), e.getContractId(), e.getUtilityReadingId(),
+                e.getTenantId(), e.getLandlordId(), e.getPeriodMonth(),
+                e.getBaseRent(), e.getElectricityAmount(), e.getWaterAmount(),
+                e.getServiceAmount(), e.getOtherAmount(), e.getTotalAmount(),
+                e.getPaidAmount(), e.getDueDate(), e.getStatus(),
+                e.getInvoiceType(), e.getReferenceInvoiceId(), e.getCreditNoteReason(),
+                e.getOverdueNotifiedAt(), e.getVersion(), e.getCreatedAt(), e.getUpdatedAt()
         );
     }
 
-    private InvoiceJpaEntity toEntity(Invoice domain) {
+    private InvoiceJpaEntity toEntity(Invoice d) {
         return InvoiceJpaEntity.builder()
-                .id(domain.getId())
-                .invoiceCode(domain.getInvoiceCode())
-                .contractId(domain.getContractId())
-                .utilityReadingId(domain.getUtilityReadingId())
-                .tenantId(domain.getTenantId())
-                .landlordId(domain.getLandlordId())
-                .periodMonth(domain.getPeriodMonth())
-                .baseRent(domain.getBaseRent())
-                .electricityAmount(domain.getElectricityAmount())
-                .waterAmount(domain.getWaterAmount())
-                .serviceAmount(domain.getServiceAmount())
-                .otherAmount(domain.getOtherAmount())
-                .totalAmount(domain.getTotalAmount())
-                .paidAmount(domain.getPaidAmount())
-                .dueDate(domain.getDueDate())
-                .status(domain.getStatus())
-                .version(domain.getVersion())
-                .createdAt(domain.getCreatedAt())
-                .updatedAt(domain.getUpdatedAt())
+                .id(d.getId()).invoiceCode(d.getInvoiceCode()).contractId(d.getContractId())
+                .utilityReadingId(d.getUtilityReadingId()).tenantId(d.getTenantId()).landlordId(d.getLandlordId())
+                .periodMonth(d.getPeriodMonth()).baseRent(d.getBaseRent()).electricityAmount(d.getElectricityAmount())
+                .waterAmount(d.getWaterAmount()).serviceAmount(d.getServiceAmount()).otherAmount(d.getOtherAmount())
+                .totalAmount(d.getTotalAmount()).paidAmount(d.getPaidAmount()).dueDate(d.getDueDate())
+                .status(d.getStatus()).invoiceType(d.getInvoiceType()).referenceInvoiceId(d.getReferenceInvoiceId())
+                .creditNoteReason(d.getCreditNoteReason()).overdueNotifiedAt(d.getOverdueNotifiedAt())
+                .version(d.getVersion()).createdAt(d.getCreatedAt()).updatedAt(d.getUpdatedAt())
                 .build();
     }
 }
-

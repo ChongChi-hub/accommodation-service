@@ -31,6 +31,9 @@ public class JournalEntryJpaEntity {
     @Column(name = "reference_id", length = 64)
     private String referenceId;
 
+    @Column(name = "idempotency_key", unique = true, length = 64)
+    private String idempotencyKey;
+
     @Column(name = "total_amount", nullable = false)
     private long totalAmount;
 

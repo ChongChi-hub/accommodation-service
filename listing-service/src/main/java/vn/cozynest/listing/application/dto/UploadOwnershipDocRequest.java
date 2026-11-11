@@ -18,5 +18,7 @@ public class UploadOwnershipDocRequest {
     private String fileUrl;
 
     private String rawNumber;
+
+    private java.time.LocalDateTime expiresAt;
 }
 

@@ -18,6 +18,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@org.springframework.context.annotation.Profile({"dev", "demo", "default"})
 @RequiredArgsConstructor
 public class SeedAssetLoader implements ApplicationRunner {
 
