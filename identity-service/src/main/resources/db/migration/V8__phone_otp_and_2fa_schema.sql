@@ -27,6 +27,6 @@ CREATE TABLE IF NOT EXISTS user_two_factors (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS phone_verified_at DATETIME(3) NULL,
-    ADD COLUMN IF NOT EXISTS two_factor_enabled TINYINT(1) NOT NULL DEFAULT 0;
+    ADD COLUMN phone_verified_at DATETIME(3) NULL,
+    ADD COLUMN two_factor_enabled TINYINT(1) NOT NULL DEFAULT 0;
 

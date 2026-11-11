@@ -56,14 +56,14 @@ CREATE TABLE IF NOT EXISTS saga_instances (
 
 -- 4. Contract enhancements
 ALTER TABLE contracts
-    ADD COLUMN IF NOT EXISTS document_hash VARCHAR(64) NULL,
-    ADD COLUMN IF NOT EXISTS pdf_url VARCHAR(500) NULL,
-    ADD COLUMN IF NOT EXISTS holding_expires_at DATETIME(3) NULL,
-    ADD COLUMN IF NOT EXISTS tenant_signed_at DATETIME(3) NULL,
-    ADD COLUMN IF NOT EXISTS landlord_signed_at DATETIME(3) NULL;
+    ADD COLUMN document_hash VARCHAR(64) NULL,
+    ADD COLUMN pdf_url VARCHAR(500) NULL,
+    ADD COLUMN holding_expires_at DATETIME(3) NULL,
+    ADD COLUMN tenant_signed_at DATETIME(3) NULL,
+    ADD COLUMN landlord_signed_at DATETIME(3) NULL;
 
 -- 5. Rental request enhancements
 ALTER TABLE rental_requests
-    ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(64) NULL,
-    ADD COLUMN IF NOT EXISTS holding_expires_at DATETIME(3) NULL;
+    ADD COLUMN idempotency_key VARCHAR(64) NULL,
+    ADD COLUMN holding_expires_at DATETIME(3) NULL;
 

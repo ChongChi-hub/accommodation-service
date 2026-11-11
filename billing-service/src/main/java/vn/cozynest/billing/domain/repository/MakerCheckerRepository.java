@@ -9,5 +9,7 @@ public interface MakerCheckerRepository {
     MakerCheckerRequest save(MakerCheckerRequest request);
     Optional<MakerCheckerRequest> findById(String id);
     List<MakerCheckerRequest> findByStatus(String status);
+    List<MakerCheckerRequest> findAll();
 }
+
 

@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface SpringDataMakerCheckerRepository extends JpaRepository<MakerCheckerJpaEntity, String> {
     List<MakerCheckerJpaEntity> findByStatusOrderByCreatedAtDesc(String status);
+    List<MakerCheckerJpaEntity> findAllByOrderByCreatedAtDesc();
 }
-

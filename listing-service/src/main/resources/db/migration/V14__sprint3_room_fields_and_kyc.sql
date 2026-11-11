@@ -7,9 +7,9 @@
 
 -- 1. Add fields to rooms
 ALTER TABLE rooms
-    ADD COLUMN IF NOT EXISTS house_rules TEXT NULL AFTER curfew,
-    ADD COLUMN IF NOT EXISTS is_verified_ownership BOOLEAN NOT NULL DEFAULT FALSE AFTER is_approved,
-    ADD COLUMN IF NOT EXISTS verified_at DATETIME(3) NULL AFTER is_verified_ownership;
+    ADD COLUMN house_rules TEXT NULL AFTER curfew,
+    ADD COLUMN is_verified_ownership BOOLEAN NOT NULL DEFAULT FALSE AFTER is_approved,
+    ADD COLUMN verified_at DATETIME(3) NULL AFTER is_verified_ownership;
 
 CREATE INDEX idx_rooms_verified_status ON rooms (is_verified_ownership, status, publication_status);
 

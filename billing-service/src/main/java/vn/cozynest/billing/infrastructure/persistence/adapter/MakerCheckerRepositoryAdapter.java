@@ -34,6 +34,11 @@ public class MakerCheckerRepositoryAdapter implements MakerCheckerRepository {
         return repository.findByStatusOrderByCreatedAtDesc(status).stream().map(this::toDomain).toList();
     }
 
+    @Override
+    public List<MakerCheckerRequest> findAll() {
+        return repository.findAllByOrderByCreatedAtDesc().stream().map(this::toDomain).toList();
+    }
+
     private MakerCheckerRequest toDomain(MakerCheckerJpaEntity entity) {
         return new MakerCheckerRequest(
                 entity.getId(),
