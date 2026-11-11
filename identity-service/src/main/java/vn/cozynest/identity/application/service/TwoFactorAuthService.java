@@ -24,12 +24,11 @@ public class TwoFactorAuthService {
 
     public TwoFactorAuthService(UserTwoFactorRepository twoFactorRepository,
                                 UserRepository userRepository,
-                                TotpHelper totpHelper,
-                                ObjectMapper objectMapper) {
+                                TotpHelper totpHelper) {
         this.twoFactorRepository = twoFactorRepository;
         this.userRepository = userRepository;
         this.totpHelper = totpHelper;
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper();
     }
 
     @Transactional
