@@ -1,15 +1,14 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.listing.domain.model.PropertyOwnershipDocument;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface PropertyOwnershipDocumentRepository extends JpaRepository<PropertyOwnershipDocument, String> {
+public interface PropertyOwnershipDocumentRepository {
     List<PropertyOwnershipDocument> findByRoomId(Long roomId);
     List<PropertyOwnershipDocument> findByLandlordId(Long landlordId);
     List<PropertyOwnershipDocument> findByStatus(String status);
+    Optional<PropertyOwnershipDocument> findById(String id);
+    PropertyOwnershipDocument save(PropertyOwnershipDocument doc);
 }
-

@@ -1,19 +1,19 @@
-package vn.cozynest.listing.application.service;
+package vn.cozynest.listing.infrastructure.persistence.specification;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
-import vn.cozynest.listing.application.dto.RoomFilterParams;
 import vn.cozynest.listing.domain.model.Province;
-import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.model.RoomSearchQuery;
 import vn.cozynest.listing.domain.repository.ProvinceRepository;
+import vn.cozynest.listing.infrastructure.persistence.entity.RoomJpaEntity;
 
 import java.util.*;
 
 @Component
 public class RoomSpecificationBuilder {
 
-    public Specification<Room> buildSpecification(RoomFilterParams params, ProvinceRepository provinceRepository) {
+    public Specification<RoomJpaEntity> buildSpecification(RoomSearchQuery params, ProvinceRepository provinceRepository) {
         String resolvedProvinceCode = resolveProvinceCode(params.getProvinceCode(), params.getProvinceSlug(), provinceRepository);
         List<String> resolvedRoomTypes = expandRoomTypeCodes(params.getRoomTypeCode());
         String sanitizedQuery = sanitizeQuery(params.getQ());
@@ -46,20 +46,20 @@ public class RoomSpecificationBuilder {
             if (!resolvedRoomTypes.isEmpty()) {
                 predicates.add(root.get("roomTypeCode").in(resolvedRoomTypes));
             }
-            if (params.getEffectivePriceMin() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), params.getEffectivePriceMin()));
+            if (params.getPriceMin() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), params.getPriceMin()));
             }
-            if (params.getEffectivePriceMax() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("price"), params.getEffectivePriceMax()));
+            if (params.getPriceMax() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("price"), params.getPriceMax()));
             }
             if (params.getPriceUnit() != null && !params.getPriceUnit().isBlank()) {
                 predicates.add(cb.equal(root.get("priceUnit"), params.getPriceUnit().trim().toUpperCase(Locale.ROOT)));
             }
-            if (params.getEffectiveAreaMin() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("area"), params.getEffectiveAreaMin()));
+            if (params.getAreaMin() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("area"), params.getAreaMin()));
             }
-            if (params.getEffectiveAreaMax() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("area"), params.getEffectiveAreaMax()));
+            if (params.getAreaMax() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("area"), params.getAreaMax()));
             }
             if (params.getBedrooms() != null && params.getBedrooms() > 0) {
                 if (params.getBedrooms() >= 4) {
@@ -120,7 +120,7 @@ public class RoomSpecificationBuilder {
             String trimmed = token.trim();
             if (trimmed.isEmpty()) continue;
             switch (trimmed.toLowerCase(Locale.ROOT)) {
-                case "phong-tro" -> codes.add("SINGLE"); // LIST-1: Only SINGLE for phong-tro, exclude HOMESTAY
+                case "phong-tro" -> codes.add("SINGLE");
                 case "nha-nguyen-can" -> codes.add("FULL_HOUSE");
                 case "can-ho" -> {
                     codes.add("MINI_APARTMENT");

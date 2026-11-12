@@ -1,7 +1,6 @@
 package vn.cozynest.listing.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.*;
@@ -121,11 +120,11 @@ public class RoomDetailService {
         BigDecimal maxPrice = price.multiply(BigDecimal.valueOf(1.3));
 
         List<Room> similar = roomRepository.findSimilarRooms(
-                current.getProvinceCode(), roomId, minPrice, maxPrice, PageRequest.of(0, 4)
+                current.getProvinceCode(), roomId, minPrice, maxPrice, 4
         );
 
         if (similar.isEmpty()) {
-            similar = roomRepository.findRecommendations(current.getProvinceCode(), roomId, PageRequest.of(0, 4));
+            similar = roomRepository.findRecommendations(current.getProvinceCode(), roomId, 4);
         }
 
         return similar.stream().map(this::toSummaryDto).collect(Collectors.toList());

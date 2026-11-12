@@ -1,10 +1,13 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.listing.domain.model.Amenity;
 
-@Repository
-public interface AmenityRepository extends JpaRepository<Amenity, Long> {
-}
+import java.util.List;
+import java.util.Optional;
 
+public interface AmenityRepository {
+    List<Amenity> findAll();
+    List<Amenity> findAllById(Iterable<Long> ids);
+    Optional<Amenity> findById(Long id);
+    Amenity save(Amenity amenity);
+}

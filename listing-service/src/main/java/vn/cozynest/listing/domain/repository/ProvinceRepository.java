@@ -1,15 +1,13 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.listing.domain.model.Province;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface ProvinceRepository extends JpaRepository<Province, Long> {
+public interface ProvinceRepository {
+    List<Province> findAll();
     List<Province> findAllByOrderByNameAsc();
-    java.util.Optional<Province> findBySlugIgnoreCase(String slug);
-    java.util.Optional<Province> findByCodeIgnoreCase(String code);
+    Optional<Province> findBySlugIgnoreCase(String slug);
+    Optional<Province> findByCodeIgnoreCase(String code);
 }
-
