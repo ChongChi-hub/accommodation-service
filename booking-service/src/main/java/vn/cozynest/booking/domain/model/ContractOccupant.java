@@ -20,6 +20,9 @@ public class ContractOccupant {
     private String idCardNumber;
     private String relationship;
     private boolean primaryTenant;
+    private Instant removedAt;
+    private String removedBy;
+    private String removalReason;
     private Instant createdAt;
 
     public static ContractOccupant create(String contractId, String fullName, String phoneNumber,
@@ -34,6 +37,16 @@ public class ContractOccupant {
                 .primaryTenant(primaryTenant)
                 .createdAt(Instant.now())
                 .build();
+    }
+
+    public void softRemove(String actorId, String reason) {
+        this.removedAt = Instant.now();
+        this.removedBy = actorId;
+        this.removalReason = reason != null ? reason : "Removed by participant";
+    }
+
+    public boolean isActive() {
+        return removedAt == null;
     }
 }
 

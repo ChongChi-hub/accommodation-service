@@ -60,6 +60,9 @@ public class ContractJpaEntity {
     @Column(name = "document_hash", length = 64)
     private String documentHash;
 
+    @Column(name = "verification_code", length = 64)
+    private String verificationCode;
+
     @Column(name = "pdf_url", length = 500)
     private String pdfUrl;
 

@@ -31,6 +31,7 @@ public class Contract {
     private int paymentDueDay;
     private String terms;
     private String documentHash;
+    private String verificationCode;
     private String pdfUrl;
     private String pdfObjectKey;
     private String status;
@@ -60,6 +61,7 @@ public class Contract {
                 .paymentCycleMonths(1)
                 .paymentDueDay(5)
                 .terms(terms)
+                .verificationCode("CN-" + contractCode)
                 .documentHash(hash)
                 .status("PENDING_SIGN")
                 .holdingExpiresAt(Instant.now().plusSeconds(86400)) // 24h
@@ -93,6 +95,36 @@ public class Contract {
 
     public void terminate() {
         this.status = "TERMINATED";
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Allows landlord/creator to update contract draft details ONLY before any signature is recorded.
+     */
+    public void updateDraft(LocalDate startDate, LocalDate endDate, long monthlyRent, long depositAmount, String terms) {
+        if ("ACTIVE".equals(this.status) || "TERMINATED".equals(this.status) || "CANCELLED".equals(this.status)
+                || this.tenantSignedAt != null || this.landlordSignedAt != null) {
+            throw new IllegalStateException("Khong the chinh sua hop dong da duoc ky hoac da kich hoat");
+        }
+        if (startDate != null) {
+            this.startDate = startDate;
+        }
+        if (endDate != null) {
+            this.endDate = endDate;
+        }
+        if (this.endDate != null && this.startDate != null && !this.endDate.isAfter(this.startDate)) {
+            throw new IllegalArgumentException("Ngay ket thuc hop dong phai sau ngay bat dau");
+        }
+        if (monthlyRent > 0) {
+            this.monthlyRent = monthlyRent;
+        }
+        if (depositAmount >= 0) {
+            this.depositAmount = depositAmount;
+        }
+        if (terms != null) {
+            this.terms = terms;
+        }
+        this.documentHash = computeCanonicalHash();
         this.updatedAt = Instant.now();
     }
 

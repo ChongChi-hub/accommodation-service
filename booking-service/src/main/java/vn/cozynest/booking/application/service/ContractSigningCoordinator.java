@@ -50,9 +50,7 @@ public class ContractSigningCoordinator {
         if ("CANCELLED".equals(contract.getStatus()) || "TERMINATED".equals(contract.getStatus())) {
             throw new IllegalStateException("Hop dong da huy hoac cham dut, khong the ky");
         }
-        if (!identityVerificationPort.verifyContractOtp(userId, otpCode)) {
-            throw new IllegalArgumentException("Ma OTP ky hop dong khong hop le hoac da het han");
-        }
+        verifyOtpForUser(userId, otpCode);
 
         if (isLandlord) {
             contract.signByLandlord();
@@ -81,6 +79,15 @@ public class ContractSigningCoordinator {
                 ipAddress,
                 userAgent
         ));
+    }
+
+    /**
+     * Verifies a 6-digit contract signing OTP against identity-service (fail-closed).
+     */
+    public void verifyOtpForUser(String userId, String otpCode) {
+        if (!identityVerificationPort.verifyContractOtp(userId, otpCode)) {
+            throw new IllegalArgumentException("Ma OTP ky hop dong khong hop le hoac da het han");
+        }
     }
 
     public String createSignedPdfUrl(Contract contract, String actorId) {

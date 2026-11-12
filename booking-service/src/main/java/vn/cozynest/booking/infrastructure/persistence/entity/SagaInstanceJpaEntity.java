@@ -39,6 +39,11 @@ public class SagaInstanceJpaEntity {
     @Builder.Default
     private String status = "IN_PROGRESS";
 
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private long version = 0L;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

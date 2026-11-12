@@ -1,9 +1,11 @@
 package vn.cozynest.booking.application.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.dto.*;
+import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
 import vn.cozynest.booking.domain.model.Contract;
 import vn.cozynest.booking.domain.model.ContractAmendment;
@@ -14,7 +16,9 @@ import vn.cozynest.booking.domain.repository.ContractOccupantRepository;
 import vn.cozynest.booking.domain.repository.ContractRepository;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,6 +32,7 @@ public class ContractService {
     private final ContractOccupantRepository occupantRepository;
     private final ContractSigningCoordinator signingCoordinator;
     private final AppointmentEventOutboxRepository outboxRepository;
+    private final Optional<BookingListingPort> listingPort;
 
     public ContractService(
             ContractRepository contractRepository,
@@ -36,11 +41,24 @@ public class ContractService {
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository
     ) {
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty());
+    }
+
+    @Autowired
+    public ContractService(
+            ContractRepository contractRepository,
+            ContractAmendmentRepository amendmentRepository,
+            ContractOccupantRepository occupantRepository,
+            ContractSigningCoordinator signingCoordinator,
+            AppointmentEventOutboxRepository outboxRepository,
+            Optional<BookingListingPort> listingPort
+    ) {
         this.contractRepository = contractRepository;
         this.amendmentRepository = amendmentRepository;
         this.occupantRepository = occupantRepository;
         this.signingCoordinator = signingCoordinator;
         this.outboxRepository = outboxRepository;
+        this.listingPort = listingPort != null ? listingPort : Optional.empty();
     }
 
     public ContractDto createContract(CreateContractDto dto) {
@@ -96,12 +114,33 @@ public class ContractService {
         return contractRepository.findByLandlordId(landlordId).stream().map(ContractDto::from).toList();
     }
 
+    public ContractDto updateDraftContract(String contractId, String actorId, boolean isAdmin, CreateContractDto dto) {
+        Contract contract = findContractOrThrow(contractId);
+        if (!isAdmin && !contract.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Chi chu tro moi duoc sua ban nhap hop dong");
+        }
+        contract.updateDraft(dto.startDate(), dto.endDate(), dto.monthlyRent(), dto.depositAmount(), dto.terms());
+        Contract saved = contractRepository.save(contract);
+        emitContractEvent("CONTRACT_DRAFT_UPDATED", saved);
+        return ContractDto.from(saved);
+    }
+
     public ContractOccupantDto addOccupant(String contractId, String actorId, boolean isAdmin, AddOccupantDto dto) {
         Contract contract = findContractOrThrow(contractId);
         assertParticipantOrAdmin(contract, actorId, isAdmin);
-        List<ContractOccupant> current = occupantRepository.findByContractId(contractId);
-        if (current.size() >= MAX_OCCUPANTS_PER_CONTRACT) {
-            throw new IllegalStateException("So nguoi o cung vuot qua gioi han toi da cua hop dong");
+        List<ContractOccupant> current = occupantRepository.findByContractId(contractId).stream()
+                .filter(ContractOccupant::isActive)
+                .toList();
+        int effectiveMax = MAX_OCCUPANTS_PER_CONTRACT;
+        if (listingPort.isPresent()) {
+            BookingListingPort.RoomAvailabilityCheck roomCheck = listingPort.get()
+                    .checkRoomAvailability(contract.getRoomId(), current.size() + 1);
+            if (roomCheck.maxOccupants() > 0) {
+                effectiveMax = Math.min(MAX_OCCUPANTS_PER_CONTRACT, roomCheck.maxOccupants());
+            }
+        }
+        if (current.size() >= effectiveMax) {
+            throw new IllegalStateException("So nguoi o cung vuot qua gioi han toi da cua hop dong (" + effectiveMax + ")");
         }
         boolean duplicateIdCard = current.stream()
                 .anyMatch(o -> o.getIdCardNumber() != null && o.getIdCardNumber().equalsIgnoreCase(dto.idCardNumber()));
@@ -118,7 +157,10 @@ public class ContractService {
     @Transactional(readOnly = true)
     public List<ContractOccupantDto> getOccupants(String contractId, String actorId, boolean isAdmin) {
         assertParticipantOrAdmin(findContractOrThrow(contractId), actorId, isAdmin);
-        return occupantRepository.findByContractId(contractId).stream().map(ContractOccupantDto::from).toList();
+        return occupantRepository.findByContractId(contractId).stream()
+                .filter(ContractOccupant::isActive)
+                .map(ContractOccupantDto::from)
+                .toList();
     }
 
     public void removeOccupant(String contractId, String occupantId, String actorId, boolean isAdmin) {
@@ -128,7 +170,8 @@ public class ContractService {
         if (!occ.getContractId().equals(contractId)) {
             throw new AccessDeniedException("Nguoi o cung khong thuoc hop dong nay");
         }
-        occupantRepository.deleteById(occupantId);
+        occ.softRemove(actorId, "Participant removed");
+        occupantRepository.save(occ);
     }
 
     public ContractAmendmentDto createAmendment(String contractId, String actorId, boolean isAdmin, CreateAmendmentDto dto) {
@@ -142,7 +185,7 @@ public class ContractService {
         return ContractAmendmentDto.from(amendmentRepository.save(amendment));
     }
 
-    public ContractAmendmentDto signAmendment(String amendmentId, String userId, boolean isLandlord) {
+    public ContractAmendmentDto signAmendment(String amendmentId, String userId, String otpCode, boolean isLandlord) {
         ContractAmendment amendment = amendmentRepository.findById(amendmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay phu luc: " + amendmentId));
         Contract contract = findContractOrThrow(amendment.getContractId());
@@ -150,6 +193,7 @@ public class ContractService {
         if (!expectedSigner.equals(userId)) {
             throw new AccessDeniedException("Ban khong co quyen ky phu luc hop dong nay");
         }
+        signingCoordinator.verifyOtpForUser(userId, otpCode);
         if (isLandlord) {
             amendment.signLandlord();
         } else {
@@ -163,6 +207,31 @@ public class ContractService {
         }
         return ContractAmendmentDto.from(saved);
     }
+
+    @Transactional(readOnly = true)
+    public EffectiveRentSnapshot getEffectiveRent(String contractId, LocalDate billingDate) {
+        Contract contract = findContractOrThrow(contractId);
+        LocalDate asOf = billingDate != null ? billingDate : LocalDate.now();
+        long rent = amendmentRepository.findByContractId(contractId).stream()
+                .filter(a -> "ACTIVE".equals(a.getStatus()) && a.getNewRent() != null && a.getNewRent() > 0)
+                .filter(a -> a.getEffectiveDate() == null || !a.getEffectiveDate().isAfter(asOf))
+                .max(Comparator.comparing(a -> a.getEffectiveDate() != null ? a.getEffectiveDate() : LocalDate.MIN))
+                .map(ContractAmendment::getNewRent)
+                .orElse(contract.getMonthlyRent());
+        return new EffectiveRentSnapshot(
+                contract.getId(), contract.getRoomId(), contract.getTenantId(),
+                contract.getLandlordId(), contract.getStatus(), rent, contract.getPaymentDueDay());
+    }
+
+    public record EffectiveRentSnapshot(
+            String contractId,
+            String roomId,
+            String tenantId,
+            String landlordId,
+            String status,
+            long effectiveMonthlyRent,
+            int paymentDueDay
+    ) {}
 
     @Transactional(readOnly = true)
     public List<ContractAmendmentDto> getAmendments(String contractId, String actorId, boolean isAdmin) {

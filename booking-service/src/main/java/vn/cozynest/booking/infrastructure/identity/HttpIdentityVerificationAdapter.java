@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
@@ -32,7 +33,10 @@ public class HttpIdentityVerificationAdapter implements IdentityVerificationPort
             @Value("${app.booking.identity.allow-sandbox-bypass:false}") boolean allowSandboxBypass,
             Environment env
     ) {
-        this.restClient = RestClient.builder().baseUrl(identityBaseUrl).build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        this.restClient = RestClient.builder().baseUrl(identityBaseUrl).requestFactory(factory).build();
         this.internalServiceKey = internalServiceKey;
         String[] active = env != null ? env.getActiveProfiles() : null;
         boolean restricted = active != null && Arrays.stream(active)

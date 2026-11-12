@@ -30,7 +30,7 @@ public class ContractOccupantRepositoryAdapter implements ContractOccupantReposi
 
     @Override
     public List<ContractOccupant> findByContractId(String contractId) {
-        return repository.findByContractId(contractId).stream().map(ContractPersistenceMapper::toDomain).toList();
+        return repository.findByContractIdAndRemovedAtIsNull(contractId).stream().map(ContractPersistenceMapper::toDomain).toList();
     }
 
     @Override

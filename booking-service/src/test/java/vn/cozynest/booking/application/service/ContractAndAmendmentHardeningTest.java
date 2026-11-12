@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.security.access.AccessDeniedException;
 import vn.cozynest.booking.application.dto.*;
+import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
 import vn.cozynest.booking.domain.model.*;
 import vn.cozynest.booking.domain.repository.*;
@@ -77,7 +78,9 @@ class ContractAndAmendmentHardeningTest {
         ContractAmendmentRepository amendRepo = mock(ContractAmendmentRepository.class);
         ContractOccupantRepository occRepo = mock(ContractOccupantRepository.class);
         AppointmentEventOutboxRepository outboxRepo = mock(AppointmentEventOutboxRepository.class);
-        ContractService service = new ContractService(contractRepo, amendRepo, occRepo, mock(ContractSigningCoordinator.class), outboxRepo);
+        ContractSigningCoordinator coordinator = mock(ContractSigningCoordinator.class);
+        doThrow(new IllegalArgumentException("OTP invalid")).when(coordinator).verifyOtpForUser("landlord-1", "000000");
+        ContractService service = new ContractService(contractRepo, amendRepo, occRepo, coordinator, outboxRepo);
 
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         Contract contract = Contract.create("HD-2026-002", "room-2", "tenant-1", "landlord-1", "req-2",
@@ -92,8 +95,10 @@ class ContractAndAmendmentHardeningTest {
         when(contractRepo.findById(contract.getId())).thenReturn(Optional.of(contract));
         when(contractRepo.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        service.signAmendment(amendment.getId(), "landlord-1", true);
-        ContractAmendmentDto done = service.signAmendment(amendment.getId(), "tenant-1", false);
+        assertThatThrownBy(() -> service.signAmendment(amendment.getId(), "landlord-1", "000000", true))
+                .isInstanceOf(IllegalArgumentException.class);
+        service.signAmendment(amendment.getId(), "landlord-1", "112233", true);
+        ContractAmendmentDto done = service.signAmendment(amendment.getId(), "tenant-1", "654321", false);
         assertThat(done.status()).isEqualTo("ACTIVE");
         assertThat(contract.getMonthlyRent()).isEqualTo(5_500_000L);
         assertThat(contract.getEndDate()).isEqualTo(today.plusMonths(6));
@@ -126,6 +131,50 @@ class ContractAndAmendmentHardeningTest {
         assertThatThrownBy(() -> service.addOccupant(c.getId(), "t1", false,
                 new AddOccupantDto("B", "0901234568", "079099000111", "FRIEND", false)))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldSoftRemoveOccupantEnforceListingMaxOccupantsAndLockDraftAfterActive() {
+        ContractRepository contractRepo = mock(ContractRepository.class);
+        ContractAmendmentRepository amendRepo = mock(ContractAmendmentRepository.class);
+        ContractOccupantRepository occRepo = mock(ContractOccupantRepository.class);
+        BookingListingPort listingPort = mock(BookingListingPort.class);
+        ContractService service = new ContractService(
+                contractRepo, amendRepo, occRepo, mock(ContractSigningCoordinator.class),
+                mock(AppointmentEventOutboxRepository.class), Optional.of(listingPort));
+
+        Contract draft = Contract.create("HD-DRAFT", "room-cap", "t1", "l1", null,
+                LocalDate.now(), LocalDate.now().plusMonths(6), 3_000_000L, 3_000_000L, "Old terms");
+        when(contractRepo.findById(draft.getId())).thenReturn(Optional.of(draft));
+        when(contractRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        ContractDto updatedDraft = service.updateDraftContract(draft.getId(), "l1", false,
+                new CreateContractDto("room-cap", "t1", "l1", null,
+                        LocalDate.now(), LocalDate.now().plusMonths(12), 3_500_000L, 3_500_000L, "Updated terms"));
+        assertThat(updatedDraft.monthlyRent()).isEqualTo(3_500_000L);
+
+        ContractOccupant occ = ContractOccupant.create(draft.getId(), "A", "0901234567", "079099000111", "SELF", true);
+        when(occRepo.findById(occ.getId())).thenReturn(Optional.of(occ));
+        when(occRepo.findByContractId(draft.getId())).thenReturn(List.of(occ));
+        when(listingPort.checkRoomAvailability("room-cap", 2))
+                .thenReturn(new BookingListingPort.RoomAvailabilityCheck(false, 1, "AVAILABLE", "Vuot so nguoi toi da"));
+
+        assertThatThrownBy(() -> service.addOccupant(draft.getId(), "t1", false,
+                new AddOccupantDto("B", "0901234568", "079099000222", "FRIEND", false)))
+                .isInstanceOf(IllegalStateException.class);
+
+        service.removeOccupant(draft.getId(), occ.getId(), "t1", false);
+        assertThat(occ.getRemovedAt()).isNotNull();
+        assertThat(occ.getRemovedBy()).isEqualTo("t1");
+        verify(occRepo, never()).deleteById(any());
+        verify(occRepo).save(occ);
+
+        draft.signByTenant();
+        draft.signByLandlord();
+        assertThatThrownBy(() -> service.updateDraftContract(draft.getId(), "l1", false,
+                new CreateContractDto("room-cap", "t1", "l1", null,
+                        LocalDate.now(), LocalDate.now().plusMonths(12), 4_000_000L, 4_000_000L, "Tamper")))
+                .isInstanceOf(IllegalStateException.class);
     }
 }
 

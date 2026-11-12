@@ -33,6 +33,16 @@ public class ContractController {
         return ResponseEntity.ok(ApiResponse.success(contractService.createContract(dto)));
     }
 
+    @PutMapping("/{id}/draft")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ContractDto>> updateDraft(
+            @PathVariable String id,
+            @Valid @RequestBody CreateContractDto dto
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(contractService.updateDraftContract(
+                id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"), dto)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractDto>> getContract(@PathVariable String id) {
@@ -120,16 +130,22 @@ public class ContractController {
 
     @PostMapping("/amendments/{amendmentId}/sign-tenant")
     @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
-    public ResponseEntity<ApiResponse<ContractAmendmentDto>> signAmendmentTenant(@PathVariable String amendmentId) {
+    public ResponseEntity<ApiResponse<ContractAmendmentDto>> signAmendmentTenant(
+            @PathVariable String amendmentId,
+            @Valid @RequestBody SignContractDto dto
+    ) {
         return ResponseEntity.ok(ApiResponse.success(contractService.signAmendment(
-                amendmentId, userContextResolver.getCurrentUserId(), false)));
+                amendmentId, userContextResolver.getCurrentUserId(), dto.otpCode(), false)));
     }
 
     @PostMapping("/amendments/{amendmentId}/sign-landlord")
     @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
-    public ResponseEntity<ApiResponse<ContractAmendmentDto>> signAmendmentLandlord(@PathVariable String amendmentId) {
+    public ResponseEntity<ApiResponse<ContractAmendmentDto>> signAmendmentLandlord(
+            @PathVariable String amendmentId,
+            @Valid @RequestBody SignContractDto dto
+    ) {
         return ResponseEntity.ok(ApiResponse.success(contractService.signAmendment(
-                amendmentId, userContextResolver.getCurrentUserId(), true)));
+                amendmentId, userContextResolver.getCurrentUserId(), dto.otpCode(), true)));
     }
 
     @GetMapping("/{id}/amendments")

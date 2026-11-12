@@ -21,6 +21,7 @@ public class SagaInstance {
     private String payloadJson;
     private String errorMessage;
     private String status;
+    private long version;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -59,6 +60,12 @@ public class SagaInstance {
         this.compensationStep = compensationStep;
         this.errorMessage = reason;
         this.status = "COMPENSATED";
+        this.updatedAt = Instant.now();
+    }
+
+    public void markManualIntervention(String reason) {
+        this.errorMessage = reason;
+        this.status = "MANUAL_INTERVENTION_REQUIRED";
         this.updatedAt = Instant.now();
     }
 
