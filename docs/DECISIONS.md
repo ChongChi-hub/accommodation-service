@@ -20,6 +20,7 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 * **Bảo mật & JWT:**
   * Sử dụng `spring-security-oauth2-jose` kết hợp JJWT `0.12.7` / Nimbus JOSE, phân quyền RBAC và token blacklist lưu trữ tại Redis.
 * **Database & Migration:**
+  * *MySQL Engine (LTS):* Thống nhất **`mysql:8.4` (MySQL 8.4 LTS)** cho toàn bộ `docker-compose.yml` và Testcontainers (`MySQL 8.4 LTS`: Premier Support tới 04/2029, Extended Support tới 04/2032). Loại bỏ tình trạng lẫn `9.0`/`9.1`/`9.7`: `9.0`/`9.1` là Innovation Track hết hỗ trợ nhanh, còn `9.7` đã gỡ tham số `innodb_log_file_size` khiến `org.testcontainers:mysql:1.21.4` lỗi khởi động container.
   * *MySQL Connector:* `com.mysql:mysql-connector-j:9.7.0`.
   * *Flyway:* `org.flywaydb:flyway-core:13.12.1` & `flyway-mysql:13.12.1`.
 * **Testing & Architecture Rules:**
@@ -72,7 +73,7 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 
 * **Bối cảnh:** Hai repository `accommodation-service` (Backend Microservices) và `accommodation-web` (Next.js Frontend) hoạt động độc lập, mỗi repo có Git remote, CI, Dockerfile riêng biệt.
 * **Quyết định Docker Compose:**
-  * Tại `accommodation-service`, file `docker-compose.yml` mặc định khởi chạy toàn bộ hạ tầng Backend (MySQL 9.7, Redis, Gateway port 8080 và các microservice).
+  * Tại `accommodation-service`, file `docker-compose.yml` mặc định khởi chạy toàn bộ hạ tầng Backend (MySQL 8.4 LTS, Redis, Gateway port 8080 và các microservice).
   * Đồng thời bổ sung service `web` với Docker Compose profile `full` trỏ tới `../accommodation-web`.
   * Khi phát triển độc lập: Backend chạy `./gradlew bootRun` hoặc `docker compose up` (cổng 8080/8081); Frontend chạy `npm run dev` (cổng 3000) gọi API qua `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1`.
   * Khi cần khởi chạy trọn gói cả hệ thống bằng một lệnh: `docker compose --profile full up --build`.
@@ -134,30 +135,31 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 
 ---
 
-## 9. Cơ chế Xác thực Phiên, Quản lý Cookie & Xoay vòng Khóa RSA (Session Cookies & Key Rotation)
+## 8. Cơ chế Xác thực Phiên, BFF HttpOnly Cookie Proxy & Xoay vòng Khóa RSA (Session Cookies & Key Rotation)
 
-### 9.1 Định danh và Bản chất Cookie `cozynest_token`
+### 8.1 Định danh và Bản chất Cookie `cozynest_token` (BFF HttpOnly Proxy)
 * **Loại Token:** JWT ký mật mã bằng thuật toán bất đối xứng **RS256** (RSA Signature with SHA-256).
 * **Payload quy chuẩn:**
   * `sub`: UUID v7 của người dùng (khóa chính `users.id` / `users.user_uuid`).
   * `email`: Địa chỉ email xác thực.
   * `roles`: Danh sách vai trò (`ROLE_TENANT`, `ROLE_LANDLORD`, `ROLE_MODERATOR`, `ROLE_ADMIN`).
   * `iss`: `cozynest-identity` (được thẩm định bởi Resource Server).
-  * `exp`: Thời hạn sống của Access Token là **24 giờ** (86,400 giây).
+  * `exp`: Thời hạn sống của Access Token là **15 phút** (900 giây — xác nhận thực tế tại `identity-service` `application.yml` `jwt.expiration-ms: 900000` và `JwtTokenProvider.java`, đồng bộ với Quy tắc R7).
   * `kid`: Key ID tương ứng trong JWKS Keyset để phục vụ xác thực và xoay vòng khóa.
 * **Thời hạn sống của Refresh Token:** Token ngẫu nhiên bảo mật cao được lưu mã hóa SHA-256 trong bảng `refresh_tokens` có hạn **30 ngày** (2,592,000 giây) kèm cơ chế phát hiện tái sử dụng (Reuse Detection Revocation).
 
-### 9.2 Cơ chế Làm mới Token (Silent Refresh Flow)
-* **Kênh truyền:** Khi Access Token hết hạn (nhận mã HTTP 401 Unauthorized từ gateway hoặc backend), HTTP client tại frontend (`ApiClient`) chặn request và tự động gọi endpoint `/api/v1/auth/refresh-token` với `cozynest_refresh_token` từ `localStorage`.
-* **Cập nhật liền mạch:** Khi cấp thành công cặp token mới, `cozynest_token` trong cookie và `cozynest_refresh_token` trong `localStorage` được cập nhật đồng thời mà không bắt người dùng phải đăng nhập lại hoặc gián đoạn trải nghiệm người dùng.
-* **Xử lý tranh chấp (Race Condition):** `ApiClient` duy trì một `refreshPromise` singleton duy nhất để ghép các request đồng thời, ngăn chặn việc gọi refresh token nhiều lần làm kích hoạt cơ chế thu hồi do nghi ngờ tái sử dụng token.
+### 8.2 Cơ chế Làm mới Token qua BFF (`HttpOnly` Cookie Proxy)
+* **Không lưu token ở JS trình duyệt:** Mã nguồn `accommodation-web` tuyệt đối không trả `accessToken` / `refreshToken` trong payload JSON về trình duyệt và không lưu `cozynest_refresh_token` ở `localStorage`. Các Next.js BFF Route Handlers (`/api/auth/*` và `/api/v1/[...path]/route.ts`) nắm giữ và xoay vòng token thông qua cookie `HttpOnly`.
+* **Luồng làm mới tự động:** Khi Access Token hết hạn (HTTP 401), BFF hoặc client gọi `/api/auth/refresh` (trên server đọc cookie `HttpOnly` `cozynest_refresh_token` và gọi `/api/v1/auth/refresh-token`), cập nhật cookie `HttpOnly` mới với cờ `Path=/`, `SameSite=Lax` và `Secure` ở production.
+* **Xử lý tranh chấp (Race Condition):** Cơ chế khóa chống đua (single-flight refresh lock / mutex) ghép các request đồng thời khi access token hết hạn để tránh kích hoạt thu hồi do tái sử dụng refresh token.
 
-### 9.3 Chính sách An toàn Cookie ở Production
-* **Cờ `Secure`:** Tự động kích hoạt khi `process.env.NODE_ENV === 'production'`, bắt buộc cookie chỉ được truyền tải qua HTTPS.
-* **Cờ `SameSite=Lax`:** Ngăn chặn tấn công CSRF trên các request chéo domain trong khi vẫn cho phép chuyển hướng hợp lệ từ các liên kết bên ngoài.
-* **Đường dẫn `Path=/`:** Phạm vi hợp lệ trên toàn bộ ứng dụng web và các tuyến API rewrite.
+### 8.3 Chính sách An toàn Cookie & CSRF ở BFF
+* **Cờ `HttpOnly`:** Bắt buộc trên mọi cookie xác thực; JavaScript trình duyệt (`document.cookie`) không thể đọc được JWT hoặc refresh token.
+* **Cờ `Secure`:** Tự động kích hoạt khi `process.env.NODE_ENV === 'production'`, bắt buộc cookie chỉ truyền qua HTTPS.
+* **Cờ `SameSite=Lax` + Kiểm tra `Origin`:** BFF proxy kiểm tra header `Origin`/`Referer` hợp lệ cho các request ghi dữ liệu (`POST`/`PUT`/`PATCH`/`DELETE`) nhằm chống CSRF.
+* **Đường dẫn `Path=/`:** Phạm vi hợp lệ trên toàn bộ ứng dụng web và tuyến BFF `/api/*`.
 
-### 9.4 Nguồn Khóa Riêng RSA & Quản lý Bí mật
+### 8.4 Nguồn Khóa Riêng RSA & Quản lý Bí mật
 * **Tuyệt đối không commit:** Khóa riêng tư RSA (`JWT_PRIVATE_KEY` / `private_key.pem`) không bao giờ được lưu trong kho mã nguồn git hay Docker image.
 * **Nạp từ biến môi trường/Secret Manager:** Khóa riêng được nạp qua biến môi trường `JWT_PRIVATE_KEY` (hoặc Kubernetes Secret / AWS Secrets Manager).
 * **Hướng dẫn tạo cặp khóa RSA 2048-bit cho môi trường phát triển (Dev/Demo):**
@@ -168,16 +170,19 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
   openssl rsa -in rsa_private.pem -pubout -out rsa_public.pem
   ```
 
-### 9.5 JWKS Caching và Cơ chế Xoay vòng Khóa (Key Rotation by `kid`)
+### 8.5 JWKS Caching và Cơ chế Xoay vòng Khóa (Key Rotation by `kid`)
 * Identity service công khai bộ khóa công khai tại endpoint tiêu chuẩn `/.well-known/jwks.json`.
 * Mỗi khóa trong JWKS chứa `kid` duy nhất (ví dụ `cozynest-key-2026-v1`).
 * Các Resource Server (`listing-service`, `billing-service`, `booking-service`, `admin-service`) cache JWKS trong bộ nhớ với thời gian sống TTL 24 giờ. Khi gặp token mang `kid` mới chưa có trong cache, Resource Server tự động fetch lại JWKS để cập nhật khóa mới mà không cần khởi động lại dịch vụ (Zero-downtime key rotation).
 
 ---
 
-## 10. Chiến lược Định danh Thực thể: Rà soát UUID v7 và BIGINT, Trade-offs & Lộ trình Di chuyển
+## 9. Chiến lược Định danh Thực thể: Rà soát UUID v7 và BIGINT, Trade-offs & Lộ trình Di chuyển (`ADR-007`)
 
-### 10.1 Hiện trạng Rà soát Schema (`rooms`, `room_images`, `users`)
+> **Mã định danh:** `ADR-007`  
+> **Quyết định chuẩn hóa (`HARDEN-01`):** Duy trì Dual-ID (`BIGINT` nội bộ + `UUID v7` công khai) cho các bảng lõi di sản (`rooms`, `users`); **tất cả các bảng giao dịch mới (Sprint 3+: `ledger_*`, `*_outbox`, `escrow_holds`, `contracts`, `contract_amendments`, `refund_requests`, `payout_requests`) dùng UUID v7** (`CHAR(36)`/`VARCHAR(36)` hoặc `BINARY(16)`), ánh xạ `UUID`/`String` UUID v7 trên API.
+
+### 9.1 Hiện trạng Rà soát Schema (`rooms`, `room_images`, `users`)
 * **Bảng `rooms`:**
   * Khóa chính nội bộ (PK): `id BIGINT AUTO_INCREMENT`.
   * Khóa định danh ngoại vi (Public UUID): `room_uuid VARCHAR(36) NOT NULL UNIQUE` (lưu trữ chuỗi UUID v7).
@@ -190,7 +195,7 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
   * Khóa định danh ngoại vi (Public UUID): `user_uuid VARCHAR(36) NOT NULL UNIQUE`.
   * Dữ liệu hạt giống dev/demo: Còn tồn tại bí danh chuỗi thân thiện con người (`u-landlord-01`, `u-tenant-01`, `u-admin-01`) dùng cho test fixture.
 
-### 10.2 Lý do Áp dụng Mô hình Khóa Kép (Dual-ID Pattern) & Trade-offs
+### 9.2 Lý do Áp dụng Mô hình Khóa Kép (Dual-ID Pattern) & Trade-offs
 1. **Hiệu năng B-tree Clustered Index của InnoDB (MySQL):**
    * *Ưu điểm của BIGINT PK:* InnoDB lưu trữ bảng theo chỉ mục phân cụm (Clustered Index B+Tree). Mọi chỉ mục phụ (Secondary Index) đều phải lưu trữ giá trị của PK làm con trỏ hàng. Khóa chính `BIGINT` (8 bytes) giúp kích thước node chỉ mục nhỏ gọn hơn 50-75% so với chuỗi UUID (36 bytes), giảm phân mảnh trang (page split) và tối ưu bộ nhớ đệm InnoDB Buffer Pool.
    * *Nhược điểm của BIGINT đơn lẻ:* Dễ bị quét ID (ID Enumeration Attack), làm lộ tổng số lượng khách hàng hoặc số lượng phòng của nền tảng.
@@ -199,7 +204,7 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
    * *Trade-off:* Tốn 36 bytes dạng chuỗi (hoặc 16 bytes dạng `BINARY(16)`), chi phí join giữa các bảng đa dịch vụ cao hơn so với số nguyên 64-bit.
 3. **Đánh giá quyết định:** Mô hình kết hợp (`BIGINT AUTO_INCREMENT` làm PK nội bộ + `UUID v7` làm Public Resource ID ở URL và API) là giải pháp cân bằng tối ưu nhất cho hệ thống vừa đạt thông lượng xử lý cao, vừa bảo vệ tính riêng tư.
 
-### 10.3 Lộ trình Di chuyển Chuẩn hóa (Migration Roadmap)
+### 9.3 Lộ trình Di chuyển Chuẩn hóa (Migration Roadmap)
 * **Giai đoạn 1 (Hiện tại):**
   * Duy trì Dual-ID pattern trên toàn bộ các service.
   * API công khai ưu tiên nhận dạng qua `room_uuid` và `user_uuid`. Các API nội bộ giữa các microservice có thể dùng surrogate `BIGINT` ID để join tốc độ cao.
@@ -213,12 +218,12 @@ Xây dựng nền tảng thuê phòng trọ "Tổ Ấm" thay thế hệ thống 
 
 ---
 
-## 11. Kiến trúc Quản lý Lịch hẹn Xem phòng ([APPT-02])
+## 10. Kiến trúc Quản lý Lịch hẹn Xem phòng ([APPT-02])
 
 > Ngày quyết định: 07/11/2026  
 > Áp dụng cho: `booking-service` và `accommodation-web`
 
-### 11.1 Máy trạng thái (State Machine)
+### 10.1 Máy trạng thái (State Machine)
 Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy trạng thái trong domain model (không dùng setter công khai):
 * `PENDING` -> `CONFIRMED`: Chủ trọ chấp thuận lịch hẹn. Hệ thống kiểm tra trùng giờ; nếu trùng giờ với lịch đã `CONFIRMED` khác của cùng chủ trọ, trả về `ERR_APPT_TIME_CONFLICT` (HTTP 409). Chủ trọ có thể gửi kèm cờ `force: true` để chấp thuận đè.
 * `PENDING` -> `DECLINED`: Chủ trọ từ chối lịch hẹn, bắt buộc có lý do (`reasonCode`).
@@ -228,16 +233,16 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * `PENDING` -> `EXPIRED`: Hệ thống định kỳ quét và đánh dấu hết hạn đối với các lịch chờ chưa được xử lý khi đã qua giờ hẹn.
 * Mọi chuyển đổi trạng thái trái phép trả về lỗi nghiệp vụ ổn định `ERR_APPT_INVALID_TRANSITION` (HTTP 409).
 
-### 11.2 Xử lý Trùng giờ (Time Conflict Policy)
+### 10.2 Xử lý Trùng giờ (Time Conflict Policy)
 * Khi chủ trọ xác nhận lịch, `booking-service` quét các lịch `CONFIRMED` của cùng `landlord_id` trong khung giờ giao nhau `[scheduled_start, scheduled_end)`.
 * Nếu phát hiện trùng, trả về mã lỗi `ERR_APPT_TIME_CONFLICT` kèm danh sách lịch trùng.
 * Nếu client gửi cờ `force: true`, hệ thống cho phép xác nhận và ghi vết vào `appointment_status_history` với lý do "Xác nhận đè lịch trùng".
 
-### 11.3 Transactional Outbox Pattern & Event Publishing
+### 10.3 Transactional Outbox Pattern & Event Publishing
 * Khi trạng thái thay đổi (`CONFIRMED`, `DECLINED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `EXPIRED`), một domain event tương ứng được ghi vào bảng `appointment_events_outbox` trong cùng giao dịch database (ACID transaction).
 * *TODO*: `communication-service` hiện chưa có API gửi SMS/Email thời gian thực; khi `communication-service` hoàn thiện, outbox worker hoặc Debezium CDC sẽ gửi event lên message broker (Kafka/RabbitMQ) để bắn thông báo cho khách thuê và chủ trọ.
 
-### 11.4 Bảo vệ Quyền riêng tư Số điện thoại (Phone Privacy Protection)
+### 10.4 Bảo vệ Quyền riêng tư Số điện thoại (Phone Privacy Protection)
 * Bảo mật dữ liệu người thuê: Thuộc tính `contactPhone` chỉ được trả về đầy đủ khi lịch hẹn ở trạng thái `CONFIRMED` hoặc `COMPLETED`.
 * Với các trạng thái `PENDING`, `DECLINED`, `CANCELLED`, `EXPIRED`: số điện thoại được che một phần tại tầng Application/DTO (ví dụ `090••••567`). Không bao giờ gửi số điện thoại thô qua mạng khi chưa xác nhận.
 * Nghiêm cấm ghi số điện thoại khách hàng vào log hệ thống.
@@ -245,12 +250,12 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 
 ---
 
-## 12. Kiến trúc Hồ sơ Người dùng (USER-01) & Xác minh Danh tính Chủ trọ (KYC-01)
+## 11. Kiến trúc Hồ sơ Người dùng (USER-01) & Xác minh Danh tính Chủ trọ (KYC-01)
 
 > Ngày quyết định: 07/11/2026  
 > Áp dụng cho: `identity-service`, `listing-service`, `common`, `api-gateway`, và `accommodation-web`
 
-### 12.1 Thư viện Xử lý Ảnh Dùng chung (Shared Image Processing)
+### 11.1 Thư viện Xử lý Ảnh Dùng chung (Shared Image Processing)
 * **Vấn đề**: Cả `listing-service` (ảnh phòng) và `identity-service` (avatar người dùng, ảnh CCCD KYC) đều cần kiểm tra an ninh hình ảnh nghiêm ngặt (magic bytes, chống file polyglot, chặn bom pixel $\le 8000$px, tẩy EXIF/GPS, nén sang WebP).
 * **Quyết định**: Di chuyển và đưa các thư viện `com.twelvemonkeys.imageio:imageio-webp:3.12.0` và `net.coobird:thumbnailator:0.4.20` vào module `common`.
 * Đóng gói tiện ích xử lý ảnh dùng chung trong `vn.cozynest.common.image.ImageProcessingHelper`:
@@ -259,7 +264,7 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
   * Cắt ảnh vuông từ tâm (center square crop) tự động cho avatar người dùng.
   * Xuất ảnh định dạng WebP tối ưu với các kích cỡ chuẩn: Avatar (64px, 256px), KYC CCCD ($\le 2000$px cạnh dài).
 
-### 12.2 Bảo mật Dữ liệu Nhạy cảm KYC & Mã hóa Lưu trữ
+### 11.2 Bảo mật Dữ liệu Nhạy cảm KYC & Mã hóa Lưu trữ
 * **Số Căn cước công dân (CCCD)**:
   * `id_number_enc`: Mã hóa đối xứng AES-256-GCM với vector khởi tạo ngẫu nhiên (IV 12 bytes). Khóa mã hóa được cấu hình qua biến môi trường `APP_KYC_SECRET_KEY` (có khóa mặc định 256-bit cho môi trường dev/demo).
   * `id_number_hash`: Băm HMAC-SHA256 sử dụng khóa pepper bí mật từ `APP_KYC_PEPPER`. Thiết lập ràng buộc UNIQUE đối với các hồ sơ có trạng thái `PENDING` hoặc `APPROVED`, đảm bảo một số CCCD chỉ có thể liên kết với một tài khoản duy nhất mà không lưu plaintext trong database.
@@ -273,16 +278,16 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * **Quy định Không Ghi Log Dữ liệu Nhạy cảm**:
   * Nghiêm cấm tuyệt đối in số CCCD, đường dẫn ảnh lưu trữ nội bộ vào log hệ thống, thông báo ngoại lệ (exception messages) hoặc phản hồi lỗi API.
 
-### 12.3 Chính sách Lưu giữ và Hủy Dữ liệu KYC Bị Từ chối (Retention & Cleanup Policy)
+### 11.3 Chính sách Lưu giữ và Hủy Dữ liệu KYC Bị Từ chối (Retention & Cleanup Policy)
 * **Thời hạn lưu trữ và Cấp quyết định**:
   * Thời hạn lưu trữ hiện dùng là **30 ngày** (cấu hình qua `app.kyc.retention-days=30`).
-  * Thời hạn này do **Bộ phận Pháp chế & Tuân thủ (Legal & Compliance) phối hợp với Cán bộ Bảo vệ Dữ liệu Cá nhân (Data Protection Officer - DPO)** quyết định, căn cứ theo Nghị định số 13/2023/NĐ-CP về Bảo vệ Dữ liệu Cá nhân và quy định khiếu nại dân sự của Việt Nam (cho phép người dùng có 30 ngày để khiếu nại quyết định từ chối trước khi dữ liệu nhạy cảm bị tiêu hủy hoàn toàn).
+  * Thời hạn này do **Bộ phận Pháp chế & Tuân thủ (Legal & Compliance) phối hợp với Cán bộ Bảo vệ Dữ liệu Cá nhân (Data Protection Officer - DPO)** quyết định, căn cứ theo **Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 và Nghị định 356/2025/NĐ-CP** cùng quy định khiếu nại dân sự của Việt Nam (cho phép người dùng có 30 ngày để khiếu nại quyết định từ chối trước khi dữ liệu nhạy cảm bị tiêu hủy hoàn toàn).
 * **Cơ chế An toàn của Scheduled Job (`KycImageCleanupScheduler`)**:
   * Cờ kích hoạt `app.kyc.cleanup-enabled`: **MẶC ĐỊNH LÀ FALSE (TẮT)**. Chỉ khi quản trị viên chủ động bật qua biến môi trường hoặc cấu hình hệ thống, tác vụ mới chạy.
   * **Tuyệt đối KHÔNG xóa hồ sơ PENDING hoặc APPROVED**: Truy vấn cơ sở dữ liệu (`findRejectedBefore(cutoff)`) được lọc chặt chẽ chỉ lấy các bản ghi có trạng thái `REJECTED` và thời điểm bị từ chối cũ hơn 30 ngày. Các hồ sơ đang chờ duyệt (`PENDING`) và hồ sơ đã xác thực thành công (`APPROVED`) không bao giờ bị scheduler chạm tới hay xóa ảnh.
   * Khi quét và xóa file vật lý trên đĩa, đường dẫn ảnh được cập nhật thành giá trị đại diện `PURGED` để đánh dấu hồ sơ đã được thanh tẩy dữ liệu.
 
-### 12.4 Cổng Chặn Đăng Tin (Listing KYC Gate) & Inter-Service Token
+### 11.4 Cổng Chặn Đăng Tin (Listing KYC Gate) & Inter-Service Token
 * **Quy định**: Chủ trọ chỉ được phép gửi duyệt phòng (`POST /api/v1/landlord/rooms/{id}/submit`) và xuất bản phòng khi KYC ở trạng thái `APPROVED`. Nếu chưa được duyệt, hệ thống từ chối với HTTP 403 và mã lỗi `ERR_KYC_REQUIRED` kèm trạng thái KYC hiện tại (`NONE`, `PENDING`, `REJECTED`). Thao tác lưu nháp (`DRAFT`) vẫn được cho phép.
 * **Cơ chế Xác minh Liên Dịch vụ (Inter-Service KYC Verification)**:
   * `identity-service` cung cấp endpoint nội bộ `GET /internal/users/{id}/kyc-status`, không đi qua gateway công khai.
@@ -292,31 +297,31 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * **Chính sách Phòng Đã Đăng Khi KYC Bị Thu hồi**:
   * Các phòng đã được `PUBLISHED` trước đó sẽ không bị tự động ẩn để tránh gián đoạn hợp đồng và người thuê đang tìm kiếm, tuy nhiên mọi hành động đăng mới, gửi duyệt lại hoặc mở lại phòng ẩn đều bị chặn cho đến khi KYC được phê duyệt lại.
 
-### 12.5 Đổi Mật khẩu & Thu hồi Phiên Làm việc
+### 11.5 Đổi Mật khẩu & Thu hồi Phiên Làm việc
 * Đổi mật khẩu yêu cầu nhập đúng mật khẩu hiện tại. Mật khẩu mới bắt buộc phải khác mật khẩu cũ và đáp ứng độ phức tạp tối thiểu.
 * Áp dụng Rate Limiting qua Redis: Nếu nhập sai mật khẩu cũ 5 lần liên tiếp trong 15 phút, tài khoản bị tạm khóa đổi mật khẩu để chống brute-force.
 * Khi đổi mật khẩu thành công: Hệ thống tự động thu hồi tất cả các `refresh_tokens` của các thiết bị khác, chỉ duy trì phiên đăng nhập hiện tại để người dùng không bị văng ra ngoài đột ngột. Đồng thời gửi email cảnh báo bảo mật tới người dùng.
 
 
-## 13. Quyết định Kiến trúc & Bảo mật Xác thực [AUTH-01, AUTH-03, AUTH-04]
+## 12. Quyết định Kiến trúc & Bảo mật Xác thực [AUTH-01, AUTH-03, AUTH-04]
 
-### 13.1 Thuật toán Băm Mật khẩu & Chống Dò Tài khoản (Timing Attack)
+### 12.1 Thuật toán Băm Mật khẩu & Chống Dò Tài khoản (Timing Attack)
 * **Thuật toán thật đang sử dụng**: BCrypt với hệ số phức tạp 12 (`BCryptPasswordEncoder(12)`).
 * **Lý do & Bảo đảm tiêu chuẩn**: BCrypt hệ số 12 tạo độ trễ tính toán ~80-100ms cho mỗi lần băm/so sánh trên CPU hiện đại, đáp ứng đầy đủ khuyến nghị của OWASP Password Storage Cheat Sheet.
 * **Chống Timing Attack (Timing Enumeration)**: Khi người dùng đăng nhập với email không tồn tại trong hệ thống, `LoginUseCase` vẫn kích hoạt việc so sánh mật khẩu với hằng số `DUMMY_BCRYPT_HASH` (`$2a$12$7kPj5aXN62q.7XJjN8wGxeQJv9XW1Nq2g5U1rQ0M5J4L3K2H1G0F.`). Việc này đảm bảo thời gian phản hồi giữa trường hợp "email không tồn tại" và "mật khẩu không đúng" là hoàn toàn xấp xỉ nhau (~80-100ms), ngăn chặn kẻ tấn công đo thời gian để dò email hợp lệ.
 
-### 13.2 Chính sách Khóa Tài khoản Chống DoS (Lockout Policy)
+### 12.2 Chính sách Khóa Tài khoản Chống DoS (Lockout Policy)
 * **Quyết định**: Khóa theo cặp `(email, IP)` thay vì khóa toàn cầu theo `email`.
 * **Lý do**: Nếu khóa toàn cục theo email, bất kỳ kẻ tấn công nào biết trước email nạn nhân đều có thể gửi 5 request sai mật khẩu để làm tê liệt tài khoản của nạn nhân (Denial-of-Service). Bằng cách đếm số lần sai theo `(email, ipAddress)`, kẻ tấn công chỉ bị khóa trên chính IP của họ trong 15 phút, trong khi người dùng thực từ địa chỉ IP hợp lệ vẫn có thể đăng nhập bình thường.
 
-### 13.3 Đánh đổi Khi Đăng ký Email Trùng
+### 12.3 Đánh đổi Khi Đăng ký Email Trùng
 * **Quyết định**: Khi đăng ký bằng email đã tồn tại, trả về `400 Bad Request` kèm mã lỗi `ERR_AUTH_EMAIL_EXISTS` ("Email đã tồn tại trên hệ thống").
 * **Đánh đổi**: Thay vì gửi email ẩn thông báo trùng (gây chậm trễ và khó khăn lớn cho người dùng thực muốn đăng ký nhanh), hệ thống chấp nhận thông báo lỗi trực tiếp để tối ưu trải nghiệm người dùng (UX). Rủi ro brute-force quét email được triệt tiêu thông qua cơ chế Redis Rate Limiting nghiêm ngặt (tối đa 10 lần đăng ký / 1 phút / IP, quá ngưỡng trả về HTTP 429).
 
 
-## 14. Quyết Định Di Chuyển Node.js Sang Microservices [SERVICE-01]
+## 13. Quyết Định Di Chuyển Node.js Sang Microservices [SERVICE-01]
 
-### 14.1 Phân Chia Microservices & Phạm Vi Nghiệp Vụ (DDD Bounded Contexts)
+### 13.1 Phân Chia Microservices & Phạm Vi Nghiệp Vụ (DDD Bounded Contexts)
 * Hệ thống phân tách thành 6 microservices độc lập nghiệp vụ và 1 API Gateway:
   1. `api-gateway` (Port 8080): Điểm đón tiếp duy nhất, quản lý CORS, chặn tuyệt đối `/internal/**`.
   2. `identity-service` (Port 8081): Xác thực, người dùng, phân quyền RBAC, hồ sơ KYC CCCD và Sinh trắc học khuôn mặt.
@@ -326,34 +331,34 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
   6. `communication-service` (Port 8085): Trò chuyện thời gian thực, thông báo in-app.
   7. `admin-service` (Port 8086): Kiểm duyệt, báo cáo vi phạm, thống kê hệ thống.
 
-### 14.2 Cô Lập Cơ Sở Dữ Liệu Tuyệt Đối (Database Isolation & Zero Cross-Schema FK)
-* Mỗi microservice sở hữu CSDL schema riêng biệt trên MySQL 9.1 (`cozynest_identity`, `cozynest_listing`, `cozynest_booking`, `cozynest_billing`, `cozynest_communication`, `cozynest_admin`).
+### 13.2 Cô Lập Cơ Sở Dữ Liệu Tuyệt Đối (Database Isolation & Zero Cross-Schema FK)
+* Mỗi microservice sở hữu CSDL schema riêng biệt trên MySQL 8.4 LTS (`cozynest_identity`, `cozynest_listing`, `cozynest_booking`, `cozynest_billing`, `cozynest_communication`, `cozynest_admin`).
 * Cấm hoàn toàn Foreign Key liên schema (xác thực qua truy vấn `information_schema.KEY_COLUMN_USAGE` trả về 0 liên kết).
 * Giao tiếp liên dịch vụ thực hiện qua REST API nội bộ hoặc Outbox Pattern, không chia sẻ database connection.
 
-### 14.3 Bỏ Có Chủ Đích Địa Giới Cấp Quận/Huyện
+### 13.3 Bỏ Có Chủ Đích Địa Giới Cấp Quận/Huyện
 * Áp dụng quy chuẩn địa giới hành chính 2 cấp (Tỉnh/Thành -> Phường/Xã).
 * Loại bỏ route `GET /api/v1/location/districts` và bảng `districts` trong nghiệp vụ. Phường/Xã liên kết trực tiếp với mã Tỉnh/Thành qua trường `province_code`.
 
 ---
 
-## 15. Quyết Định Kiến Trúc & Bảo Mật Đăng Nhập/Đăng Ký Bằng Google [AUTH-02]
+## 14. Quyết Định Kiến Trúc & Bảo Mật Đăng Nhập/Đăng Ký Bằng Google [AUTH-02]
 
-### 15.1 Xác Thực Qua Google Identity Services (GIS) Không Cần Client Secret
+### 14.1 Xác Thực Qua Google Identity Services (GIS) Không Cần Client Secret
 * **Mô hình**: Sử dụng ID Token do Google Identity Services SDK phát hành trực tiếp trên trình duyệt, gửi về Backend (`POST /api/v1/auth/google`) để xác thực chữ ký số bằng thuật toán RS256 thông qua Google Public JWKS (`https://www.googleapis.com/oauth2/v3/certs`) với thư viện chuẩn `NimbusJwtDecoder` trong Spring Security OAuth2.
 * **Bảo mật Secret**: Tuyệt đối không cấu hình `GOOGLE_CLIENT_SECRET` trên Backend lẫn Frontend. GIS ID token flow là luồng công khai chuẩn được Google khuyến nghị cho Web App, loại bỏ hoàn toàn nguy cơ rò rỉ Client Secret.
 * **Chống Replay Attack bằng Nonce một lần**: Mỗi phiên đăng nhập bắt buộc phải lấy một giá trị ngẫu nhiên cryptographically secure qua `GET /api/v1/auth/google/nonce`. Nonce được lưu trong Redis với TTL 5 phút và cơ chế tiêu thụ 1 lần duy nhất (single-use consumption). Nếu nonce đã dùng hoặc không khớp giá trị trong ID token, backend từ chối với `400 Bad Request`.
 
-### 15.2 Chính Sách Khóa Mật Khẩu Đối Với Google OAuth
+### 14.2 Chính Sách Khóa Mật Khẩu Đối Với Google OAuth
 * **Quy tắc**: Việc tài khoản bị khóa tạm thời 15 phút do nhập sai mật khẩu cục bộ 5 lần liên tiếp (chống brute-force) KHÔNG làm khóa việc đăng nhập bằng Google.
 * **Lý do**: Đăng nhập bằng Google là xác thực qua nhà cung cấp danh tính bên thứ ba (Google Identity Provider) đã được xác minh bảo mật nhiều lớp (2FA/OTP của Google). Việc kẻ xấu cố tình gõ sai mật khẩu cục bộ không được phép làm tê liệt quyền truy cập qua kênh xác thực an toàn của người dùng thực.
 * **Ngoại lệ duy nhất**: Nếu tài khoản bị Admin gắn cờ đình chỉ vi phạm chính sách (`status = SUSPENDED`) hoặc xóa mềm (`DELETED`), hệ thống sẽ chặn tất cả mọi hình thức đăng nhập kể cả Google OAuth với mã lỗi `403 Forbidden`.
 
-### 15.3 Khả Năng Thiết Lập Mật Khẩu Cục Bộ Cho Tài Khoản Tạo Mới Bằng Google
+### 14.3 Khả Năng Thiết Lập Mật Khẩu Cục Bộ Cho Tài Khoản Tạo Mới Bằng Google
 * **Quy tắc**: Người dùng đăng ký ban đầu hoàn toàn qua Google (`password_hash = NULL`, `phone = NULL`) được phép sử dụng luồng Quên mật khẩu (`/forgot-password` -> OTP qua email) để thiết lập mật khẩu đăng nhập cục bộ bất cứ lúc nào.
 * **Lý do**: Tối ưu tính linh hoạt và quyền tự chủ của người dùng khi muốn đăng nhập bằng phương thức email + mật khẩu truyền thống mà không bị phụ thuộc duy nhất vào tài khoản Google.
 
-### 15.4 Kiểm Tra Lệch Client ID Trong Dev Mode Không Lộ Secret
+### 14.4 Kiểm Tra Lệch Client ID Trong Dev Mode Không Lộ Secret
 * **Quy tắc**: Endpoint `GET /api/v1/auth/google/status` trả về cờ `enabled: boolean` và `clientIdFingerprint: string` (8 ký tự đầu của chuỗi SHA-256 hash của Client ID).
 * **Lý do**: Cho phép Frontend phát hiện ngay lập tức tình trạng cấu hình lệch giữa `.env.local` của Frontend và cấu hình backend trên môi trường dev/staging mà tuyệt đối không để lộ toàn bộ Client ID qua API public.
 
@@ -362,12 +367,12 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 
 ---
 
-## 11. Quyết định Nghiệp vụ và Luồng Xác thực Phê duyệt Chủ Trọ (AUTH-FLOW-A: Quy tắc R1 - R9)
+## 15. Quyết định Nghiệp vụ và Luồng Xác thực Phê duyệt Chủ Trọ (AUTH-FLOW-A: Quy tắc R1 - R9)
 
-### 11.1. Bối cảnh
+### 15.1. Bối cảnh
 Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đăng ký nếu người dùng chọn vai trò "Chủ cho thuê", dẫn đến việc người dùng chưa qua xác minh danh tính (KYC) vẫn có thể truy cập dashboard quản lý phòng và đăng tin. Đồng thời luồng Google Auth bị nhầm lẫn điều hướng giữa người thuê và chủ trọ.
 
-### 11.2. Các quy tắc cốt lõi (R1 - R9)
+### 15.2. Các quy tắc cốt lõi (R1 - R9)
 1. **R1 (Quyền mặc định an toàn):** Mọi tài khoản tự đăng ký (qua email/mật khẩu hoặc Google) chỉ nhận vai trò `TENANT` và có thể hoạt động như người thuê phòng ngay lập tức.
 2. **R2 (Không cấp LANDLORD tức thì):** Lựa chọn "Chủ cho thuê" khi đăng ký không cấp vai trò `LANDLORD`. Thay vào đó, hệ thống tạo bản ghi hồ sơ chủ trọ trong bảng `landlord_profiles` với trạng thái `AWAITING_KYC`. Chỉ khi hồ sơ KYC tổng thể được nhân sự có quyền `kyc:review` (`ADMIN`, `MODERATOR`) phê duyệt, hệ thống mới cấp thêm vai trò `LANDLORD` (giữ nguyên vai trò `TENANT`) trong CÙNG một giao dịch cơ sở dữ liệu, cập nhật `landlord_profiles.approval_status = APPROVED`, và phát sự kiện `LandlordApproved` qua outbox.
 3. **R3 (Máy trạng thái hồ sơ thuần Domain):**
@@ -393,25 +398,25 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
 
 ---
 
-## 12. Quyết định Kiến trúc và Bảo vệ Dữ liệu Sinh trắc học (KYC-02: Xác thực khuôn mặt)
+## 16. Quyết định Kiến trúc và Bảo vệ Dữ liệu Sinh trắc học (KYC-02: Xác thực khuôn mặt)
 
-### 12.1. Không tự xây dựng thuật toán nhận diện khuôn mặt
+### 16.1. Không tự xây dựng thuật toán nhận diện khuôn mặt
 * **Quyết định:** Nền tảng tuyệt đối **không tự viết thuật toán so khớp sinh trắc học** hay lưu trữ vector embedding / đặc trưng khuôn mặt của người dùng.
 * **Lý do:**
-  1. Bảo vệ dữ liệu cá nhân nhạy cảm theo **Nghị định 13/2023/NĐ-CP**. Việc lưu trữ embedding sinh trắc học đòi hỏi hạ tầng đạt chuẩn an toàn thông tin cấp độ cao và tiềm ẩn rủi ro lộ lọt nghiêm trọng.
+  1. Bảo vệ dữ liệu cá nhân nhạy cảm theo **Luật Bảo vệ dữ liệu cá nhân số 91/2025/QH15 và Nghị định 356/2025/NĐ-CP**. Việc lưu trữ embedding sinh trắc học đòi hỏi hạ tầng đạt chuẩn an toàn thông tin cấp độ cao và tiềm ẩn rủi ro lộ lọt nghiêm trọng.
   2. Quyết định phê duyệt tính khớp giữa khuôn mặt và CCCD do **Kiểm duyệt viên con người** đối chiếu (`ManualReviewProvider`, mặc định) hoặc cổng cắm nhà cung cấp eKYC được cấp phép (`VendorFaceVerificationProvider`).
 
-### 12.2. Vai trò của Bộ phát hiện khuôn mặt trên Trình duyệt
+### 16.2. Vai trò của Bộ phát hiện khuôn mặt trên Trình duyệt
 * **Quy tắc:** Bộ quét webcam và khung elip hướng dẫn trên trình duyệt **chỉ đóng vai trò hỗ trợ người dùng thực hiện đúng động tác**, cấm tuyệt đối mô tả nó là biện pháp bảo mật hay "chống giả mạo".
 * **Lý do:** Client-side JavaScript có thể bị can thiệp bởi DevTools, camera ảo hoặc extensions. Do đó cờ `liveness_client_flag` chỉ là dữ liệu bổ trợ để kiểm duyệt viên tham khảo.
 
-### 12.3. Điều kiện Phê duyệt KYC Tổng thể và Cổng Đăng tin
+### 16.3. Điều kiện Phê duyệt KYC Tổng thể và Cổng Đăng tin
 * **Quy tắc:** Khi biến môi trường `FACE_REQUIRED=true` (mặc định), trạng thái KYC tổng thể `APPROVED` đòi hỏi đồng thời:
   1. Giấy tờ tùy thân CCCD đã được duyệt (`user_verifications.status = APPROVED`).
   2. Khuôn mặt sinh trắc học đã đạt (`face_verifications.status = PASSED`).
 * Cổng kiểm tra đăng tin `listing-service` thông qua endpoint nội bộ `/internal/users/{id}/kyc-status` bắt buộc `isApproved=true` mới cho phép đăng tin phòng trọ.
 
-### 12.4. Chính sách Lưu trữ An toàn và Tự động Tiêu hủy (Data Retention & Purge)
+### 16.4. Chính sách Lưu trữ An toàn và Tự động Tiêu hủy (Data Retention & Purge)
 * **Mã hóa:** Tất cả các khung hình chụp (`neutral`, `action_1`, `action_2`) đều được mã hóa bằng thuật toán `AES-GCM 256-bit` với khóa riêng `FACE_ENCRYPTION_KEY` trước khi lưu vào kho lưu trữ riêng tư.
 * **Thời hạn lưu trữ:** Khung hình của hồ sơ đã có kết quả (`PASSED` hoặc `FAILED`) chỉ được lưu trữ tối đa `FACE_RETENTION_DAYS=30` ngày. Hết hạn, tác vụ định kỳ `FaceCleanupScheduler` sẽ xóa vĩnh viễn tệp ảnh mã hóa khỏi ổ đĩa và cập nhật `deleted_at` trong cơ sở dữ liệu.
 * **Quyền rút đồng ý:** Người dùng có quyền xóa ngay lập tức mọi khung hình đã lưu thông qua nút "Xóa dữ liệu ảnh sinh trắc học" hoặc gọi API `DELETE /api/v1/me/kyc/face/consent`.
@@ -421,44 +426,44 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
 
 ---
 
-## 13. Quyết định Pháp lý & Mô hình Dòng tiền (LEGAL-02 / ADR-008)
+## 17. Quyết định Pháp lý & Mô hình Dòng tiền (LEGAL-02 / ADR-008)
 
 > **Mã định danh:** `ADR-008`  
 > **Chủ đề:** Mô hình Kiến trúc Dòng tiền, Giữ cọc (Escrow) & Trách nhiệm Thuế  
-> **Trạng thái:** `PENDING_EXTERNAL_LEGAL_REVIEW` (Chờ ý kiến tư vấn chính thức từ Luật sư và Kiểm toán viên độc lập)  
-> **Ngày ghi nhận:** 09/11/2026  
+> **Trạng thái:** `HUMAN` — **Đề xuất kỹ thuật, CHỜ luật sư và chuyên gia thuế thẩm định, CHƯA phải kết luận pháp lý chính thức**  
+> **Ngày ghi nhận:** 09/11/2026 (cập nhật 12/11/2026)  
 > **Tài liệu tham chiếu:** `docs/legal/LEGAL-02-PAYMENT-TAX-LEGAL-ASSESSMENT.md`
 
-### 13.1. Bối cảnh & Căn cứ Pháp lý
+### 17.1. Bối cảnh & Căn cứ Pháp lý Cần Tham vấn (`LEGAL-02`)
 1. Tổ Ấm vận hành sàn thương mại điện tử kết nối cho thuê nhà ở. Các giao dịch có giá trị lớn bao gồm: Tiền đặt cọc hợp đồng, Tiền thuê phòng hàng tháng, Tiền dịch vụ tiện ích, Phí gói VIP và Phí dịch vụ sàn.
-2. Theo **Nghị định 52/2024/NĐ-CP** (hiệu lực 01/07/2024), việc nhận tiền của khách hàng vào tài khoản của doanh nghiệp, lưu giữ và chi trả theo lệnh cấu thành Dịch vụ trung gian thanh toán (thu hộ, chi hộ, ví điện tử) bắt buộc phải có Giấy phép của Ngân hàng Nhà nước.
-3. Theo **Luật Quản lý thuế số 56/2024/QH15**, sàn TMĐT có chức năng thanh toán có trách nhiệm khấu trừ, nộp thuế thay cho cá nhân kinh doanh. Trong khi đó, theo **Thông tư 40/2021/TT-BTC**, cá nhân cho thuê tài sản có doanh thu $\le 100$ triệu đồng/năm thuộc diện miễn thuế GTGT và TNCN.
+2. Theo **Nghị định 52/2024/NĐ-CP** (hiệu lực 01/07/2024), việc nhận tiền của khách hàng vào tài khoản của doanh nghiệp, lưu giữ và chi trả theo lệnh có thể cấu thành Dịch vụ trung gian thanh toán (thu hộ, chi hộ, ví điện tử) cần Giấy phép NHNN nếu nền tảng trực tiếp giữ tiền.
+3. Về nghĩa vụ thuế đối với cá nhân kinh doanh/cho thuê qua sàn TMĐT: cần luật sư và chuyên gia thuế đối chiếu đồng thời **Nghị định 117/2025/NĐ-CP**, **Luật Quản lý thuế số 56/2024/QH15** và **Thông tư 40/2021/TT-BTC** (lưu ý: nội dung miễn/khấu trừ thuế nêu trong bản nháp trước là giả thuyết tham chiếu, KHÔNG phải kết luận pháp lý miễn trừ thuế cho sàn hay chủ trọ).
 
-### 13.2. Quyết định Định hướng Kiến trúc
-1. **BÁC BỎ HOÀN TOÀN MÔ HÌNH NỀN TẢNG TỰ GIỮ CỌC (MÔ HÌNH D):**  
-   Tuyệt đối không sử dụng tài khoản ngân hàng của Công ty Tổ Ấm để nhận và tạm giữ tiền cọc của người thuê. Không xây dựng tính năng "Ví nội bộ" (In-house Wallet) cho phép người dùng nạp tiền vào hệ thống.
-2. **ÁP DỤNG MÔ HÌNH CHUYỂN KHOẢN TRỰC TIẾP P2P (MÔ HÌNH A) VÀ CỔNG CÓ PHÉP CHO SPRINT 3:**  
-   - Người thuê chuyển khoản tiền cọc và tiền thuê trực tiếp vào số tài khoản ngân hàng chính chủ của Chủ trọ thông qua mã VietQR động do hệ thống sinh, hoặc cổng đối tác có phép.
-   - Hệ thống tạo mã tham chiếu giao dịch chuẩn `TOAM-REF-xxxxxx` để theo dõi và hỗ trợ hai bên ghi nhận trạng thái thanh toán.
-   - Tổ Ấm không tham gia vào dòng tiền thanh toán tiền phòng/tiền cọc, do đó không phát sinh trách nhiệm khấu trừ thuế tiền thuê nhà. Nguồn thu duy nhất của Tổ Ấm là Phí dịch vụ đăng tin / Gói VIP xuất hóa đơn GTGT đầy đủ.
-3. **ĐỊNH HƯỚNG MÔ HÌNH B CHO TƯƠNG LAI (TÍCH HỢP ĐỐI TÁC TRUNG GIAN THANH TOÁN CÓ GIẤY PHÉP NHNN):**  
-   Khi có nhu cầu cung cấp dịch vụ giữ cọc bảo đảm (Escrow), Tổ Ấm sẽ ký hợp đồng hợp tác với Tổ chức Trung gian thanh toán hoặc Ngân hàng được NHNN cấp phép để tiền cọc được lưu giữ trên Tài khoản đảm bảo thanh toán của đối tác.
+### 17.2. Định hướng Kiến trúc Kỹ thuật Đề xuất (Gated Sandbox)
+1. **KHÔNG BẬT MÔ HÌNH TỰ GIỮ CỌC TIỀN THẬT (MÔ HÌNH D):**  
+   Không dùng tài khoản Công ty Tổ Ấm để nhận và giữ tiền cọc thật của người dùng; toàn bộ module lưu ký (`Escrow`, ví nội bộ, rút tiền thật) phải bị khóa sau feature flag `money.custody.enabled=false` và `fintech.mode=SANDBOX_ONLY`.
+2. **ĐỀ XUẤT MÔ HÌNH CHUYỂN KHOẢN TRỰC TIẾP P2P (MÔ HÌNH A) LÀM MẶC ĐỊNH AN TOÀN:**  
+   - Người thuê chuyển khoản tiền cọc/thuê trực tiếp tới STK ngân hàng chính chủ đã xác minh của Chủ trọ qua mã VietQR động hoặc cổng đối tác có phép.
+   - Hệ thống sinh mã tham chiếu chuẩn `TOAM-REF-xxxxxx` để đối soát trạng thái chứng từ mà không nắm giữ dòng tiền thuê.
+   - Phần mã nguồn escrow/wallet/payout/refund đã xây trong Sprint 3 được giữ nguyên để thử nghiệm sandbox dưới cờ `money.custody.enabled=false` (`SANDBOX_ONLY`).
+3. **ĐỊNH HƯỚNG MÔ HÌNH B (ĐỐI TÁC TRUNG GIAN THANH TOÁN CÓ GIẤY PHÉP NHNN):**  
+   Chỉ kích hoạt giải pháp Escrow tiền thật sau khi ký hợp đồng hợp tác với Tổ chức Trung gian thanh toán/Ngân hàng có giấy phép NHNN và hoàn tất toàn bộ câu hỏi `LEGAL-02`.
 
 ---
 
-## 14. Quyết định Bằng chứng Pháp lý Hợp đồng Điện tử & Ký số (LEGAL-02 / ADR-010)
+## 18. Quyết định Bằng chứng Pháp lý Hợp đồng Điện tử & Ký số (LEGAL-02 / ADR-010)
 
 > **Mã định danh:** `ADR-010`  
 > **Chủ đề:** Bằng chứng Hợp đồng Điện tử, Tính toàn vẹn Dữ liệu & Ký xác thực OTP  
-> **Trạng thái:** `PENDING_EXTERNAL_LEGAL_REVIEW`  
+> **Trạng thái:** `HUMAN` — Đề xuất tiêu chuẩn kỹ thuật, chờ luật sư duyệt mẫu hợp đồng và giá trị chứng cứ theo `LEGAL-02`  
 > **Ngày ghi nhận:** 09/11/2026  
 > **Tài liệu tham chiếu:** `docs/legal/LEGAL-02-PAYMENT-TAX-LEGAL-ASSESSMENT.md`
 
-### 14.1. Căn cứ Pháp lý
-1. **Luật Nhà ở 2023 (Điều 163, 164):** Hợp đồng thuê nhà ở lập thành văn bản, không bắt buộc công chứng, chứng thực.
-2. **Luật Giao dịch điện tử 2023 (Điều 9, 12, 22):** Thông điệp dữ liệu có giá trị như văn bản gốc nếu bảo đảm tính toàn vẹn và khả năng truy cập hoàn chỉnh. Mã OTP qua SMS/Email là phương thức xác thực điện tử thể hiện sự chấp thuận của các bên.
+### 18.1. Căn cứ Pháp lý Tham chiếu
+1. **Luật Nhà ở 2023 (Điều 163, 164):** Hợp đồng thuê nhà ở lập thành văn bản; cần luật sư xác nhận các trường hợp đặc thù về công chứng/chứng thực nếu có.
+2. **Luật Giao dịch điện tử 2023 (Điều 9, 12, 22):** Thông điệp dữ liệu và phương thức xác thực điện tử (OTP qua SMS/Email) phải được luật sư thẩm định mức độ đáp ứng chữ ký điện tử trong quy trình cụ thể của Tổ Ấm.
 
-### 14.2. Chuẩn hóa Kỹ thuật Lưu vết Chứng cứ (Technical Evidentiary Standard)
+### 18.2. Chuẩn hóa Kỹ thuật Lưu vết Chứng cứ (Technical Evidentiary Standard)
 1. **Tạo Snapshot Bất biến:** Tại thời điểm các bên xác nhận ký, hệ thống kết xuất toàn văn nội dung hợp đồng và lưu trữ dưới dạng bản chụp bất biến (Immutable Snapshot).
 2. **Mã băm SHA-256:** Mỗi bản chụp hợp đồng được băm bằng thuật toán `SHA-256` trên toàn bộ nội dung văn bản kèm thông tin phiên bản để chứng minh văn bản không bị can thiệp sau khi ký.
 3. **Nhật ký Ký số (Append-only Signature Audit Trail):** Bảng `contract_signatures` bắt buộc lưu trữ:
@@ -471,16 +476,68 @@ Trước đây, hệ thống cấp vai trò `LANDLORD` ngay lập tức khi đă
 
 ---
 
-## 15. Quy chuẩn Kỹ thuật & Kiến trúc Hệ thống Sprint 3 (HARDEN-01, SAGA-01, LEDGER-02)
+## 19. Quy chuẩn Kỹ thuật & Kiến trúc Hệ thống Sprint 3 (HARDEN-01, SAGA-01, LEDGER-02)
 
-### 15.1. Chuẩn hóa Khóa chính và Định dạng Tiền tệ (HARDEN-01)
-* **Khóa chính:** Toàn bộ bảng dữ liệu mới sử dụng UUID v7 (chuỗi 36 ký tự `VARCHAR(36)` hoặc `BINARY(16)`), đại diện bằng `UUID` trong Java và chuỗi UUID trên API.
+### 19.1. Chuẩn hóa Khóa chính và Định dạng Tiền tệ (HARDEN-01 / ADR-007)
+* **Khóa chính:** Toàn bộ bảng giao dịch mới sử dụng UUID v7 (`VARCHAR(36)` hoặc `BINARY(16)`), đại diện bằng `UUID` trong Java và chuỗi UUID trên API; các bảng di sản duy trì Dual-ID (`BIGINT` nội bộ + `UUID v7` công khai) theo ADR-007.
 * **Tiền tệ:** Toàn bộ số tiền đều dùng kiểu số nguyên `BIGINT` (đơn vị Việt Nam Đồng - VND). Tuyệt đối không dùng `FLOAT` hay `DOUBLE` để tránh sai số làm tròn.
 * **Thời gian:** Mọi mốc thời gian lưu trữ ở dạng UTC `DATETIME(3)` trong DB và `Instant` trong Java.
 
-### 15.2. Hạch toán Kế toán Kép (LEDGER-02)
+### 19.2. Hạch toán Kế toán Kép (LEDGER-02)
 * Mọi giao dịch nội bộ được hạch toán qua Sổ Cái Kép (Double-entry Ledger Engine) với ràng buộc bảo toàn số dư nghiêm ngặt (`Sum(DEBIT) == Sum(CREDIT)`).
 
-### 15.3. Giao dịch Xuyên Service (SAGA-01) & Transactional Outbox (BROKER-01)
+### 19.3. Giao dịch Xuyên Service (SAGA-01) & Transactional Outbox (BROKER-01)
 * Vòng đời đặt thuê khép kín: `Rental Request` -> `Holding Deposit` -> `Electronic Contract` -> `Room RENTED`.
 * Áp dụng Transactional Outbox Pattern kết hợp Saga Orchestrator đảm bảo tính nhất quán cuối cùng (Eventual Consistency) và các bước bù trừ tự động khi gặp sự cố mạng hoặc hết hạn giao dịch.
+
+---
+
+## 20. Sprint 3 Fintech Architecture, Messaging Topology (`ADR-009`) & Legal Gates (2026-11-12)
+
+### 20.1. Hardened Fintech Core (`LEDGER-01/02`, `PAY-01/02`, `ESCROW-01`, `FIN-RISK-01`, `REFUND-01`)
+* **Double-Entry Engine (`billing-service`):**
+  * Wallet locking follows deterministic ordered `SELECT ... FOR UPDATE` across participating accounts before persisting immutable `ledger_entries` + `ledger_lines`.
+  * MySQL 8.4 LTS triggers (`V6__sprint3_billing_audit_hardening.sql`) block `UPDATE` and `DELETE` on posted `ledger_entries` and `ledger_lines`; enforced in MySQL 8.4 LTS Testcontainers (`LedgerImmutabilityTestcontainersTest`) and Docker (`--log-bin-trust-function-creators=1`).
+  * Admin ledger exports (`/api/v1/billing/ledger/export/*` & `/api/v1/billing/dashboard/export`) enforce bounded date ranges (`<= 366` days), bounded rows (`<= 5000`), UTF-8 BOM, CSV formula neutralization (`=`, `+`, `-`, `@`), and immutable access audits.
+* **Payment Gateway, Escrow & Risk Guards:**
+  * Webhook intake verifies `X-Webhook-Signature` HMAC-SHA256 (`401` on invalid/missing signature), trusted IP whitelist (`403`), and replay timestamp window; client simulation is separated behind authenticated sandbox endpoint `POST /api/v1/billing/payments/sandbox/simulate-webhook`.
+  * `EscrowController` gates release behind two-party move-in confirmation and freezes disbursement while an open dispute exists (`money.custody.enabled=false` default per ADR-008 Model A).
+  * `RefundService` verifies live OTP via `identity-service`, matches account holder against verified KYC name, enforces `cumulativeRefund <= settledPaidAmount`, and routes failed bank payouts to `FAILED` retry queue.
+
+### 20.2. RabbitMQ Outbox/DLQ (`ADR-009`) & Cross-Service Booking Saga (`BROKER-01`, `SAGA-01`, `CONTRACT-BE/02`)
+> **Mã định danh:** `ADR-009` — Message Broker Topology, Outbox & Lifecycle Audit
+> * **Phiên bản RabbitMQ đang chạy thực tế:** `3.13.7` (`rabbitmq:3.13-management-alpine`).
+> * **Đối chiếu vòng đời hỗ trợ chính thức:** RabbitMQ 3.13 đã **hết Community Support từ 2024-09-30** (`3.13.7` là bản vá community cuối cùng; Commercial Extended Support qua Broadcom/Tanzu tới **2029-12-31**). Hệ thống đánh dấu mục tiêu nâng cấp lên nhánh LTS/mới còn Community Support (RabbitMQ `4.2 LTS` / `4.x`) trước khi triển khai production chính thức.
+```mermaid
+flowchart LR
+  BKG["booking-service\n(Outbox + Saga)"] -->|Topic Exchange\ncozynest.events| RMQ["RabbitMQ 3.13.7 Broker\ncozynest.communication.events.queue"]
+  BIL["billing-service\n(Outbox + Recon)"] -->|Topic Exchange| RMQ
+  RMQ -->|Retry Exhausted| DLX["DLX Exchange\ncozynest.dlx"]
+  DLX --> DLQ["DLQ\ncozynest.events.dlq"]
+  RMQ --> COM["communication-service\n(EventInbox Dedupe)"]
+  DLQ --> ADM["admin-service\n(DeadLetter Inspect & Redrive)"]
+```
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant T as Tenant (Web BFF /api/v1)
+  participant B as booking-service (Saga + Contract)
+  participant L as listing-service (/internal/rooms)
+  participant P as billing-service (Escrow + Ledger)
+
+  T->>B: POST /booking/rental-requests (availability & maxOccupants check)
+  B->>L: POST /internal/rooms/{id}/hold (X-Internal-Service-Key)
+  T->>B: POST /booking/contracts/{id}/sign-tenant (6-digit OTP + SHA-256)
+  B->>P: Deposit Escrow + Ledger Posting
+  alt Deposit Timeout / Cancel / Down
+    B->>L: POST /internal/rooms/{id}/release (Saga Compensate)
+    B->>P: Compensation Refund (or MANUAL_INTERVENTION_REQUIRED queue)
+  end
+```
+
+### 20.3. BFF HttpOnly Auth Proxy (`DASH-FIX-1`) & Compliance Gate Status (`LEGAL-02`)
+* Browser JavaScript no longer receives, reads, or persists `accessToken` (`cozynest_token`) or `refreshToken` (`cozynest_refresh_token`): `/api/auth/*` strips tokens from JSON responses and stores them solely in `HttpOnly` cookies, while Next.js `/api/v1/[...path]/route.ts` injects `Authorization: Bearer` server-side after `verifyCsrfOrigin(req)`.
+* **Production Financial Blockers (`LEGAL-02 = HUMAN`):**
+  * Platform strictly runs with `fintech.mode=SANDBOX_ONLY`, `money.custody.enabled=false`, `live-custody-enabled=false`, and `live-enabled=false`.
+  * Real-money activation remains blocked until external legal counsel & tax advisor sign-off (`NĐ 52/2024/NĐ-CP`, `NĐ 117/2025/NĐ-CP`, `Luật 56/2024/QH15`, `Luật GDĐT 2023`), NHNN-licensed intermediary contract, and e-contract audit acceptance are completed.
