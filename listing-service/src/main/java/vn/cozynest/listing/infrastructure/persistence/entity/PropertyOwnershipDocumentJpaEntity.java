@@ -54,3 +54,4 @@ public class PropertyOwnershipDocumentJpaEntity {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 }
+

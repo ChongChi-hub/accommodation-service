@@ -193,3 +193,4 @@ public class RoomRepositoryAdapter implements RoomRepository {
         return Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
     }
 }
+

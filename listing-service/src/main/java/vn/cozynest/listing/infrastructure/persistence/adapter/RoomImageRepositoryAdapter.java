@@ -62,3 +62,4 @@ public class RoomImageRepositoryAdapter implements RoomImageRepository {
         springRepo.delete(mapper.toEntity(image));
     }
 }
+

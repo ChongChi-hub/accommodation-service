@@ -76,3 +76,4 @@ public class CmsArticleJpaEntity {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 }
+

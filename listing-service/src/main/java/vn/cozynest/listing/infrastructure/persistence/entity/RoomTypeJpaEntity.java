@@ -28,3 +28,4 @@ public class RoomTypeJpaEntity {
     @Column(length = 50)
     private String icon;
 }
+

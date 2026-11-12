@@ -32,3 +32,4 @@ public class CmsArticleRepositoryAdapter implements CmsArticleRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(article)));
     }
 }
+

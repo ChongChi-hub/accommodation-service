@@ -25,3 +25,4 @@ public interface SpringDataBookmarkRepository extends JpaRepository<BookmarkJpaE
     long countByRoomId(Long roomId);
     long countByUserId(String userId);
 }
+

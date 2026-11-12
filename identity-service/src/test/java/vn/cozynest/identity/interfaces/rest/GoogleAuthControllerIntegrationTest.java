@@ -36,27 +36,25 @@ class GoogleAuthControllerIntegrationTest {
         RegisterUseCase registerUseCase = mock(RegisterUseCase.class);
         LoginUseCase loginUseCase = mock(LoginUseCase.class);
         RefreshTokenUseCase refreshTokenUseCase = mock(RefreshTokenUseCase.class);
+        LogoutUseCase logoutUseCase = mock(LogoutUseCase.class);
         GetProfileUseCase getProfileUseCase = mock(GetProfileUseCase.class);
         ChangePasswordUseCase changePasswordUseCase = mock(ChangePasswordUseCase.class);
         ForgotPasswordUseCase forgotPasswordUseCase = mock(ForgotPasswordUseCase.class);
         ResetPasswordUseCase resetPasswordUseCase = mock(ResetPasswordUseCase.class);
         VerifyEmailUseCase verifyEmailUseCase = mock(VerifyEmailUseCase.class);
-        RefreshTokenRepository refreshTokenRepository = mock(RefreshTokenRepository.class);
-        TokenProviderPort tokenProvider = mock(TokenProviderPort.class);
         googleAuthUseCase = mock(GoogleAuthUseCase.class);
 
         controller = new AuthController(
                 registerUseCase,
                 loginUseCase,
                 refreshTokenUseCase,
+                logoutUseCase,
                 getProfileUseCase,
                 changePasswordUseCase,
                 forgotPasswordUseCase,
                 resetPasswordUseCase,
                 verifyEmailUseCase,
                 googleAuthUseCase,
-                refreshTokenRepository,
-                tokenProvider,
                 "dev"
         );
         exceptionHandler = new GlobalExceptionHandler();

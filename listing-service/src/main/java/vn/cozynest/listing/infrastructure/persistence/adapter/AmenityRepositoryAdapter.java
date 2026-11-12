@@ -37,3 +37,4 @@ public class AmenityRepositoryAdapter implements AmenityRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(amenity)));
     }
 }
+

@@ -11,3 +11,4 @@ public interface SpringDataLandlordSnapshotRepository extends JpaRepository<Land
     Optional<LandlordSnapshotJpaEntity> findByLandlordId(Long landlordId);
     List<LandlordSnapshotJpaEntity> findByLandlordIdIn(Collection<Long> landlordIds);
 }
+

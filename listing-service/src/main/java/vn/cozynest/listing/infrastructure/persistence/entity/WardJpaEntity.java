@@ -37,3 +37,4 @@ public class WardJpaEntity {
     @Column(name = "district_code", length = 20)
     private String districtCode;
 }
+

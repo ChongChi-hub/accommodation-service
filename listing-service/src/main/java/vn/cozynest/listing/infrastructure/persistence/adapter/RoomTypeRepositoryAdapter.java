@@ -32,3 +32,4 @@ public class RoomTypeRepositoryAdapter implements RoomTypeRepository {
         return springRepo.findByCodeIgnoreCase(code).map(mapper::toDomain);
     }
 }
+

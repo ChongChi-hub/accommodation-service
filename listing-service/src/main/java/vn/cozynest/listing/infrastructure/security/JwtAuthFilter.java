@@ -1,48 +1,48 @@
 package vn.cozynest.listing.infrastructure.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.cozynest.common.security.JwksTokenValidator;
 
 import java.io.IOException;
-import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final RSAPublicKey publicKey;
+    private final JwksTokenValidator validator;
 
+    @Autowired
     public JwtAuthFilter(
-            @Value("${jwt.public-key:}") String publicKeyPem) {
-        try {
-            String pubBase64 = (publicKeyPem != null && !publicKeyPem.isBlank())
-                    ? publicKeyPem
-                    : "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA56BlqpTtCQBNqpLJwhL50U6pMMxUukLlckNBBfnci7TAmYDY9Bs/f9LEAGUY3wCch+cN+dz+ofo3E/AO+AX7xEbyVw+4z9m3K5GJgUQ2jmIMUBkAuwPiCTmW/HaTccp4Sbh5ou7WYLVaQuswIwCKa1Wo8giycy0UnLWBzvKickT+9FGjHz4fQDScFnGxp1tWhqfAzJUGAh7F1WT3qRtb+HG6rZxMCjNHRGlbvyxTOWMF/0zap+CrDiHwluCWYmHJ5Rta8nxCDx8biNLiThvLp4Dh6rkmw2Kfv/ZnCDXifGVMVyZlrKwVNFvFTq13DiCYV81MXUMJoL6ZiKZ9rkHbgwIDAQAB";
+            @Value("${jwt.jwks-uri:${IDENTITY_SERVICE_URL:http://localhost:8081}/.well-known/jwks.json}") String jwksUri,
+            @Value("${jwt.public-key:}") String publicKeyPem,
+            @Value("${jwt.issuer:cozynest-identity}") String expectedIssuer,
+            @Value("${jwt.audience:cozynest-web}") String expectedAudience,
+            @Value("${jwt.key-id:cozynest-identity-key-1}") String defaultKeyId) {
+        Map<String, RSAPublicKey> initialKeys = (publicKeyPem != null && !publicKeyPem.isBlank())
+                ? Map.of(defaultKeyId, JwksTokenValidator.parsePublicKeyPem(publicKeyPem))
+                : Map.of();
+        this.validator = new JwksTokenValidator(initialKeys, expectedAudience, expectedIssuer, jwksUri);
+    }
 
-            pubBase64 = pubBase64.replace("-----BEGIN PUBLIC KEY-----", "")
-                    .replace("-----END PUBLIC KEY-----", "")
-                    .replaceAll("\\s+", "");
+    private JwtAuthFilter(JwksTokenValidator validator) {
+        this.validator = validator;
+    }
 
-            byte[] pubBytes = Base64.getDecoder().decode(pubBase64);
-            KeyFactory kf = KeyFactory.getInstance("RSA");
-            this.publicKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize RSA Public Key for JWT validation", e);
-        }
+    public static JwtAuthFilter forTest(RSAPublicKey publicKey, String keyId) {
+        return new JwtAuthFilter(new JwksTokenValidator(Map.of(keyId, publicKey), "cozynest-web", "cozynest-identity", null));
     }
 
     @Override
@@ -52,32 +52,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
             try {
-                Claims claims = Jwts.parser()
-                        .verifyWith(publicKey)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
-
-                String userId = claims.getSubject();
-                String rolesStr = claims.get("roles", String.class);
-
-                List<SimpleGrantedAuthority> authorities = List.of();
-                if (rolesStr != null && !rolesStr.isBlank()) {
-                    authorities = Arrays.stream(rolesStr.split(","))
-                            .map(role -> {
-                                String r = role.trim();
-                                return r.startsWith("ROLE_") ? new SimpleGrantedAuthority(r) : new SimpleGrantedAuthority("ROLE_" + r);
-                            })
-                            .toList();
-                }
-
+                Claims claims = validator.validateToken(authHeader.substring(7));
+                List<SimpleGrantedAuthority> authorities = JwksTokenValidator.extractRoleAuthorities(claims).stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .toList();
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                        new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
-                // Invalid token - clear context
                 SecurityContextHolder.clearContext();
             }
         }
@@ -85,4 +68,3 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

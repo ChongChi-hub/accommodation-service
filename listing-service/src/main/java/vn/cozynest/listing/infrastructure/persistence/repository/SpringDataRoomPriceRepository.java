@@ -9,3 +9,4 @@ public interface SpringDataRoomPriceRepository extends JpaRepository<RoomPriceJp
     List<RoomPriceJpaEntity> findByRoomId(Long roomId);
     void deleteByRoomId(Long roomId);
 }
+

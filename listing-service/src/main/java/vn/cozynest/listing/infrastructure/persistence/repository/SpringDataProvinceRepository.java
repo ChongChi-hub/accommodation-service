@@ -11,3 +11,4 @@ public interface SpringDataProvinceRepository extends JpaRepository<ProvinceJpaE
     Optional<ProvinceJpaEntity> findBySlugIgnoreCase(String slug);
     Optional<ProvinceJpaEntity> findByCodeIgnoreCase(String code);
 }
+

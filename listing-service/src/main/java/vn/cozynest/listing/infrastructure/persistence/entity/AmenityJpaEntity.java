@@ -28,3 +28,4 @@ public class AmenityJpaEntity {
     @Column(length = 50)
     private String category;
 }
+

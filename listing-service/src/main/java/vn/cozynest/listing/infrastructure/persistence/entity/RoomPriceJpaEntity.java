@@ -46,3 +46,4 @@ public class RoomPriceJpaEntity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

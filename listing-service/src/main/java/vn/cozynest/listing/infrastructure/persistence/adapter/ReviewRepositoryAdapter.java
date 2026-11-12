@@ -31,3 +31,4 @@ public class ReviewRepositoryAdapter implements ReviewRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(review)));
     }
 }
+

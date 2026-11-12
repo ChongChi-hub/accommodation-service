@@ -31,3 +31,4 @@ public class RoomPriceRepositoryAdapter implements RoomPriceRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(price)));
     }
 }
+

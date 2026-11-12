@@ -51,3 +51,4 @@ public class BannerJpaEntity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

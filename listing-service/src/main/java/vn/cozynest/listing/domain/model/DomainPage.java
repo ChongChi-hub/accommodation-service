@@ -12,3 +12,4 @@ public record DomainPage<T>(List<T> content, int page, int size, long totalEleme
         return new DomainPage<>(content.stream().map(mapper).toList(), page, size, totalElements);
     }
 }
+

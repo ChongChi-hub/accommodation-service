@@ -11,3 +11,4 @@ public interface SpringDataPropertyOwnershipDocumentRepository
     List<PropertyOwnershipDocumentJpaEntity> findByLandlordId(Long landlordId);
     List<PropertyOwnershipDocumentJpaEntity> findByStatus(String status);
 }
+

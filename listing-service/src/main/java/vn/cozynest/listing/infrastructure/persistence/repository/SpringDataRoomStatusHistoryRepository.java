@@ -8,3 +8,4 @@ import java.util.List;
 public interface SpringDataRoomStatusHistoryRepository extends JpaRepository<RoomStatusHistoryJpaEntity, Long> {
     List<RoomStatusHistoryJpaEntity> findByRoomIdOrderByCreatedAtDesc(Long roomId);
 }
+

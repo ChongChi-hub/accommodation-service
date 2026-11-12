@@ -23,3 +23,4 @@ public interface SpringDataRoomImageRepository extends JpaRepository<RoomImageJp
     @Query("UPDATE RoomImageJpaEntity ri SET ri.cover = true, ri.primary = true WHERE ri.id = :imageId AND ri.roomId = :roomId")
     void setCoverForRoom(@Param("roomId") Long roomId, @Param("imageId") Long imageId);
 }
+

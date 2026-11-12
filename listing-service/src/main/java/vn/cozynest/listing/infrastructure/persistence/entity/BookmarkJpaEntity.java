@@ -30,3 +30,4 @@ public class BookmarkJpaEntity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

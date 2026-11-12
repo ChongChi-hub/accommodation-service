@@ -46,3 +46,4 @@ public class RoomSearchQuery {
     private Integer page;
     private Integer size;
 }
+

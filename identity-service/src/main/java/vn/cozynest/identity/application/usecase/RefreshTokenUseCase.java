@@ -36,7 +36,7 @@ public class RefreshTokenUseCase {
         this.tokenProvider = tokenProvider;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = IdentityDomainException.class)
     public AuthResult execute(RefreshTokenCommand command) {
         String tokenHash = tokenProvider.hashToken(command.getRefreshToken());
         RefreshToken oldToken = refreshTokenRepository.findByTokenHash(tokenHash)

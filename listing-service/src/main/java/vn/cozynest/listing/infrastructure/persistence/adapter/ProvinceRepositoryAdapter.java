@@ -37,3 +37,4 @@ public class ProvinceRepositoryAdapter implements ProvinceRepository {
         return springRepo.findByCodeIgnoreCase(code).map(mapper::toDomain);
     }
 }
+

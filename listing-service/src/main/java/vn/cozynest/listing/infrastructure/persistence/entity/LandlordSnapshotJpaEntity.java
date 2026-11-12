@@ -64,3 +64,4 @@ public class LandlordSnapshotJpaEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
+

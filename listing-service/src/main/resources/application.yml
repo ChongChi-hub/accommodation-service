@@ -45,6 +45,9 @@ storage:
   media-dir: ${STORAGE_MEDIA_DIR:./storage/media}
 
 jwt:
+  jwks-uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}/.well-known/jwks.json
+  issuer: cozynest-identity
+  audience: cozynest-web
   public-key: ${JWT_PUBLIC_KEY:}
 
 springdoc:

@@ -9,3 +9,4 @@ public interface SpringDataWardRepository extends JpaRepository<WardJpaEntity, L
     List<WardJpaEntity> findByProvinceCodeOrderByNameAsc(String provinceCode);
     List<WardJpaEntity> findByDistrictCodeOrderByNameAsc(String districtCode);
 }
+

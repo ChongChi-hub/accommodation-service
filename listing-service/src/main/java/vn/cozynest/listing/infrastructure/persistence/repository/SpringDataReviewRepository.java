@@ -8,3 +8,4 @@ import java.util.List;
 public interface SpringDataReviewRepository extends JpaRepository<ReviewJpaEntity, Long> {
     List<ReviewJpaEntity> findByRoomIdOrderByCreatedAtDesc(Long roomId);
 }
+

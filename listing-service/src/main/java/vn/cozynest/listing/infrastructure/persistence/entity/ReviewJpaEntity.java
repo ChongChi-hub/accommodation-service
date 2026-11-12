@@ -46,3 +46,4 @@ public class ReviewJpaEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }
+

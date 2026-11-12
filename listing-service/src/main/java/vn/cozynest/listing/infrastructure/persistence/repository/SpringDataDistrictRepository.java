@@ -8,3 +8,4 @@ import java.util.List;
 public interface SpringDataDistrictRepository extends JpaRepository<DistrictJpaEntity, Long> {
     List<DistrictJpaEntity> findByProvinceCodeOrderByNameAsc(String provinceCode);
 }
+

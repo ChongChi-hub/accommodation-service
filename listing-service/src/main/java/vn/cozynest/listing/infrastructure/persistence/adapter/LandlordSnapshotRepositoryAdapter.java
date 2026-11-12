@@ -33,3 +33,4 @@ public class LandlordSnapshotRepositoryAdapter implements LandlordSnapshotReposi
         return mapper.toDomain(springRepo.save(mapper.toEntity(snapshot)));
     }
 }
+

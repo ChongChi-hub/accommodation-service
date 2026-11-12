@@ -37,3 +37,4 @@ public class ProvinceJpaEntity {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 }
+

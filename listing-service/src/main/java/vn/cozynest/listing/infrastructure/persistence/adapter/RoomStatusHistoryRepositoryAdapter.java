@@ -26,3 +26,4 @@ public class RoomStatusHistoryRepositoryAdapter implements RoomStatusHistoryRepo
         return mapper.toDomain(springRepo.save(mapper.toEntity(history)));
     }
 }
+

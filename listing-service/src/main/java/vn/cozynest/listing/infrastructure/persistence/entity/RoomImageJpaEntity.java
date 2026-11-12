@@ -81,3 +81,4 @@ public class RoomImageJpaEntity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

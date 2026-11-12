@@ -57,3 +57,4 @@ public class BookmarkRepositoryAdapter implements BookmarkRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(bookmark)));
     }
 }
+

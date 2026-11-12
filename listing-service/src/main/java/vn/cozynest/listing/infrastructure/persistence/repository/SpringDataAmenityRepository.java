@@ -5,3 +5,4 @@ import vn.cozynest.listing.infrastructure.persistence.entity.AmenityJpaEntity;
 
 public interface SpringDataAmenityRepository extends JpaRepository<AmenityJpaEntity, Long> {
 }
+

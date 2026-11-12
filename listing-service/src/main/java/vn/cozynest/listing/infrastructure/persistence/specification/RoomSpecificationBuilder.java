@@ -144,3 +144,4 @@ public class RoomSpecificationBuilder {
         return trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }
+

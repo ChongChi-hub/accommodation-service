@@ -31,3 +31,4 @@ public class BannerRepositoryAdapter implements BannerRepository {
         return mapper.toDomain(springRepo.save(mapper.toEntity(banner)));
     }
 }
+

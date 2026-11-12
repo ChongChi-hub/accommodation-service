@@ -8,3 +8,4 @@ import java.util.List;
 public interface SpringDataBannerRepository extends JpaRepository<BannerJpaEntity, Long> {
     List<BannerJpaEntity> findByActiveTrueOrderBySortOrderAsc();
 }
+

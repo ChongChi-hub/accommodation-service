@@ -21,3 +21,4 @@ public class DistrictRepositoryAdapter implements DistrictRepository {
         return springRepo.findByProvinceCodeOrderByNameAsc(provinceCode).stream().map(mapper::toDomain).toList();
     }
 }
+

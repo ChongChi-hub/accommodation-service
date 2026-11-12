@@ -148,5 +148,68 @@ class DownstreamJwksSecurityMatrixTest {
         assertThat(claims1.getSubject()).isEqualTo("u-test-01");
         assertThat(claims2.getSubject()).isEqualTo("u-test-01");
     }
+
+    @Test
+    @DisplayName("8. Wrong issuer is rejected and live HTTP JWKS rotation fetches new kid dynamically")
+    void testDynamicHttpJwksRotationAndIssuerCheck() throws Exception {
+        RSAPublicKey pub2 = (RSAPublicKey) keyPair2.getPublic();
+        String n = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(unsignedBytes(pub2.getModulus()));
+        String e = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(unsignedBytes(pub2.getPublicExponent()));
+        String jwksJson = "{\"keys\":[{\"kty\":\"RSA\",\"use\":\"sig\",\"alg\":\"RS256\",\"kid\":\"kid-rot-2\",\"n\":\"" + n + "\",\"e\":\"" + e + "\"}]}";
+
+        var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(0), 0);
+        server.createContext("/.well-known/jwks.json", ex -> {
+            byte[] body = jwksJson.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            ex.getResponseHeaders().add("Content-Type", "application/json");
+            ex.sendResponseHeaders(200, body.length);
+            try (var os = ex.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        server.start();
+        try {
+            String uri = "http://localhost:" + server.getAddress().getPort() + "/.well-known/jwks.json";
+            JwksTokenValidator validator = new JwksTokenValidator(Map.of(), "cozynest-web", "cozynest-identity", uri);
+
+            String validRotated = Jwts.builder()
+                    .issuer("cozynest-identity")
+                    .audience().add("cozynest-web").and()
+                    .subject("u-rot-01")
+                    .claim("roles", "LANDLORD")
+                    .issuedAt(new Date())
+                    .expiration(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+                    .header().keyId("kid-rot-2").and()
+                    .signWith((RSAPrivateKey) keyPair2.getPrivate(), Jwts.SIG.RS256)
+                    .compact();
+
+            Claims claims = validator.validateToken(validRotated);
+            assertThat(claims.getSubject()).isEqualTo("u-rot-01");
+            assertThat(JwksTokenValidator.extractRoleAuthorities(claims)).containsExactly("ROLE_LANDLORD");
+
+            String wrongIssuer = Jwts.builder()
+                    .issuer("evil-issuer")
+                    .audience().add("cozynest-web").and()
+                    .subject("u-rot-01")
+                    .issuedAt(new Date())
+                    .expiration(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+                    .header().keyId("kid-rot-2").and()
+                    .signWith((RSAPrivateKey) keyPair2.getPrivate(), Jwts.SIG.RS256)
+                    .compact();
+            assertThatThrownBy(() -> validator.validateToken(wrongIssuer))
+                    .isInstanceOf(io.jsonwebtoken.IncorrectClaimException.class);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private static byte[] unsignedBytes(java.math.BigInteger bi) {
+        byte[] bytes = bi.toByteArray();
+        if (bytes.length > 0 && bytes[0] == 0) {
+            byte[] tmp = new byte[bytes.length - 1];
+            System.arraycopy(bytes, 1, tmp, 0, tmp.length);
+            return tmp;
+        }
+        return bytes;
+    }
 }
 

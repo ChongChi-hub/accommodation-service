@@ -10,3 +10,4 @@ public interface SpringDataCmsArticleRepository extends JpaRepository<CmsArticle
     List<CmsArticleJpaEntity> findByActiveTrueOrderBySortOrderAscPublishedAtDesc();
     Optional<CmsArticleJpaEntity> findBySlugAndActiveTrue(String slug);
 }
+

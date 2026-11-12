@@ -26,3 +26,4 @@ public class WardRepositoryAdapter implements WardRepository {
         return springRepo.findByDistrictCodeOrderByNameAsc(districtCode).stream().map(mapper::toDomain).toList();
     }
 }
+

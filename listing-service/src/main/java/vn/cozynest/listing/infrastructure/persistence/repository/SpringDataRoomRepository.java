@@ -134,3 +134,4 @@ public interface SpringDataRoomRepository
     @Query("UPDATE RoomJpaEntity r SET r.bookmarkCount = CASE WHEN r.bookmarkCount > 0 THEN r.bookmarkCount - 1 ELSE 0 END WHERE r.id = :roomId")
     int decrementBookmarkCount(@Param("roomId") Long roomId);
 }
+

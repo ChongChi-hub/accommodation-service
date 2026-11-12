@@ -42,3 +42,4 @@ public class PropertyOwnershipDocumentRepositoryAdapter implements PropertyOwner
         return mapper.toDomain(springRepo.save(mapper.toEntity(doc)));
     }
 }
+

@@ -10,3 +10,4 @@ public interface SpringDataRoomTypeRepository extends JpaRepository<RoomTypeJpaE
     List<RoomTypeJpaEntity> findAllByOrderByIdAsc();
     Optional<RoomTypeJpaEntity> findByCodeIgnoreCase(String code);
 }
+
