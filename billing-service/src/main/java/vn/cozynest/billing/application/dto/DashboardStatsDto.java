@@ -8,7 +8,16 @@ public class DashboardStatsDto {
             long pendingEscrowBalance,
             long unpaidInvoicesTotal,
             int totalInvoicesCount,
-            int paidInvoicesCount
+            int paidInvoicesCount,
+            int overdueInvoicesCount
+    ) {}
+
+    public record TenantFinancialStats(
+            long totalPaidAmount,
+            long unpaidInvoicesTotal,
+            long activeEscrowBalance,
+            int overdueInvoicesCount,
+            int totalInvoicesCount
     ) {}
 
     public record AdminFinancialStats(
@@ -19,4 +28,3 @@ public class DashboardStatsDto {
             int totalTransactionsCount
     ) {}
 }
-

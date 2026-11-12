@@ -52,6 +52,7 @@ class LandlordNamespaceSecurityMatrixTest {
                 .issuer("cozynest-identity")
                 .audience().add("cozynest-web").and()
                 .subject(userId)
+                .audience().add("cozynest-web").and()
                 .claim("roles", String.join(",", roles))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 3600000))

@@ -107,17 +107,21 @@ public class LandlordRoomManagementService {
             throw new RoomVersionConflictException("Dữ liệu phòng đã bị thay đổi bởi phiên làm việc khác. Vui lòng tải lại trang.");
         }
 
-        if (room.isRented()) {
-            boolean criticalChanged = (req.getPrice() != null && req.getPrice().compareTo(room.getPrice()) != 0)
-                    || (req.getAddress() != null && !req.getAddress().equalsIgnoreCase(room.getAddress()));
-            if (criticalChanged) {
-                throw new IllegalStateException("Không thể sửa đổi giá thuê hoặc địa chỉ khi phòng đang ở trạng thái RENTED.");
-            }
+        if (req.getMinLeaseMonths() != null && req.getMinLeaseMonths() < 1) {
+            throw new IllegalArgumentException("Thời hạn thuê tối thiểu phải từ 1 tháng trở lên.");
         }
 
         boolean criticalChanged = (req.getPrice() != null && req.getPrice().compareTo(room.getPrice()) != 0)
-                || (req.getAddress() != null && !req.getAddress().equalsIgnoreCase(room.getAddress()));
-        if (room.isApproved() && criticalChanged) {
+                || (req.getDeposit() != null && room.getDeposit() != null && req.getDeposit().compareTo(room.getDeposit()) != 0)
+                || (req.getAddress() != null && !req.getAddress().equalsIgnoreCase(room.getAddress()))
+                || (req.getMaxOccupants() != null && !req.getMaxOccupants().equals(room.getMaxOccupants()))
+                || (req.getMinLeaseMonths() != null && !req.getMinLeaseMonths().equals(room.getMinLeaseMonths()));
+
+        if (room.isRented() && criticalChanged) {
+            throw new IllegalStateException("Không thể sửa đổi giá, tiền cọc, địa chỉ, số người tối đa hoặc thời hạn thuê tối thiểu khi phòng đang RENTED.");
+        }
+
+        if ((room.isApproved() || room.isPublished()) && criticalChanged) {
             String fromStatus = room.getStatus();
             room.setApproved(false);
             room.setStatus("PENDING_REVIEW");
@@ -157,6 +161,9 @@ public class LandlordRoomManagementService {
     }
 
     public Room createRoom(Long landlordId, CreateRoomRequest req, String actorId, String landlordName, String landlordPhone) {
+        if (req.getMinLeaseMonths() != null && req.getMinLeaseMonths() < 1) {
+            throw new IllegalArgumentException("Thời hạn thuê tối thiểu phải từ 1 tháng trở lên.");
+        }
         String slug = LandlordRoomQueryService.removeAccents(req.getTitle().toLowerCase())
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-|-$", "")

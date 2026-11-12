@@ -25,6 +25,8 @@ public class PropertyOwnershipDocument {
     private String reviewerId;
     private LocalDateTime reviewedAt;
 
+    private LocalDateTime expiresAt;
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 

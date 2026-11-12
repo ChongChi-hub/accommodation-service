@@ -2,6 +2,8 @@ package vn.cozynest.listing.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.domain.model.PropertyOwnershipDocument;
@@ -23,8 +25,9 @@ public class PropertyOwnershipService {
     private final PropertyOwnershipDocumentRepository docRepository;
     private final RoomRepository roomRepository;
 
-    public PropertyOwnershipDocument uploadDocument(Long landlordId, Long roomId, String docType, String fileUrl, String rawNumber) {
-        Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
+    public PropertyOwnershipDocument uploadDocument(
+            Long landlordId, Long roomId, String docType, String fileUrl, String rawNumber, LocalDateTime expiresAt) {
+        roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 
         String masked = maskDocumentNumber(rawNumber);
@@ -36,6 +39,7 @@ public class PropertyOwnershipService {
                 .fileUrl(fileUrl)
                 .maskedNumber(masked)
                 .status("PENDING")
+                .expiresAt(expiresAt)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -45,7 +49,13 @@ public class PropertyOwnershipService {
     }
 
     @Transactional(readOnly = true)
-    public List<PropertyOwnershipDocument> getDocumentsByRoom(Long roomId) {
+    public List<PropertyOwnershipDocument> getDocumentsByRoom(Long roomId, Long requesterLandlordId, boolean isAdminOrMod) {
+        if (!isAdminOrMod) {
+            if (requesterLandlordId == null ||
+                    roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, requesterLandlordId).isEmpty()) {
+                throw new AccessDeniedException("Không có quyền xem hồ sơ sở hữu phòng của chủ trọ khác");
+            }
+        }
         return docRepository.findByRoomId(roomId);
     }
 
@@ -60,6 +70,9 @@ public class PropertyOwnershipService {
 
         if (approve) {
             doc.setStatus("APPROVED");
+            if (doc.getExpiresAt() == null) {
+                doc.setExpiresAt(now.plusYears(1));
+            }
             Room room = roomRepository.findById(doc.getRoomId())
                     .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + doc.getRoomId()));
             room.setVerifiedOwnership(true);
@@ -75,10 +88,36 @@ public class PropertyOwnershipService {
         return docRepository.save(doc);
     }
 
+    @Scheduled(cron = "0 30 2 * * *", zone = "UTC")
+    public int revokeExpiredOwnershipBadges() {
+        LocalDateTime now = LocalDateTime.now();
+        List<PropertyOwnershipDocument> expiredDocs = docRepository.findByStatusAndExpiresAtBefore("APPROVED", now);
+        int revokedRooms = 0;
+        for (PropertyOwnershipDocument doc : expiredDocs) {
+            doc.setStatus("EXPIRED");
+            doc.setUpdatedAt(now);
+            docRepository.save(doc);
+
+            boolean stillValid = docRepository.findByRoomId(doc.getRoomId()).stream()
+                    .anyMatch(d -> "APPROVED".equals(d.getStatus())
+                            && (d.getExpiresAt() == null || d.getExpiresAt().isAfter(now)));
+            if (!stillValid) {
+                roomRepository.findById(doc.getRoomId()).ifPresent(room -> {
+                    if (room.isVerifiedOwnership()) {
+                        room.setVerifiedOwnership(false);
+                        roomRepository.save(room);
+                    }
+                });
+                revokedRooms++;
+                log.info("Revoked verifiedOwnership badge on room {} due to expired doc {}", doc.getRoomId(), doc.getId());
+            }
+        }
+        return revokedRooms;
+    }
+
     private String maskDocumentNumber(String raw) {
         if (raw == null || raw.length() < 6) return "***";
         int len = raw.length();
         return raw.substring(0, 3) + "***" + raw.substring(len - 3);
     }
 }
-

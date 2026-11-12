@@ -55,6 +55,8 @@ public class CreateRoomRequest {
 
     private String houseRules;
     private java.time.LocalDate availableDate;
+
+    @jakarta.validation.constraints.Min(value = 1, message = "Thời hạn thuê tối thiểu phải từ 1 tháng trở lên")
     private Integer minLeaseMonths;
 
     private Boolean submitForReview;

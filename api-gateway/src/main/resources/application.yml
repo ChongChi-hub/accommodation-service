@@ -86,6 +86,7 @@ spring:
                   - /uploads/**
                   - /api/v1/landlord/**
                   - /api/v1/media/**
+                  - /api/v1/storage/private/**
                   - /api/v1/cms/**
 
         - id: billing-service

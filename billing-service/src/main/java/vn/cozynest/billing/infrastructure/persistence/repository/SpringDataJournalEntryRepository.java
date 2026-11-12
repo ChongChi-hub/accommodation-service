@@ -8,6 +8,6 @@ import java.util.Optional;
 
 public interface SpringDataJournalEntryRepository extends JpaRepository<JournalEntryJpaEntity, String> {
     Optional<JournalEntryJpaEntity> findByEntryNumber(String entryNumber);
+    Optional<JournalEntryJpaEntity> findByIdempotencyKey(String idempotencyKey);
     List<JournalEntryJpaEntity> findByReferenceTypeAndReferenceId(String referenceType, String referenceId);
 }
-

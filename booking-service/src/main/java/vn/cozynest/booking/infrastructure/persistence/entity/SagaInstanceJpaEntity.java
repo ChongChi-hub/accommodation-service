@@ -26,6 +26,9 @@ public class SagaInstanceJpaEntity {
     @Column(name = "current_step", nullable = false, length = 50)
     private String currentStep;
 
+    @Column(name = "compensation_step", length = 100)
+    private String compensationStep;
+
     @Column(name = "payload_json", nullable = false, columnDefinition = "JSON")
     private String payloadJson;
 

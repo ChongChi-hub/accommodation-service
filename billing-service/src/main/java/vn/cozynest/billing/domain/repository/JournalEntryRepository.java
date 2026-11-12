@@ -9,7 +9,7 @@ public interface JournalEntryRepository {
     JournalEntry save(JournalEntry entry);
     Optional<JournalEntry> findById(String id);
     Optional<JournalEntry> findByEntryNumber(String entryNumber);
+    default Optional<JournalEntry> findByIdempotencyKey(String idempotencyKey) { return Optional.empty(); }
     List<JournalEntry> findByReference(String referenceType, String referenceId);
     List<JournalEntry> findAll();
 }
-

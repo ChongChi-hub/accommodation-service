@@ -7,6 +7,7 @@ import vn.cozynest.listing.domain.repository.PropertyOwnershipDocumentRepository
 import vn.cozynest.listing.infrastructure.persistence.mapper.ListingCatalogPersistenceMapper;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataPropertyOwnershipDocumentRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +41,11 @@ public class PropertyOwnershipDocumentRepositoryAdapter implements PropertyOwner
     @Override
     public PropertyOwnershipDocument save(PropertyOwnershipDocument doc) {
         return mapper.toDomain(springRepo.save(mapper.toEntity(doc)));
+    }
+
+    @Override
+    public List<PropertyOwnershipDocument> findByStatusAndExpiresAtBefore(String status, LocalDateTime before) {
+        return springRepo.findByStatusAndExpiresAtBefore(status, before).stream().map(mapper::toDomain).toList();
     }
 }
 

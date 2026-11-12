@@ -1,28 +1,31 @@
 package vn.cozynest.admin.infrastructure.security;
 
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import vn.cozynest.common.security.JwksTokenValidator;
+import vn.cozynest.common.security.DownstreamJwtVerifier;
 
 import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwksTokenValidator validator;
+    private final DownstreamJwtVerifier verifier;
+
+    public JwtAuthFilter(String publicKeyPem) {
+        this.verifier = new DownstreamJwtVerifier(publicKeyPem, null);
+    }
 
     @Autowired
     public JwtAuthFilter(
@@ -30,19 +33,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @Value("${jwt.public-key:}") String publicKeyPem,
             @Value("${jwt.issuer:cozynest-identity}") String expectedIssuer,
             @Value("${jwt.audience:cozynest-web}") String expectedAudience,
-            @Value("${jwt.key-id:cozynest-identity-key-1}") String defaultKeyId) {
-        Map<String, RSAPublicKey> initialKeys = (publicKeyPem != null && !publicKeyPem.isBlank())
-                ? Map.of(defaultKeyId, JwksTokenValidator.parsePublicKeyPem(publicKeyPem))
-                : Map.of();
-        this.validator = new JwksTokenValidator(initialKeys, expectedAudience, expectedIssuer, jwksUri);
+            @Value("${jwt.key-id:cozynest-identity-key-1}") String defaultKeyId,
+            @Autowired(required = false) Environment env) {
+        this.verifier = new DownstreamJwtVerifier(
+                publicKeyPem, jwksUri, expectedIssuer, expectedAudience, defaultKeyId, env);
     }
 
-    private JwtAuthFilter(JwksTokenValidator validator) {
-        this.validator = validator;
+    private JwtAuthFilter(DownstreamJwtVerifier verifier) {
+        this.verifier = verifier;
     }
 
     public static JwtAuthFilter forTest(RSAPublicKey publicKey, String keyId) {
-        return new JwtAuthFilter(new JwksTokenValidator(Map.of(keyId, publicKey), "cozynest-web", "cozynest-identity", null));
+        return new JwtAuthFilter(DownstreamJwtVerifier.forTest(publicKey, keyId));
     }
 
     @Override
@@ -53,12 +55,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
-                Claims claims = validator.validateToken(authHeader.substring(7));
-                List<SimpleGrantedAuthority> authorities = JwksTokenValidator.extractRoleAuthorities(claims).stream()
+                DownstreamJwtVerifier.VerifiedPrincipal principal = verifier.verifyToken(authHeader.substring(7));
+                List<SimpleGrantedAuthority> authorities = principal.roles().stream()
                         .map(SimpleGrantedAuthority::new)
                         .toList();
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal.userId(), null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
                 SecurityContextHolder.clearContext();
@@ -68,4 +70,3 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

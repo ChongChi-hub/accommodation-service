@@ -38,6 +38,16 @@ public class PaymentIntentRepositoryAdapter implements PaymentIntentRepository {
         return repository.findByOrderIdAndOrderType(orderId, orderType).map(this::toDomain);
     }
 
+    @Override
+    public java.util.List<PaymentIntent> findPendingExpiredBefore(java.time.Instant cutoff) {
+        return repository.findByStatusAndExpiresAtBefore("PENDING", cutoff).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public java.util.List<PaymentIntent> findAll() {
+        return repository.findAll().stream().map(this::toDomain).toList();
+    }
+
     private PaymentIntent toDomain(PaymentIntentJpaEntity entity) {
         return new PaymentIntent(
                 entity.getId(),

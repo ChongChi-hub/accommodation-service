@@ -44,6 +44,11 @@ public class JournalEntryRepositoryAdapter implements JournalEntryRepository {
     }
 
     @Override
+    public Optional<JournalEntry> findByIdempotencyKey(String idempotencyKey) {
+        return repository.findByIdempotencyKey(idempotencyKey).map(this::toDomain);
+    }
+
+    @Override
     public List<JournalEntry> findByReference(String referenceType, String referenceId) {
         return repository.findByReferenceTypeAndReferenceId(referenceType, referenceId).stream()
                 .map(this::toDomain).toList();
@@ -72,6 +77,7 @@ public class JournalEntryRepositoryAdapter implements JournalEntryRepository {
                 entity.getDescription(),
                 entity.getReferenceType(),
                 entity.getReferenceId(),
+                entity.getIdempotencyKey(),
                 entity.getTotalAmount(),
                 entity.getStatus(),
                 entity.getCreatedBy(),
@@ -87,6 +93,7 @@ public class JournalEntryRepositoryAdapter implements JournalEntryRepository {
                 .description(domain.getDescription())
                 .referenceType(domain.getReferenceType())
                 .referenceId(domain.getReferenceId())
+                .idempotencyKey(domain.getIdempotencyKey())
                 .totalAmount(domain.getTotalAmount())
                 .status(domain.getStatus())
                 .createdBy(domain.getCreatedBy())

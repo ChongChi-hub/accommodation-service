@@ -17,6 +17,7 @@ public class SagaInstance {
     private String sagaId;
     private String sagaType;
     private String currentStep;
+    private String compensationStep;
     private String payloadJson;
     private String errorMessage;
     private String status;
@@ -52,6 +53,17 @@ public class SagaInstance {
         this.errorMessage = error;
         this.status = "FAILED";
         this.updatedAt = Instant.now();
+    }
+
+    public void compensate(String compensationStep, String reason) {
+        this.compensationStep = compensationStep;
+        this.errorMessage = reason;
+        this.status = "COMPENSATED";
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isTerminal() {
+        return "COMPLETED".equals(this.status) || "COMPENSATED".equals(this.status);
     }
 }
 

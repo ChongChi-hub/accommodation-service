@@ -2,22 +2,26 @@ package vn.cozynest.identity.interfaces.rest;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.identity.application.dto.TwoFactorDto;
 import vn.cozynest.identity.application.service.TwoFactorAuthService;
+import vn.cozynest.identity.domain.model.TwoFactorRecoveryRequest;
 import vn.cozynest.identity.domain.model.User;
 import vn.cozynest.identity.domain.repository.UserRepository;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/auth/2fa")
+@PreAuthorize("isAuthenticated()")
 public class TwoFactorAuthController {
     private final TwoFactorAuthService twoFactorAuthService;
     private final UserRepository userRepository;
 
-    public TwoFactorAuthController(TwoFactorAuthService twoFactorAuthService,
-                                   UserRepository userRepository) {
+    public TwoFactorAuthController(TwoFactorAuthService twoFactorAuthService, UserRepository userRepository) {
         this.twoFactorAuthService = twoFactorAuthService;
         this.userRepository = userRepository;
     }
@@ -27,8 +31,7 @@ public class TwoFactorAuthController {
         String userId = (String) authentication.getPrincipal();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
-        TwoFactorDto.SetupResponse response = twoFactorAuthService.setup(userId, user.getEmail());
-        return ResponseEntity.ok(ApiResponse.success("Khởi tạo 2FA thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo 2FA thành công", twoFactorAuthService.setup(userId, user.getEmail())));
     }
 
     @PostMapping("/verify")
@@ -41,6 +44,18 @@ public class TwoFactorAuthController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Mã xác thực 2FA không chính xác", "ERR_AUTH_INVALID_2FA_CODE"));
         }
         return ResponseEntity.ok(ApiResponse.success("Kích hoạt bảo mật 2 lớp thành công", new TwoFactorDto.StatusResponse(true)));
+    }
+
+    @PostMapping("/verify-challenge")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> verifyChallenge(
+            @Valid @RequestBody TwoFactorDto.VerifyRequest request,
+            Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        boolean valid = twoFactorAuthService.verifyChallenge(userId, request.code());
+        if (!valid) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Mã xác thực 2FA hoặc mã dự phòng không hợp lệ", "ERR_AUTH_INVALID_2FA_CODE"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(Map.of("verified", true)));
     }
 
     @PostMapping("/disable")
@@ -58,7 +73,25 @@ public class TwoFactorAuthController {
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<TwoFactorDto.StatusResponse>> getStatus(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
-        TwoFactorDto.StatusResponse status = twoFactorAuthService.getStatus(userId);
-        return ResponseEntity.ok(ApiResponse.success(status));
+        return ResponseEntity.ok(ApiResponse.success(twoFactorAuthService.getStatus(userId)));
+    }
+
+    @PostMapping("/admin/recovery")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<TwoFactorRecoveryRequest>> requestRecovery(
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        String adminId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success(twoFactorAuthService.requestAdminRecovery(
+                body.get("targetUserId"), adminId, body.get("reason"))));
+    }
+
+    @PostMapping("/admin/recovery/{recoveryId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<TwoFactorRecoveryRequest>> approveRecovery(
+            @PathVariable String recoveryId,
+            Authentication authentication) {
+        String secondAdminId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success(twoFactorAuthService.approveAdminRecovery(recoveryId, secondAdminId)));
     }
 }

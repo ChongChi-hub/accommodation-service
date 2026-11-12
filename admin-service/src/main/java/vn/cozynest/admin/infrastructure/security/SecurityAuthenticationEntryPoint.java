@@ -24,7 +24,7 @@ public class SecurityAuthenticationEntryPoint implements AuthenticationEntryPoin
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.getWriter().write(objectMapper.writeValueAsString(
-                ApiResponse.error("Yeu cau dang nhap de truy cap dich vu quan tri.", "UNAUTHORIZED")
+                ApiResponse.error("Yêu cầu xác thực tài khoản", "ERR_AUTH_UNAUTHORIZED")
         ));
     }
 }

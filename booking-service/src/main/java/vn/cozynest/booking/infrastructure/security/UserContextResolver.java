@@ -14,4 +14,14 @@ public class UserContextResolver {
         }
         return (String) auth.getPrincipal();
     }
+
+    public boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        String target = "ROLE_" + role;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> target.equalsIgnoreCase(a.getAuthority()) || role.equalsIgnoreCase(a.getAuthority()));
+    }
 }

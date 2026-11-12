@@ -2,6 +2,7 @@ package vn.cozynest.billing.interfaces.rest;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.billing.application.dto.PayoutDto;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/billing/payouts")
+@PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
 public class PayoutController {
     private final PayoutService payoutService;
 

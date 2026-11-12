@@ -24,7 +24,7 @@ public class SecurityAccessDeniedHandler implements AccessDeniedHandler {
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.getWriter().write(objectMapper.writeValueAsString(
-                ApiResponse.error("Ban khong co quyen truy cap tai nguyen quan tri.", "ERR_FORBIDDEN")
+                ApiResponse.error("Bạn không có quyền truy cập chức năng quản trị", "ERR_FORBIDDEN")
         ));
     }
 }

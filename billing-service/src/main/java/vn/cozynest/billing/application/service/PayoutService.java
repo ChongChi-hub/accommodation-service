@@ -1,5 +1,7 @@
 package vn.cozynest.billing.application.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.LedgerDto;
@@ -19,20 +21,39 @@ public class PayoutService {
     private final PayoutRequestRepository payoutRepository;
     private final RiskProfileRepository riskProfileRepository;
     private final LedgerService ledgerService;
+    private final String fintechMode;
+    private final boolean liveDisbursementEnabled;
 
     public PayoutService(PayoutRequestRepository payoutRepository,
                          RiskProfileRepository riskProfileRepository,
                          LedgerService ledgerService) {
+        this(payoutRepository, riskProfileRepository, ledgerService, "SANDBOX_ONLY", false);
+    }
+
+    @Autowired
+    public PayoutService(PayoutRequestRepository payoutRepository,
+                         RiskProfileRepository riskProfileRepository,
+                         LedgerService ledgerService,
+                         @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
+                         @Value("${fintech.disbursement.live-enabled:false}") boolean liveDisbursementEnabled) {
         this.payoutRepository = payoutRepository;
         this.riskProfileRepository = riskProfileRepository;
         this.ledgerService = ledgerService;
+        this.fintechMode = fintechMode;
+        this.liveDisbursementEnabled = liveDisbursementEnabled;
     }
 
     @Transactional
     public PayoutDto.PayoutResponse requestPayout(String landlordId, PayoutDto.RequestPayoutCommand command) {
+        if ("LIVE".equalsIgnoreCase(fintechMode) && !liveDisbursementEnabled) {
+            throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live disbursement disabled without license/partner sign-off.");
+        }
+        if (command.otp() == null || !command.otp().matches("^[0-9]{6}$")) {
+            throw new IllegalArgumentException("Ma OTP xac nhan rut tien phai gom 6 chu so hop le.");
+        }
         LocalDate today = LocalDate.now();
 
-        // 1. Enforce FIN-RISK-01 Limits
+        // 1. Enforce FIN-RISK-01 Limits (blacklist, freeze, 24h bank lock, velocity, daily cap)
         RiskProfile riskProfile = riskProfileRepository.findByUserId(landlordId)
                 .orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(landlordId)));
         riskProfile.validateWithdrawal(command.amount(), today);
@@ -44,8 +65,10 @@ public class PayoutService {
             throw new IllegalStateException("Số dư ví khả dụng không đủ (Hiện có: " + availableBalance + " VND)");
         }
 
-        // 3. Post Ledger Entry: DEBIT wallet, CREDIT gateway cash
-        ledgerService.postEntry(
+        // 3. Post Idempotent Ledger Entry: DEBIT wallet, CREDIT gateway cash
+        String payoutCode = "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        ledgerService.postEntryIdempotent(
+                "PAYOUT-" + payoutCode,
                 "Rút tiền về tài khoản ngân hàng " + command.bankCode() + " " + command.accountNumber(),
                 "PAYOUT",
                 landlordId,
@@ -61,7 +84,6 @@ public class PayoutService {
         riskProfileRepository.save(riskProfile);
 
         // 5. Save payout request
-        String payoutCode = "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         PayoutRequest payout = PayoutRequest.create(
                 payoutCode, landlordId, command.amount(), command.bankCode(),
                 command.accountNumber(), command.accountHolder(), true

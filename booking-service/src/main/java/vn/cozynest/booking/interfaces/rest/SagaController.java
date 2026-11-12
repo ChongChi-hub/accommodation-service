@@ -1,46 +1,57 @@
 package vn.cozynest.booking.interfaces.rest;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.booking.application.service.RentalSagaOrchestrator;
 import vn.cozynest.booking.domain.model.SagaInstance;
 import vn.cozynest.common.dto.ApiResponse;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/booking/sagas")
+@PreAuthorize("hasRole('ADMIN')")
 public class SagaController {
 
-    private final RentalSagaOrchestrator sagaOrchestrator;
+    private final RentalSagaOrchestrator orchestrator;
 
-    public SagaController(RentalSagaOrchestrator sagaOrchestrator) {
-        this.sagaOrchestrator = sagaOrchestrator;
+    public SagaController(RentalSagaOrchestrator orchestrator) {
+        this.orchestrator = orchestrator;
     }
 
     @PostMapping("/start")
-    public ResponseEntity<ApiResponse<SagaInstance>> startSaga(@RequestParam String rentalRequestId) {
-        SagaInstance saga = sagaOrchestrator.startRentalSaga(rentalRequestId);
-        return ResponseEntity.ok(ApiResponse.success(saga));
+    public ResponseEntity<ApiResponse<SagaInstance>> startSaga(@RequestBody Map<String, String> body) {
+        String sagaId = body.get("sagaId");
+        String payload = body.getOrDefault("payloadJson", "{}");
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.startRentalSaga(sagaId, payload)));
     }
 
     @PostMapping("/{sagaId}/deposit-paid")
-    public ResponseEntity<ApiResponse<SagaInstance>> onDepositPaid(
-            @PathVariable String sagaId, @RequestParam String contractId) {
-        SagaInstance saga = sagaOrchestrator.onDepositPaid(sagaId, contractId);
-        return ResponseEntity.ok(ApiResponse.success(saga));
+    public ResponseEntity<ApiResponse<SagaInstance>> markDepositPaid(
+            @PathVariable String sagaId,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String payload = body != null ? body.get("payloadJson") : null;
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.advanceToDepositPaid(sagaId, payload)));
     }
 
     @PostMapping("/{sagaId}/contract-signed")
-    public ResponseEntity<ApiResponse<SagaInstance>> onContractSigned(
-            @PathVariable String sagaId, @RequestParam String contractId) {
-        SagaInstance saga = sagaOrchestrator.onContractFullySigned(sagaId, contractId);
-        return ResponseEntity.ok(ApiResponse.success(saga));
+    public ResponseEntity<ApiResponse<SagaInstance>> completeSaga(@PathVariable String sagaId) {
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.completeSaga(sagaId)));
     }
 
     @PostMapping("/{sagaId}/compensate")
     public ResponseEntity<ApiResponse<SagaInstance>> compensateSaga(
-            @PathVariable String sagaId, @RequestParam(defaultValue = "Giao dich bi huy") String reason) {
-        SagaInstance saga = sagaOrchestrator.compensate(sagaId, reason);
-        return ResponseEntity.ok(ApiResponse.success(saga));
+            @PathVariable String sagaId,
+            @RequestBody Map<String, String> body
+    ) {
+        String reason = body.getOrDefault("reason", "Manual compensation");
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.compensateSaga(sagaId, reason)));
+    }
+
+    @GetMapping("/{sagaId}")
+    public ResponseEntity<ApiResponse<SagaInstance>> getSaga(@PathVariable String sagaId) {
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.getSaga(sagaId)));
     }
 }
-

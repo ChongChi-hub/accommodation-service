@@ -122,6 +122,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestBody(required = false) RefreshTokenCommand command,
             Authentication authentication,

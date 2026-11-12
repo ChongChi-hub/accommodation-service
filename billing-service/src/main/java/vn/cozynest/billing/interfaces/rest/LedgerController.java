@@ -4,6 +4,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.billing.application.dto.LedgerDto;
@@ -13,7 +15,7 @@ import vn.cozynest.common.dto.ApiResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -27,10 +29,12 @@ public class LedgerController {
     }
 
     @GetMapping("/wallet")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getWalletBalance(Authentication authentication) {
-        String userId = (authentication != null && authentication.getPrincipal() != null)
-                ? (String) authentication.getPrincipal()
-                : "user-1";
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new AccessDeniedException("Yeu cau dang nhap");
+        }
+        String userId = String.valueOf(authentication.getPrincipal());
         String walletAcc = ledgerService.getWalletAccountNumber(userId);
         long balance = ledgerService.getAccountBalance(walletAcc);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -42,96 +46,71 @@ public class LedgerController {
     }
 
     @GetMapping("/accounts")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<LedgerDto.AccountResponse>>> getAllAccounts() {
-        List<LedgerDto.AccountResponse> list = ledgerService.getAllAccounts();
-        return ResponseEntity.ok(ApiResponse.success(list));
+        return ResponseEntity.ok(ApiResponse.success(ledgerService.getAllAccounts()));
     }
 
     @GetMapping("/integrity")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<LedgerDto.IntegrityReportResponse>> verifyIntegrity() {
-        LedgerDto.IntegrityReportResponse report = ledgerService.verifyLedgerIntegrity();
-        return ResponseEntity.ok(ApiResponse.success(report));
+        return ResponseEntity.ok(ApiResponse.success(ledgerService.verifyLedgerIntegrity()));
     }
 
-    /**
-     * LEDGER-02: Kích hoạt đối soát toàn diện sổ cái ngay lập tức
-     * Kiểm tra tổng Nợ = tổng Có theo ngày & theo ví; số dư ví khớp tổng bút toán.
-     */
     @PostMapping("/reconcile-now")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<LedgerDto.ComprehensiveIntegrityReport>> runReconciliation() {
-        LedgerDto.ComprehensiveIntegrityReport report = ledgerService.runDailyReconciliation();
-        return ResponseEntity.ok(ApiResponse.success("Chạy kiểm tra đối soát toàn diện sổ cái thành công", report));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Chạy kiểm tra đối soát toàn diện sổ cái thành công",
+                ledgerService.runDailyReconciliation()));
     }
 
     @GetMapping(value = "/export", produces = "text/csv; charset=UTF-8")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> exportLedgerCsv() {
-        String csv = ledgerService.exportLedgerReportCsv();
-        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"so-cai-tong-hop.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(bytes);
+        return csvResponse("so-cai-tong-hop.csv", ledgerService.exportLedgerReportCsv());
     }
 
-    /**
-     * Xuất Sổ Cái Chi Tiết (General Ledger) theo kỳ chuẩn UTF-8 BOM
-     */
     @GetMapping(value = "/export/general-ledger", produces = "text/csv; charset=UTF-8")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> exportGeneralLedger(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-
-        Instant from = fromDate != null ? fromDate.atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-        Instant to = toDate != null ? toDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-
-        String csv = ledgerService.exportGeneralLedgerCsv(from, to);
-        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"so-cai-chi-tiet.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(bytes);
+        Instant[] range = toUtcRange(fromDate, toDate);
+        return csvResponse("so-cai-chi-tiet.csv", ledgerService.exportGeneralLedgerCsv(range[0], range[1]));
     }
 
-    /**
-     * Xuất Bảng Cân Đối Thử (Trial Balance) theo kỳ chuẩn UTF-8 BOM
-     */
     @GetMapping(value = "/export/trial-balance", produces = "text/csv; charset=UTF-8")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> exportTrialBalance(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
-
-        Instant from = fromDate != null ? fromDate.atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-        Instant to = toDate != null ? toDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-
-        String csv = ledgerService.exportTrialBalanceCsv(from, to);
-        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"bang-can-doi-thu.csv\"")
-                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(bytes);
+        Instant[] range = toUtcRange(fromDate, toDate);
+        return csvResponse("bang-can-doi-thu.csv", ledgerService.exportTrialBalanceCsv(range[0], range[1]));
     }
 
-    /**
-     * Xuất Sao Kê Tài Khoản / Ví theo kỳ chuẩn UTF-8 BOM
-     */
     @GetMapping(value = "/export/statement", produces = "text/csv; charset=UTF-8")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<byte[]> exportStatement(
             @RequestParam String accountNumber,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        Instant[] range = toUtcRange(fromDate, toDate);
+        return csvResponse("sao-ke-" + accountNumber + ".csv",
+                ledgerService.exportAccountStatementCsv(accountNumber, range[0], range[1]));
+    }
 
-        Instant from = fromDate != null ? fromDate.atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
-        Instant to = toDate != null ? toDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant() : null;
+    private Instant[] toUtcRange(LocalDate fromDate, LocalDate toDate) {
+        return new Instant[]{
+                fromDate != null ? fromDate.atStartOfDay(ZoneOffset.UTC).toInstant() : null,
+                toDate != null ? toDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null
+        };
+    }
 
-        String csv = ledgerService.exportAccountStatementCsv(accountNumber, from, to);
-        byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
-
+    private ResponseEntity<byte[]> csvResponse(String filename, String csv) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sao-ke-" + accountNumber + ".csv\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                .body(bytes);
+                .body(csv.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -121,6 +121,7 @@ public class ListingCatalogPersistenceMapper {
                 .id(e.getId()).roomId(e.getRoomId()).landlordId(e.getLandlordId()).docType(e.getDocType())
                 .fileUrl(e.getFileUrl()).maskedNumber(e.getMaskedNumber()).status(e.getStatus())
                 .rejectReason(e.getRejectReason()).reviewerId(e.getReviewerId()).reviewedAt(e.getReviewedAt())
+                .expiresAt(e.getExpiresAt())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
                 .build();
     }
@@ -131,6 +132,7 @@ public class ListingCatalogPersistenceMapper {
                 .id(d.getId()).roomId(d.getRoomId()).landlordId(d.getLandlordId()).docType(d.getDocType())
                 .fileUrl(d.getFileUrl()).maskedNumber(d.getMaskedNumber()).status(d.getStatus())
                 .rejectReason(d.getRejectReason()).reviewerId(d.getReviewerId()).reviewedAt(d.getReviewedAt())
+                .expiresAt(d.getExpiresAt())
                 .createdAt(d.getCreatedAt()).updatedAt(d.getUpdatedAt())
                 .build();
     }
