@@ -55,12 +55,24 @@ public class InvoiceJpaEntity {
     @Builder.Default
     private long otherAmount = 0L;
 
+    @Column(name = "late_fee_amount", nullable = false)
+    @Builder.Default
+    private long lateFeeAmount = 0L;
+
+    @Column(name = "credit_applied_amount", nullable = false)
+    @Builder.Default
+    private long creditAppliedAmount = 0L;
+
     @Column(name = "total_amount", nullable = false)
     private long totalAmount;
 
     @Column(name = "paid_amount", nullable = false)
     @Builder.Default
     private long paidAmount = 0L;
+
+    @Column(name = "overpayment_credit_amount", nullable = false)
+    @Builder.Default
+    private long overpaymentCreditAmount = 0L;
 
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
@@ -81,6 +93,10 @@ public class InvoiceJpaEntity {
 
     @Column(name = "overdue_notified_at")
     private Instant overdueNotifiedAt;
+
+    @Column(name = "reminder_count", nullable = false)
+    @Builder.Default
+    private int reminderCount = 0;
 
     @Version
     @Column(nullable = false)

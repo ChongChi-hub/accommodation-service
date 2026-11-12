@@ -40,7 +40,7 @@ class RoomSearchTestcontainersTest {
 
         Path mediaTemp = Files.createTempDirectory("listing-search-tc-");
 
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.0")
+        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName("cozynest_listing")
                 .withUsername("testuser")
                 .withPassword("testpass")) {

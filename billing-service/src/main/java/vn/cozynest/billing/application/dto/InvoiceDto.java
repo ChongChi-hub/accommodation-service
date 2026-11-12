@@ -39,6 +39,17 @@ public class InvoiceDto {
             @Min(value = 1, message = "So tien thanh toan phai lon hon 0") long amount
     ) {}
 
+    public record GenerateFromContractCommand(
+            @NotBlank(message = "Ma hop dong khong duoc de trong") String contractId,
+            @NotNull(message = "Ky hoa don khong duoc de trong") LocalDate periodMonth,
+            @Min(0) long serviceAmount,
+            @Min(0) long otherAmount
+    ) {}
+
+    public record ApplyLateFeeCommand(
+            @Min(value = 1, message = "Phi tre han phai lon hon 0") long feeAmount
+    ) {}
+
     public record InvoiceResponse(
             String id,
             String invoiceCode,

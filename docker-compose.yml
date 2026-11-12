@@ -1,15 +1,26 @@
-version: '3.8'
-
 services:
   mysql:
-    image: mysql:9.1
+    image: mysql:8.4
     container_name: cozynest_mysql
     restart: always
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --log-bin-trust-function-creators=1
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword123}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      IDENTITY_DB_USER: ${IDENTITY_DB_USER:-identity_user}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?IDENTITY_DB_PASSWORD must be set in .env}
+      LISTING_DB_USER: ${LISTING_DB_USER:-listing_user}
+      LISTING_DB_PASSWORD: ${LISTING_DB_PASSWORD:?LISTING_DB_PASSWORD must be set in .env}
+      BOOKING_DB_USER: ${BOOKING_DB_USER:-booking_user}
+      BOOKING_DB_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD must be set in .env}
+      BILLING_DB_USER: ${BILLING_DB_USER:-billing_user}
+      BILLING_DB_PASSWORD: ${BILLING_DB_PASSWORD:?BILLING_DB_PASSWORD must be set in .env}
+      COMMUNICATION_DB_USER: ${COMMUNICATION_DB_USER:-communication_user}
+      COMMUNICATION_DB_PASSWORD: ${COMMUNICATION_DB_PASSWORD:?COMMUNICATION_DB_PASSWORD must be set in .env}
+      ADMIN_DB_USER: ${ADMIN_DB_USER:-admin_user}
+      ADMIN_DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD must be set in .env}
       TZ: UTC
     ports:
       - "${DB_PORT:-5555}:3306"
@@ -55,6 +66,30 @@ services:
     ports:
       - "1025:1025" # SMTP
       - "8025:8025" # Web UI
+    networks:
+      - cozynest_network
+    profiles:
+      - infra
+      - core
+      - full
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cozynest_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set in .env}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - cozynest_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - cozynest_network
     profiles:
@@ -108,8 +143,7 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_identity
       DB_USER: ${IDENTITY_DB_USER:-identity_user}
-      DB_PASSWORD: ${IDENTITY_DB_PASSWORD:-cozynest_svc_pass_2026}
-      JWT_SECRET: ${JWT_SECRET:-cozynest_super_secure_secret_key_minimum_256_bits_for_hmac_sha256_token}
+      DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?IDENTITY_DB_PASSWORD must be set in .env}
       GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       SPRING_DATA_REDIS_HOST: redis
@@ -154,7 +188,7 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_listing
       DB_USER: ${LISTING_DB_USER:-listing_user}
-      DB_PASSWORD: ${LISTING_DB_PASSWORD:-cozynest_svc_pass_2026}
+      DB_PASSWORD: ${LISTING_DB_PASSWORD:?LISTING_DB_PASSWORD must be set in .env}
       REDIS_HOST: redis
       IDENTITY_SERVICE_URL: http://identity-service:8081
       BOOKING_SERVICE_URL: http://booking-service:8083
@@ -184,11 +218,18 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_booking
       DB_USER: ${BOOKING_DB_USER:-booking_user}
-      DB_PASSWORD: ${BOOKING_DB_PASSWORD:-cozynest_svc_pass_2026}
+      DB_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
       COMMUNICATION_SERVICE_URL: http://communication-service:8085
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set in .env}
+      COZYNEST_BROKER_ENABLED: ${COZYNEST_BROKER_ENABLED:-true}
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - cozynest_network
@@ -211,10 +252,17 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_billing
       DB_USER: ${BILLING_DB_USER:-billing_user}
-      DB_PASSWORD: ${BILLING_DB_PASSWORD:-cozynest_svc_pass_2026}
+      DB_PASSWORD: ${BILLING_DB_PASSWORD:?BILLING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set in .env}
+      COZYNEST_BROKER_ENABLED: ${COZYNEST_BROKER_ENABLED:-true}
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - cozynest_network
@@ -236,10 +284,17 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_communication
       DB_USER: ${COMMUNICATION_DB_USER:-communication_user}
-      DB_PASSWORD: ${COMMUNICATION_DB_PASSWORD:-cozynest_svc_pass_2026}
+      DB_PASSWORD: ${COMMUNICATION_DB_PASSWORD:?COMMUNICATION_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set in .env}
+      COZYNEST_BROKER_ENABLED: ${COZYNEST_BROKER_ENABLED:-true}
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - cozynest_network
@@ -261,10 +316,17 @@ services:
       DB_PORT: 3306
       DB_NAME: cozynest_admin
       DB_USER: ${ADMIN_DB_USER:-admin_user}
-      DB_PASSWORD: ${ADMIN_DB_PASSWORD:-cozynest_svc_pass_2026}
+      DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set in .env}
+      COZYNEST_BROKER_ENABLED: ${COZYNEST_BROKER_ENABLED:-true}
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - cozynest_network
@@ -281,6 +343,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
+      INTERNAL_API_URL: http://api-gateway:8080/api/v1
     depends_on:
       - api-gateway
     networks:
@@ -295,3 +358,4 @@ networks:
 volumes:
   cozynest_mysql_data:
   cozynest_redis_data:
+  cozynest_rabbitmq_data:

@@ -54,6 +54,32 @@ class PrivateStorageSecurityTest {
 
         var downloaded = service.downloadByToken("u-landlord-01", "ROLE_LANDLORD", false, token);
         assertThat(downloaded.bytes()).isEqualTo(pdfBytes);
+
+        // Spoofed/invalid magic bytes rejected
+        byte[] fakeScript = "<script>alert(1)</script>".getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> service.uploadPrivateDoc("u-landlord-01", "ROLE_LANDLORD", 1L, "fake.pdf", fakeScript, "application/pdf"))
+                .isInstanceOf(RuntimeException.class);
+
+        // Missing object rejected with IllegalArgumentException
+        String missingUrl = service.createSignedUrl("u-landlord-01", "ROLE_LANDLORD", 1L, "landlords/1/nonexistent.pdf", false);
+        String missingToken = missingUrl.substring(missingUrl.indexOf("token=") + 6);
+        assertThatThrownBy(() -> service.downloadByToken("u-landlord-01", "ROLE_LANDLORD", false, missingToken))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Expired token rejected
+        var pastClock = java.time.Clock.fixed(java.time.Instant.now().minusSeconds(600), java.time.ZoneOffset.UTC);
+        var expiredSigner = new SignedDownloadTokenService("listing-hmac-secret-test-32-chars", pastClock);
+        String expiredToken = expiredSigner.createToken(PrivateStorageService.OWNERSHIP_BUCKET, uploaded.objectKey(), "u-landlord-01", 10);
+        assertThatThrownBy(() -> service.downloadByToken("u-landlord-01", "ROLE_LANDLORD", false, expiredToken))
+                .isInstanceOf(SecurityException.class);
+
+        // Cross-landlord delete blocked (IDOR), then owner deletes & document is no longer downloadable
+        assertThatThrownBy(() -> service.deletePrivateDoc("u-landlord-02", "ROLE_LANDLORD", 2L, uploaded.objectKey(), false))
+                .isInstanceOf(AccessDeniedException.class);
+        service.deletePrivateDoc("u-landlord-01", "ROLE_LANDLORD", 1L, uploaded.objectKey(), false);
+        assertThatThrownBy(() -> service.downloadByToken("u-landlord-01", "ROLE_LANDLORD", false, token))
+                .isInstanceOf(IllegalArgumentException.class);
+
         verify(auditRepo, atLeastOnce()).save(any(StorageAccessLog.class));
     }
 }

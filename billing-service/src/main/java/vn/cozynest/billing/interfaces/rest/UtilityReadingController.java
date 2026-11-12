@@ -55,19 +55,33 @@ public class UtilityReadingController {
 
     @GetMapping("/contract/{contractId}/latest")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<UtilityReadingDto.ReadingResponse>> getLatest(@PathVariable String contractId) {
-        return ResponseEntity.ok(ApiResponse.success(readingService.getLatestReading(contractId)));
+    public ResponseEntity<ApiResponse<UtilityReadingDto.ReadingResponse>> getLatest(
+            @PathVariable String contractId,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                readingService.getLatestReading(contractId, (String) authentication.getPrincipal(), isAdmin(authentication))));
     }
 
     @GetMapping("/contract/{contractId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<UtilityReadingDto.ReadingResponse>>> getByContract(@PathVariable String contractId) {
-        return ResponseEntity.ok(ApiResponse.success(readingService.getReadingsForContract(contractId)));
+    public ResponseEntity<ApiResponse<List<UtilityReadingDto.ReadingResponse>>> getByContract(
+            @PathVariable String contractId,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                readingService.getReadingsForContract(contractId, (String) authentication.getPrincipal(), isAdmin(authentication))));
     }
 
     @GetMapping("/{id}/audits")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<List<UtilityReadingAudit>>> getAudits(@PathVariable String id) {
-        return ResponseEntity.ok(ApiResponse.success(readingService.getAuditHistory(id)));
+    public ResponseEntity<ApiResponse<List<UtilityReadingAudit>>> getAudits(
+            @PathVariable String id,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                readingService.getAuditHistory(id, (String) authentication.getPrincipal(), isAdmin(authentication))));
+    }
+
+    private boolean isAdmin(Authentication auth) {
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority()));
     }
 }

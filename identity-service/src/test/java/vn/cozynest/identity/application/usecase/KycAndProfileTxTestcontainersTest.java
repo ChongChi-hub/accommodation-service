@@ -45,7 +45,7 @@ class KycAndProfileTxTestcontainersTest {
 
         Path tempRoot = Files.createTempDirectory("identity-flowa-test-");
 
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.0")
+        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName("cozynest_identity")
                 .withUsername("testuser")
                 .withPassword("testpass")) {

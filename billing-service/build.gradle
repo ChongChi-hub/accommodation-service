@@ -6,11 +6,13 @@ plugins {
 
 dependencies {
     implementation project(':common')
+    implementation 'com.github.librepdf:openpdf:2.0.3'
     implementation libs.spring.boot.starter.webmvc
     implementation libs.spring.boot.starter.security
     implementation libs.spring.boot.starter.data.jpa
     implementation libs.spring.boot.starter.validation
     implementation libs.spring.boot.starter.actuator
+    implementation libs.spring.boot.starter.amqp
 
     // Database & Flyway
     implementation libs.spring.boot.starter.flyway

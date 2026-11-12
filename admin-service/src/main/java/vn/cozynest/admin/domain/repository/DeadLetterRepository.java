@@ -8,6 +8,7 @@ import java.util.Optional;
 public interface DeadLetterRepository {
     DeadLetterMessage save(DeadLetterMessage msg);
     Optional<DeadLetterMessage> findById(String id);
+    Optional<DeadLetterMessage> findByEventId(String eventId);
     List<DeadLetterMessage> findAll();
 }
 

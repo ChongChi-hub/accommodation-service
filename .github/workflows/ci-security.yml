@@ -19,7 +19,7 @@ jobs:
         run: ./gradlew clean test --no-daemon --console=plain
       - name: Secret Hygiene Scan
         run: |
-          if grep -rnE "sk_live_|AKIA[0-9A-Z]{16}|-----BEGIN RSA PRIVATE KEY-----" --exclude-dir=test --exclude-dir=.git .; then
+          if grep -rnE "sk_live_|AKIA[0-9A-Z]{16}|-----BEGIN RSA PRIVATE KEY-----" --exclude-dir=test --exclude-dir=.git --exclude-dir=.github .; then
             echo "Potential secret leaked in non-test source!"
             exit 1
           fi

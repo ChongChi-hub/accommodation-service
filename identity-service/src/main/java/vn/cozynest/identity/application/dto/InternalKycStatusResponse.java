@@ -11,5 +11,10 @@ public class InternalKycStatusResponse {
     private String userId;
     private String kycStatus;
     private boolean isApproved;
+    private String verifiedFullName;
+
+    public InternalKycStatusResponse(String userId, String kycStatus, boolean isApproved) {
+        this(userId, kycStatus, isApproved, null);
+    }
 }
 

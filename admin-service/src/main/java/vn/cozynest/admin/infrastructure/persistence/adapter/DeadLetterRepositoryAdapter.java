@@ -45,6 +45,11 @@ public class DeadLetterRepositoryAdapter implements DeadLetterRepository {
     }
 
     @Override
+    public Optional<DeadLetterMessage> findByEventId(String eventId) {
+        return repository.findByEventId(eventId).map(this::toDomain);
+    }
+
+    @Override
     public List<DeadLetterMessage> findAll() {
         return repository.findAllByOrderByCreatedAtDesc().stream().map(this::toDomain).toList();
     }

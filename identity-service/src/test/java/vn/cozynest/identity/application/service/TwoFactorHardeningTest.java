@@ -72,5 +72,35 @@ class TwoFactorHardeningTest {
         assertThat(tf.isEnabled()).isFalse();
         assertThat(user.isTwoFactorEnabled()).isFalse();
     }
+
+    @Test
+    void shouldHashBackupRecoveryCodesAtRestWithoutStoringPlaintext() {
+        UserTwoFactorRepository tfRepo = mock(UserTwoFactorRepository.class);
+        UserRepository userRepo = mock(UserRepository.class);
+        TotpHelper totp = mock(TotpHelper.class);
+        when(totp.generateSecret()).thenReturn("BASE32SECRET");
+        when(totp.buildOtpAuthUri(any(), any(), any())).thenReturn("otpauth://totp/ToAm");
+        when(tfRepo.findByUserId("u2")).thenReturn(Optional.empty());
+        var savedHolder = new UserTwoFactor[1];
+        when(tfRepo.save(any())).thenAnswer(inv -> {
+            savedHolder[0] = inv.getArgument(0);
+            return savedHolder[0];
+        });
+
+        TwoFactorAuthService service = new TwoFactorAuthService(tfRepo, userRepo, totp, null);
+        var setupResp = service.setup("u2", "u2@cozynest.vn");
+        assertThat(setupResp.backupCodes()).hasSize(8);
+        String storedJson = savedHolder[0].getBackupCodesJson();
+        assertThat(storedJson).contains("sha256:");
+        for (String plainCode : setupResp.backupCodes()) {
+            assertThat(storedJson).doesNotContain(plainCode);
+        }
+
+        when(tfRepo.findByUserId("u2")).thenReturn(Optional.of(savedHolder[0]));
+        savedHolder[0].enable();
+        when(totp.verifyCode(any(), any())).thenReturn(false);
+        assertThat(service.verifyChallenge("u2", setupResp.backupCodes().get(0))).isTrue();
+        assertThat(service.verifyChallenge("u2", setupResp.backupCodes().get(0))).isFalse();
+    }
 }
 

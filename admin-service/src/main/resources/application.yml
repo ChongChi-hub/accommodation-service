@@ -20,9 +20,6 @@ spring:
     locations: classpath:db/migration
     ignore-missing-migrations: true
 
-jwt:
-  public-key: ${JWT_PUBLIC_KEY:}
-
 management:
   endpoints:
     web:
@@ -42,3 +39,9 @@ jwt:
   issuer: cozynest-identity
   audience: cozynest-web
   public-key: ${JWT_PUBLIC_KEY:}
+
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:false}
+
+spring.rabbitmq.listener.simple.auto-startup: ${COZYNEST_BROKER_ENABLED:false}

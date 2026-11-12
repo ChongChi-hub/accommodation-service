@@ -29,7 +29,7 @@ class DatabaseIsolationTestcontainersTest {
             return;
         }
 
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.0")
+        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
                 .withUsername("root")
                 .withPassword("rootpass")) {
 

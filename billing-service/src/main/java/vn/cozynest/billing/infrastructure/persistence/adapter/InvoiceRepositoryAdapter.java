@@ -64,15 +64,19 @@ public class InvoiceRepositoryAdapter implements InvoiceRepository {
     }
 
     private Invoice toDomain(InvoiceJpaEntity e) {
-        return new Invoice(
-                e.getId(), e.getInvoiceCode(), e.getContractId(), e.getUtilityReadingId(),
-                e.getTenantId(), e.getLandlordId(), e.getPeriodMonth(),
-                e.getBaseRent(), e.getElectricityAmount(), e.getWaterAmount(),
-                e.getServiceAmount(), e.getOtherAmount(), e.getTotalAmount(),
-                e.getPaidAmount(), e.getDueDate(), e.getStatus(),
-                e.getInvoiceType(), e.getReferenceInvoiceId(), e.getCreditNoteReason(),
-                e.getOverdueNotifiedAt(), e.getVersion(), e.getCreatedAt(), e.getUpdatedAt()
-        );
+        return Invoice.builder()
+                .id(e.getId()).invoiceCode(e.getInvoiceCode()).contractId(e.getContractId())
+                .utilityReadingId(e.getUtilityReadingId()).tenantId(e.getTenantId()).landlordId(e.getLandlordId())
+                .periodMonth(e.getPeriodMonth()).baseRent(e.getBaseRent()).electricityAmount(e.getElectricityAmount())
+                .waterAmount(e.getWaterAmount()).serviceAmount(e.getServiceAmount()).otherAmount(e.getOtherAmount())
+                .lateFeeAmount(e.getLateFeeAmount()).creditAppliedAmount(e.getCreditAppliedAmount())
+                .totalAmount(e.getTotalAmount()).paidAmount(e.getPaidAmount())
+                .overpaymentCreditAmount(e.getOverpaymentCreditAmount()).dueDate(e.getDueDate())
+                .status(e.getStatus()).invoiceType(e.getInvoiceType()).referenceInvoiceId(e.getReferenceInvoiceId())
+                .creditNoteReason(e.getCreditNoteReason()).overdueNotifiedAt(e.getOverdueNotifiedAt())
+                .reminderCount(e.getReminderCount()).version(e.getVersion())
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .build();
     }
 
     private InvoiceJpaEntity toEntity(Invoice d) {
@@ -81,10 +85,13 @@ public class InvoiceRepositoryAdapter implements InvoiceRepository {
                 .utilityReadingId(d.getUtilityReadingId()).tenantId(d.getTenantId()).landlordId(d.getLandlordId())
                 .periodMonth(d.getPeriodMonth()).baseRent(d.getBaseRent()).electricityAmount(d.getElectricityAmount())
                 .waterAmount(d.getWaterAmount()).serviceAmount(d.getServiceAmount()).otherAmount(d.getOtherAmount())
-                .totalAmount(d.getTotalAmount()).paidAmount(d.getPaidAmount()).dueDate(d.getDueDate())
+                .lateFeeAmount(d.getLateFeeAmount()).creditAppliedAmount(d.getCreditAppliedAmount())
+                .totalAmount(d.getTotalAmount()).paidAmount(d.getPaidAmount())
+                .overpaymentCreditAmount(d.getOverpaymentCreditAmount()).dueDate(d.getDueDate())
                 .status(d.getStatus()).invoiceType(d.getInvoiceType()).referenceInvoiceId(d.getReferenceInvoiceId())
                 .creditNoteReason(d.getCreditNoteReason()).overdueNotifiedAt(d.getOverdueNotifiedAt())
-                .version(d.getVersion()).createdAt(d.getCreatedAt()).updatedAt(d.getUpdatedAt())
+                .reminderCount(d.getReminderCount()).version(d.getVersion())
+                .createdAt(d.getCreatedAt()).updatedAt(d.getUpdatedAt())
                 .build();
     }
 }

@@ -74,6 +74,19 @@ public class PrivateStorageController {
         return ResponseEntity.ok().headers(headers).body(file.bytes());
     }
 
+    @DeleteMapping("/api/v1/landlord/storage/private")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'MODERATOR', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deletePrivate(
+            @RequestParam("objectKey") String objectKey,
+            Authentication auth
+    ) {
+        Long landlordId = contextResolver.getCurrentLandlordId();
+        String actorId = contextResolver.getCurrentActorId();
+        boolean privileged = hasPrivilegedRole(auth);
+        privateStorageService.deletePrivateDoc(actorId, extractPrimaryRole(auth), landlordId, objectKey, privileged);
+        return ResponseEntity.ok(ApiResponse.success("Da thu hoi va xoa tai lieu khoi luu tru rieng", null));
+    }
+
     private boolean hasPrivilegedRole(Authentication auth) {
         return auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_MODERATOR".equals(a.getAuthority()));

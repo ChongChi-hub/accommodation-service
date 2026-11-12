@@ -1,8 +1,12 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import vn.cozynest.listing.domain.model.StorageAccessLog;
 
-public interface StorageAccessLogRepository extends JpaRepository<StorageAccessLog, String> {
-}
+import java.util.List;
 
+public interface StorageAccessLogRepository {
+
+    StorageAccessLog save(StorageAccessLog log);
+
+    List<StorageAccessLog> findByObjectKey(String objectKey);
+}

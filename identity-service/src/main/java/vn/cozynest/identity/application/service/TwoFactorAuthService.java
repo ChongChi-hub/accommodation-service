@@ -165,10 +165,18 @@ public class TwoFactorAuthService {
             return false;
         }
         try {
-            List<String> codes = objectMapper.readValue(twoFactor.getBackupCodesJson(), new TypeReference<>() {});
-            boolean matched = codes.remove(code.trim());
+            List<String> storedHashes = objectMapper.readValue(twoFactor.getBackupCodesJson(), new TypeReference<>() {});
+            String candidate = code.trim();
+            String candidateHash = hashRecoveryCode(candidate);
+            boolean matched = storedHashes.removeIf(entry ->
+                    java.security.MessageDigest.isEqual(
+                            entry.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                            candidateHash.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                            || java.security.MessageDigest.isEqual(
+                                    entry.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                                    candidate.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             if (matched) {
-                twoFactor.replaceBackupCodesJson(objectMapper.writeValueAsString(codes));
+                twoFactor.replaceBackupCodesJson(objectMapper.writeValueAsString(storedHashes));
             }
             return matched;
         } catch (Exception ex) {
@@ -187,9 +195,20 @@ public class TwoFactorAuthService {
 
     private String serializeBackupCodes(List<String> codes) {
         try {
-            return objectMapper.writeValueAsString(codes);
+            List<String> hashed = codes.stream().map(TwoFactorAuthService::hashRecoveryCode).toList();
+            return objectMapper.writeValueAsString(hashed);
         } catch (Exception e) {
             return "[]";
+        }
+    }
+
+    public static String hashRecoveryCode(String rawCode) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(rawCode.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return "sha256:" + java.util.HexFormat.of().formatHex(bytes);
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
 }

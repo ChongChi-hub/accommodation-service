@@ -73,6 +73,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Bạn không có quyền thực hiện thao tác này", "ERR_FORBIDDEN"));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_INVALID_REQUEST"));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        String lower = msg.toLowerCase();
+        if (lower.contains("qua nhieu") || lower.contains("han muc") || lower.contains("tam khoa")) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header(HttpHeaders.RETRY_AFTER, "60")
+                    .body(ApiResponse.error(msg, "ERR_RATE_LIMIT_EXCEEDED"));
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(msg, "ERR_CONFLICT"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

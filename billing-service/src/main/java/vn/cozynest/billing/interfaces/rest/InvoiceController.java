@@ -1,6 +1,8 @@
 package vn.cozynest.billing.interfaces.rest;
 
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -36,6 +38,35 @@ public class InvoiceController {
         String actorId = (String) auth.getPrincipal();
         return ResponseEntity.ok(ApiResponse.success("Phát hành hóa đơn hàng loạt thành công",
                 invoiceService.generateBatch(command.items(), actorId, isAdmin(auth))));
+    }
+
+    @PostMapping("/from-contract")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<InvoiceDto.InvoiceResponse>> generateFromContract(
+            @Valid @RequestBody InvoiceDto.GenerateFromContractCommand command,
+            Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Tạo hóa đơn tự động từ hợp đồng thành công",
+                invoiceService.generateFromContract(command, (String) auth.getPrincipal(), isAdmin(auth))));
+    }
+
+    @PostMapping("/{id}/late-fee")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<InvoiceDto.InvoiceResponse>> applyLateFee(
+            @PathVariable String id,
+            @Valid @RequestBody InvoiceDto.ApplyLateFeeCommand command,
+            Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Áp dụng phí trễ hạn thành công",
+                invoiceService.applyLateFee(id, command.feeAmount(), (String) auth.getPrincipal(), isAdmin(auth))));
+    }
+
+    @GetMapping("/{id}/receipt/pdf")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<byte[]> downloadReceiptPdf(@PathVariable String id, Authentication auth) {
+        byte[] pdf = invoiceService.generateReceiptPdf(id, (String) auth.getPrincipal(), isAdmin(auth));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"invoice-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @PostMapping("/{id}/credit-notes")

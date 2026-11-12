@@ -3,8 +3,12 @@ package vn.cozynest.listing.application.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import vn.cozynest.listing.application.dto.UpdateRoomRequest;
+import vn.cozynest.listing.domain.model.OwnershipDocAccessLog;
 import vn.cozynest.listing.domain.model.PropertyOwnershipDocument;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.model.RoomImage;
+import vn.cozynest.listing.domain.model.RoomStatusHistory;
+import vn.cozynest.listing.domain.port.ImageStoragePort;
 import vn.cozynest.listing.domain.port.KycVerificationPort;
 import vn.cozynest.listing.domain.port.RoomUsagePort;
 import vn.cozynest.listing.domain.repository.*;
@@ -84,6 +88,43 @@ class ListingSprint3HardeningTest {
         assertThat(revoked).isEqualTo(1);
         assertThat(expiredDoc.getStatus()).isEqualTo("EXPIRED");
         assertThat(room.isVerifiedOwnership()).isFalse();
+    }
+
+    @Test
+    void shouldAuditModeratorViewRevokeBadgeOnRejectAndResetPublishedRoomOnCoverChange() {
+        PropertyOwnershipDocumentRepository docRepo = mock(PropertyOwnershipDocumentRepository.class);
+        RoomRepository roomRepo = mock(RoomRepository.class);
+        OwnershipDocAccessLogRepository accessLogRepo = mock(OwnershipDocAccessLogRepository.class);
+        PropertyOwnershipService ownershipService = new PropertyOwnershipService(
+                docRepo, roomRepo, Optional.of(accessLogRepo));
+
+        Room room = Room.builder().id(50L).landlordId(1L).verifiedOwnership(true).build();
+        PropertyOwnershipDocument pendingDoc = PropertyOwnershipDocument.builder()
+                .id("doc-rej").roomId(50L).landlordId(1L).status("PENDING").build();
+        when(docRepo.findByRoomId(50L)).thenReturn(List.of(pendingDoc));
+        when(docRepo.findById("doc-rej")).thenReturn(Optional.of(pendingDoc));
+        when(docRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(roomRepo.findById(50L)).thenReturn(Optional.of(room));
+
+        ownershipService.getDocumentsByRoom(50L, null, true, "mod-1");
+        verify(accessLogRepo).save(argThat((OwnershipDocAccessLog l) -> "VIEW_OWNERSHIP_DOCS".equals(l.getAction()) && "mod-1".equals(l.getActorId())));
+
+        ownershipService.reviewDocument("doc-rej", "mod-1", false, "Blurry red book");
+        assertThat(room.isVerifiedOwnership()).isFalse();
+        verify(accessLogRepo).save(argThat((OwnershipDocAccessLog l) -> "REJECT_OWNERSHIP_DOC".equals(l.getAction())));
+
+        RoomImageRepository imgRepo = mock(RoomImageRepository.class);
+        RoomStatusHistoryRepository histRepo = mock(RoomStatusHistoryRepository.class);
+        LandlordImageService imageService = new LandlordImageService(
+                roomRepo, imgRepo, mock(ImageStoragePort.class), mock(UploadRateLimiter.class), Optional.of(histRepo));
+        Room publishedRoom = Room.builder().id(77L).landlordId(10L).status("PUBLISHED").approved(true).build();
+        when(roomRepo.findByIdAndLandlordIdAndDeletedAtIsNull(77L, 10L)).thenReturn(Optional.of(publishedRoom));
+        when(imgRepo.findByIdAndRoomId(901L, 77L)).thenReturn(Optional.of(RoomImage.builder().id(901L).roomId(77L).build()));
+
+        imageService.setCoverImage(10L, 77L, 901L);
+        assertThat(publishedRoom.getStatus()).isEqualTo("PENDING_REVIEW");
+        assertThat(publishedRoom.isApproved()).isFalse();
+        verify(histRepo).save(any(RoomStatusHistory.class));
     }
 }
 

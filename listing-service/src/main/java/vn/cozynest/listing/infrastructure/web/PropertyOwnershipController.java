@@ -48,7 +48,9 @@ public class PropertyOwnershipController {
     public ResponseEntity<ApiResponse<List<PropertyOwnershipDocument>>> getDocs(@PathVariable Long roomId) {
         Long landlordId = contextResolver.getCurrentLandlordId();
         boolean privileged = contextResolver.isPrivilegedModeratorOrAdmin();
-        return ResponseEntity.ok(ApiResponse.success(ownershipService.getDocumentsByRoom(roomId, landlordId, privileged)));
+        String actorId = contextResolver.getCurrentActorId();
+        return ResponseEntity.ok(ApiResponse.success(
+                ownershipService.getDocumentsByRoom(roomId, landlordId, privileged, actorId)));
     }
 
     @PostMapping("/api/v1/admin/rooms/ownership-docs/{docId}/review")

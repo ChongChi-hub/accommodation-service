@@ -26,6 +26,11 @@ public class DeadLetterController {
         return ResponseEntity.ok(ApiResponse.success(dlqService.listAll()));
     }
 
+    @GetMapping("/metrics")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> metrics() {
+        return ResponseEntity.ok(ApiResponse.success(dlqService.getMetrics()));
+    }
+
     @PostMapping("/{id}/replay")
     public ResponseEntity<ApiResponse<DeadLetterMessage>> replay(
             @PathVariable String id,
@@ -33,6 +38,15 @@ public class DeadLetterController {
     ) {
         String adminId = auth != null ? auth.getName() : "admin";
         return ResponseEntity.ok(ApiResponse.success("Da xep hang phat lai su kien", dlqService.replay(id, adminId)));
+    }
+
+    @PostMapping("/{id}/discard")
+    public ResponseEntity<ApiResponse<DeadLetterMessage>> discard(
+            @PathVariable String id,
+            Authentication auth
+    ) {
+        String adminId = auth != null ? auth.getName() : "admin";
+        return ResponseEntity.ok(ApiResponse.success("Da danh dau loai bo su kien DLQ", dlqService.discard(id, adminId)));
     }
 }
 

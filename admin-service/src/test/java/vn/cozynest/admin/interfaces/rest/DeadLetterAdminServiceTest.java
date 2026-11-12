@@ -28,14 +28,23 @@ class DeadLetterAdminServiceTest {
         DeadLetterRepository repo = new DeadLetterRepository() {
             @Override public DeadLetterMessage save(DeadLetterMessage msg) { store.put(msg.getId(), msg); return msg; }
             @Override public Optional<DeadLetterMessage> findById(String id) { return Optional.ofNullable(store.get(id)); }
+            @Override public Optional<DeadLetterMessage> findByEventId(String eventId) {
+                return store.values().stream().filter(m -> eventId.equals(m.getEventId())).findFirst();
+            }
             @Override public List<DeadLetterMessage> findAll() { return List.copyOf(store.values()); }
         };
 
-        DeadLetterAdminService service = new DeadLetterAdminService(repo);
+        var rabbit = org.mockito.Mockito.mock(org.springframework.amqp.rabbit.core.RabbitTemplate.class);
+        DeadLetterAdminService service = new DeadLetterAdminService(repo, Optional.of(rabbit));
         DeadLetterMessage replayed = service.replay("dlq-1", "admin-1");
         assertThat(replayed.getStatus()).isEqualTo("REPLAYED");
         assertThat(replayed.getRetryCount()).isEqualTo(1);
         assertThat(replayed.getReplayedBy()).isEqualTo("admin-1");
+        org.mockito.Mockito.verify(rabbit).convertAndSend(
+                org.mockito.ArgumentMatchers.eq(vn.cozynest.common.events.EventTopology.EVENTS_EXCHANGE),
+                org.mockito.ArgumentMatchers.eq("billing.paymentconfirmedevent"),
+                org.mockito.ArgumentMatchers.anyString()
+        );
 
         assertThatThrownBy(() -> service.replay("dlq-1", "admin-1"))
                 .isInstanceOf(IllegalStateException.class);

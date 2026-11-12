@@ -82,7 +82,12 @@ public class InternalUserService {
         boolean docApproved = docKyc.getStatus() == KycStatus.APPROVED;
 
         if (!faceRequired) {
-            return new InternalKycStatusResponse(userId, docKyc.getStatus().name(), docApproved);
+            return new InternalKycStatusResponse(
+                    userId,
+                    docKyc.getStatus().name(),
+                    docApproved,
+                    docApproved ? docKyc.getFullNameOnId() : null
+            );
         }
 
         // When faceRequired=true, APPROVED requires doc APPROVED and face PASSED
@@ -101,7 +106,12 @@ public class InternalUserService {
             overallStatus = KycStatus.PENDING.name();
         }
 
-        return new InternalKycStatusResponse(userId, overallStatus, overallApproved);
+        return new InternalKycStatusResponse(
+                userId,
+                overallStatus,
+                overallApproved,
+                overallApproved ? docKyc.getFullNameOnId() : null
+        );
     }
 }
 

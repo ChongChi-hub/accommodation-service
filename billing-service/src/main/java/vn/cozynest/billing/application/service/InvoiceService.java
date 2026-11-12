@@ -1,32 +1,61 @@
 package vn.cozynest.billing.application.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.InvoiceDto;
 import vn.cozynest.billing.application.dto.LedgerDto;
+import vn.cozynest.billing.application.port.BillingContractPort;
+import vn.cozynest.billing.domain.model.BillingEventOutbox;
 import vn.cozynest.billing.domain.model.Invoice;
 import vn.cozynest.billing.domain.model.PostingDirection;
+import vn.cozynest.billing.domain.model.UtilityReading;
+import vn.cozynest.billing.domain.repository.BillingEventOutboxRepository;
 import vn.cozynest.billing.domain.repository.InvoiceRepository;
+import vn.cozynest.billing.domain.repository.UtilityReadingRepository;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class InvoiceService {
     private final InvoiceRepository repository;
     private final LedgerService ledgerService;
+    private final Optional<BillingContractPort> contractPort;
+    private final Optional<UtilityReadingRepository> utilityReadingRepository;
+    private final Optional<BillingEventOutboxRepository> outboxRepository;
+    private final Optional<InvoicePdfService> pdfService;
 
     public InvoiceService(InvoiceRepository repository, LedgerService ledgerService) {
+        this(repository, ledgerService, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+    }
+
+    @Autowired
+    public InvoiceService(
+            InvoiceRepository repository,
+            LedgerService ledgerService,
+            Optional<BillingContractPort> contractPort,
+            Optional<UtilityReadingRepository> utilityReadingRepository,
+            Optional<BillingEventOutboxRepository> outboxRepository,
+            Optional<InvoicePdfService> pdfService
+    ) {
         this.repository = repository;
         this.ledgerService = ledgerService;
+        this.contractPort = contractPort != null ? contractPort : Optional.empty();
+        this.utilityReadingRepository = utilityReadingRepository != null ? utilityReadingRepository : Optional.empty();
+        this.outboxRepository = outboxRepository != null ? outboxRepository : Optional.empty();
+        this.pdfService = pdfService != null ? pdfService : Optional.empty();
     }
 
     @Transactional
+    @CacheEvict(value = "billingDashboardStats", allEntries = true)
     public InvoiceDto.InvoiceResponse generateInvoice(InvoiceDto.GenerateInvoiceCommand cmd) {
         List<Invoice> existing = repository.findByContractIdAndPeriodMonth(cmd.contractId(), cmd.periodMonth());
         Invoice activeStandard = existing.stream()
@@ -39,12 +68,45 @@ public class InvoiceService {
         String code = "INV-" + cmd.periodMonth().getYear()
                 + String.format("%02d", cmd.periodMonth().getMonthValue())
                 + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
-        Invoice invoice = Invoice.create(
+        long availableCredit = consumeOverpaymentCredits(cmd.contractId());
+        Invoice invoice = Invoice.createWithCredits(
                 code, cmd.contractId(), cmd.utilityReadingId(), cmd.tenantId(), cmd.landlordId(),
                 cmd.periodMonth(), cmd.baseRent(), cmd.electricityAmount(), cmd.waterAmount(),
-                cmd.serviceAmount(), cmd.otherAmount(), cmd.dueDate()
+                cmd.serviceAmount(), cmd.otherAmount(), availableCredit, cmd.dueDate()
         );
-        return toResponse(repository.save(invoice));
+        Invoice saved = repository.save(invoice);
+        emitInvoiceEvent("INVOICE_GENERATED", saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(value = "billingDashboardStats", allEntries = true)
+    public InvoiceDto.InvoiceResponse generateFromContract(
+            InvoiceDto.GenerateFromContractCommand cmd, String actorId, boolean isAdmin) {
+        BillingContractPort.ContractSnapshot snap = contractPort
+                .flatMap(port -> port.getContractSnapshot(cmd.contractId(), cmd.periodMonth()))
+                .orElseThrow(() -> new IllegalStateException("Khong the lay thong tin hop dong tu booking-service"));
+        if (!isAdmin && !snap.landlordId().equals(actorId)) {
+            throw new AccessDeniedException("Ban khong co quyen tao hoa don cho hop dong cua chu tro khac");
+        }
+        Optional<UtilityReading> reading = utilityReadingRepository
+                .flatMap(repo -> repo.findByContractIdAndPeriodMonth(cmd.contractId(), cmd.periodMonth()))
+                .filter(r -> !"CANCELLED".equals(r.getStatus()));
+        int dueDay = Math.min(28, Math.max(1, snap.paymentDueDay()));
+        LocalDate dueDate = LocalDate.of(cmd.periodMonth().getYear(), cmd.periodMonth().getMonthValue(), dueDay);
+        return generateInvoice(new InvoiceDto.GenerateInvoiceCommand(
+                cmd.contractId(),
+                reading.map(UtilityReading::getId).orElse(null),
+                snap.tenantId(),
+                snap.landlordId(),
+                cmd.periodMonth(),
+                snap.effectiveMonthlyRent(),
+                reading.map(UtilityReading::getElectricityCost).orElse(0L),
+                reading.map(UtilityReading::getWaterCost).orElse(0L),
+                cmd.serviceAmount(),
+                cmd.otherAmount(),
+                dueDate
+        ));
     }
 
     @Transactional
@@ -84,13 +146,29 @@ public class InvoiceService {
     }
 
     @Transactional
+    @CacheEvict(value = "billingDashboardStats", allEntries = true)
     public InvoiceDto.InvoiceResponse recordPayment(String invoiceId, long amount, String actorId, boolean isAdmin) {
         Invoice invoice = findOrThrow(invoiceId);
         if (!isAdmin && !invoice.getTenantId().equals(actorId) && !invoice.getLandlordId().equals(actorId)) {
             throw new AccessDeniedException("Khong co quyen thanh toan hoa don nay");
         }
         invoice.recordPayment(amount);
-        return toResponse(repository.save(invoice));
+        Invoice saved = repository.save(invoice);
+        emitInvoiceEvent("INVOICE_PAYMENT_RECORDED", saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(value = "billingDashboardStats", allEntries = true)
+    public InvoiceDto.InvoiceResponse applyLateFee(String invoiceId, long feeAmount, String actorId, boolean isAdmin) {
+        Invoice invoice = findOrThrow(invoiceId);
+        if (!isAdmin && !invoice.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Ban khong co quyen ap phi tre han cho hoa don nay");
+        }
+        invoice.applyLateFee(feeAmount);
+        Invoice saved = repository.save(invoice);
+        emitInvoiceEvent("INVOICE_LATE_FEE_APPLIED", saved);
+        return toResponse(saved);
     }
 
     @Scheduled(cron = "0 0 1 * * *", zone = "UTC")
@@ -98,11 +176,51 @@ public class InvoiceService {
     public int markOverdueInvoices() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         List<Invoice> candidates = repository.findOverdueCandidates(today);
+        int sent = 0;
         for (Invoice inv : candidates) {
+            int before = inv.getReminderCount();
             inv.markOverdue(today);
-            repository.save(inv);
+            if (inv.getReminderCount() > before || "OVERDUE".equals(inv.getStatus())) {
+                repository.save(inv);
+                if (inv.getReminderCount() > before) {
+                    emitInvoiceEvent("INVOICE_OVERDUE_REMINDER", inv);
+                }
+                sent++;
+            }
         }
-        return candidates.size();
+        return sent;
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generateReceiptPdf(String invoiceId, String actorId, boolean isAdmin) {
+        Invoice inv = findOrThrow(invoiceId);
+        if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Khong co quyen tai bien lai hoa don nay");
+        }
+        InvoicePdfService svc = pdfService.orElseGet(InvoicePdfService::new);
+        return svc.generateReceiptPdf(inv);
+    }
+
+    private long consumeOverpaymentCredits(String contractId) {
+        long credit = 0L;
+        for (Invoice prior : repository.findByContractId(contractId)) {
+            if (prior.getOverpaymentCreditAmount() > 0 && "PAID".equals(prior.getStatus())) {
+                credit += prior.getOverpaymentCreditAmount();
+                prior.consumeOverpaymentCredit();
+                repository.save(prior);
+            }
+        }
+        return credit;
+    }
+
+    private void emitInvoiceEvent(String eventType, Invoice inv) {
+        outboxRepository.ifPresent(repo -> repo.save(BillingEventOutbox.create(
+                eventType,
+                "INVOICE",
+                inv.getId(),
+                String.format("{\"invoiceId\":\"%s\",\"invoiceCode\":\"%s\",\"contractId\":\"%s\",\"tenantId\":\"%s\",\"status\":\"%s\",\"totalAmount\":%d}",
+                        inv.getId(), inv.getInvoiceCode(), inv.getContractId(), inv.getTenantId(), inv.getStatus(), inv.getTotalAmount())
+        )));
     }
 
     @Transactional(readOnly = true)

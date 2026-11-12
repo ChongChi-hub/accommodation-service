@@ -1,9 +1,12 @@
 package vn.cozynest.billing.application.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.UtilityReadingDto;
+import vn.cozynest.billing.application.port.BillingContractPort;
 import vn.cozynest.billing.domain.model.Invoice;
 import vn.cozynest.billing.domain.model.UtilityReading;
 import vn.cozynest.billing.domain.model.UtilityReadingAudit;
@@ -14,8 +17,10 @@ import vn.cozynest.billing.domain.service.UtilityTariffCalculator;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -24,6 +29,7 @@ public class UtilityReadingService {
     private final UtilityReadingAuditRepository auditRepository;
     private final InvoiceRepository invoiceRepository;
     private final ObjectMapper objectMapper;
+    private final Optional<BillingContractPort> billingContractPort;
 
     public UtilityReadingService(
             UtilityReadingRepository repository,
@@ -31,10 +37,22 @@ public class UtilityReadingService {
             InvoiceRepository invoiceRepository,
             ObjectMapper objectMapper
     ) {
+        this(repository, auditRepository, invoiceRepository, objectMapper, Optional.empty());
+    }
+
+    @Autowired
+    public UtilityReadingService(
+            UtilityReadingRepository repository,
+            UtilityReadingAuditRepository auditRepository,
+            InvoiceRepository invoiceRepository,
+            ObjectMapper objectMapper,
+            Optional<BillingContractPort> billingContractPort
+    ) {
         this.repository = repository;
         this.auditRepository = auditRepository;
         this.invoiceRepository = invoiceRepository;
         this.objectMapper = objectMapper;
+        this.billingContractPort = billingContractPort != null ? billingContractPort : Optional.empty();
     }
 
     @Transactional
@@ -109,6 +127,12 @@ public class UtilityReadingService {
     }
 
     @Transactional(readOnly = true)
+    public UtilityReadingDto.ReadingResponse getLatestReading(String contractId, String actorId, boolean isAdmin) {
+        assertContractParticipantOrAdmin(contractId, actorId, isAdmin);
+        return getLatestReading(contractId);
+    }
+
+    @Transactional(readOnly = true)
     public List<UtilityReadingDto.ReadingResponse> getReadingsForContract(String contractId) {
         return repository.findByContractId(contractId).stream()
                 .map(r -> toResponse(r, r.isSurgeAnomaly(new BigDecimal("100"), new BigDecimal("10"))))
@@ -116,8 +140,50 @@ public class UtilityReadingService {
     }
 
     @Transactional(readOnly = true)
+    public List<UtilityReadingDto.ReadingResponse> getReadingsForContract(String contractId, String actorId, boolean isAdmin) {
+        assertContractParticipantOrAdmin(contractId, actorId, isAdmin);
+        return getReadingsForContract(contractId);
+    }
+
+    @Transactional(readOnly = true)
     public List<UtilityReadingAudit> getAuditHistory(String readingId) {
         return auditRepository.findByReadingId(readingId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UtilityReadingAudit> getAuditHistory(String readingId, String actorId, boolean isAdmin) {
+        UtilityReading reading = repository.findById(readingId)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay chi so dien nuoc: " + readingId));
+        assertContractParticipantOrAdmin(reading.getContractId(), actorId, isAdmin);
+        return auditRepository.findByReadingId(readingId);
+    }
+
+    private void assertContractParticipantOrAdmin(String contractId, String actorId, boolean isAdmin) {
+        if (isAdmin) {
+            return;
+        }
+        Optional<BillingContractPort.ContractSnapshot> contractOpt = billingContractPort
+                .flatMap(port -> port.getContractSnapshot(contractId, LocalDate.now()));
+        if (contractOpt.isPresent()) {
+            BillingContractPort.ContractSnapshot snap = contractOpt.get();
+            if (!snap.tenantId().equals(actorId) && !snap.landlordId().equals(actorId)) {
+                throw new AccessDeniedException("Ban khong co quyen truy cap chi so dien nuoc cua hop dong nay");
+            }
+            return;
+        }
+        List<Invoice> invs = invoiceRepository.findByContractId(contractId);
+        if (!invs.isEmpty()) {
+            boolean participant = invs.stream().anyMatch(i ->
+                    i.getTenantId().equals(actorId) || i.getLandlordId().equals(actorId));
+            if (!participant) {
+                throw new AccessDeniedException("Ban khong co quyen truy cap chi so dien nuoc cua hop dong nay");
+            }
+            return;
+        }
+        List<UtilityReading> readings = repository.findByContractId(contractId);
+        if (!readings.isEmpty() && readings.stream().noneMatch(r -> actorId.equals(r.getRecordedBy()))) {
+            throw new AccessDeniedException("Ban khong co quyen truy cap chi so dien nuoc cua hop dong nay");
+        }
     }
 
     private UtilityReading findLockedChecked(String readingId) {

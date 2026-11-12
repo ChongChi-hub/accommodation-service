@@ -58,6 +58,16 @@ public class PrivateStorageService {
         return new DownloadedFile(verified.objectKey(), content);
     }
 
+    @Transactional
+    public void deletePrivateDoc(String actorId, String actorRole, Long landlordId, String objectKey, boolean privilegedRole) {
+        if (!privilegedRole && (landlordId == null || !objectKey.startsWith("landlords/" + landlordId + "/"))) {
+            audit(actorId, actorRole, OWNERSHIP_BUCKET, objectKey, "DELETE", false, "IDOR_DENIED");
+            throw new AccessDeniedException("Khong co quyen xoa tai lieu cua nguoi khac");
+        }
+        storagePort.deletePrivate(OWNERSHIP_BUCKET, objectKey);
+        audit(actorId, actorRole, OWNERSHIP_BUCKET, objectKey, "DELETE", true, "REVOKED_OR_RETENTION_PURGE");
+    }
+
     private void audit(String actorId, String actorRole, String bucket, String key, String action, boolean allowed, String reason) {
         auditRepository.save(StorageAccessLog.builder()
                 .actorId(actorId != null ? actorId : "anonymous")

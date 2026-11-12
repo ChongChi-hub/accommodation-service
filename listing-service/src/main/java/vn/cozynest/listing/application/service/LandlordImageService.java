@@ -1,7 +1,7 @@
 package vn.cozynest.listing.application.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,9 +9,11 @@ import vn.cozynest.common.image.ImageProcessingHelper;
 import vn.cozynest.listing.application.dto.ImageUploadResponse;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.model.RoomImage;
+import vn.cozynest.listing.domain.model.RoomStatusHistory;
 import vn.cozynest.listing.domain.port.ImageStoragePort;
 import vn.cozynest.listing.domain.repository.RoomImageRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
+import vn.cozynest.listing.domain.repository.RoomStatusHistoryRepository;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -23,7 +25,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class LandlordImageService {
 
@@ -31,6 +32,33 @@ public class LandlordImageService {
     private final RoomImageRepository roomImageRepository;
     private final ImageStoragePort imageStoragePort;
     private final UploadRateLimiter rateLimiter;
+    private final Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository;
+
+    public LandlordImageService(
+            RoomRepository roomRepository,
+            RoomImageRepository roomImageRepository,
+            ImageStoragePort imageStoragePort,
+            UploadRateLimiter rateLimiter
+    ) {
+        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, Optional.empty());
+    }
+
+    @Autowired
+    public LandlordImageService(
+            RoomRepository roomRepository,
+            RoomImageRepository roomImageRepository,
+            ImageStoragePort imageStoragePort,
+            UploadRateLimiter rateLimiter,
+            Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository
+    ) {
+        this.roomRepository = roomRepository;
+        this.roomImageRepository = roomImageRepository;
+        this.imageStoragePort = imageStoragePort;
+        this.rateLimiter = rateLimiter;
+        this.roomStatusHistoryRepository = roomStatusHistoryRepository != null
+                ? roomStatusHistoryRepository
+                : Optional.empty();
+    }
 
     public static final long MAX_FILE_SIZE = 5 * 1024 * 1024L; // 5MB
     public static final int MAX_ROOM_IMAGES = 10;
@@ -168,6 +196,7 @@ public class LandlordImageService {
         // Atomic reset and set
         roomImageRepository.resetCoverForRoom(roomId);
         roomImageRepository.setCoverForRoom(roomId, imageId);
+        resetRoomApprovalIfPublished(room, landlordId, "Thay doi anh bia phong dang xuat ban - can duyet lai");
         log.info("Landlord {} set cover image {} for room {}", landlordId, imageId, roomId);
     }
 
@@ -188,7 +217,7 @@ public class LandlordImageService {
 
         roomImageRepository.delete(image);
 
-        // If cover was deleted, automatically designate the next image as cover
+        // If cover was deleted, automatically designate the next image as cover and require re-review if published
         if (wasCover) {
             List<RoomImage> remaining = roomImageRepository.findByRoomIdOrderBySortOrderAsc(roomId);
             if (!remaining.isEmpty()) {
@@ -196,6 +225,26 @@ public class LandlordImageService {
                 roomImageRepository.setCoverForRoom(roomId, newCover.getId());
                 log.info("Auto-assigned image {} as new cover for room {}", newCover.getId(), roomId);
             }
+            resetRoomApprovalIfPublished(room, landlordId, "Xoa anh bia phong dang xuat ban - can duyet lai");
+        }
+    }
+
+    private void resetRoomApprovalIfPublished(Room room, Long landlordId, String reason) {
+        String prevStatus = room.getStatus();
+        if (room.isApproved() || "PUBLISHED".equalsIgnoreCase(prevStatus)) {
+            room.setStatus("PENDING_REVIEW");
+            room.setApproved(false);
+            room.setUpdatedAt(LocalDateTime.now());
+            roomRepository.save(room);
+            roomStatusHistoryRepository.ifPresent(repo -> repo.save(RoomStatusHistory.builder()
+                    .roomId(room.getId())
+                    .fromStatus(prevStatus)
+                    .toStatus("PENDING_REVIEW")
+                    .actorId(String.valueOf(landlordId))
+                    .actorRole("LANDLORD")
+                    .reason(reason)
+                    .createdAt(LocalDateTime.now())
+                    .build()));
         }
     }
 
