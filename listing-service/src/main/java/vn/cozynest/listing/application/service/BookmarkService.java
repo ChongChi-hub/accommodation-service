@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BookmarkService {
 
+    private static final int MAX_BOOKMARKS_PER_USER = 200;
+
     private final BookmarkRepository bookmarkRepository;
     private final RoomRepository roomRepository;
     private final RoomQueryService roomQueryService;
@@ -33,6 +35,12 @@ public class BookmarkService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phòng không tồn tại: " + roomId));
 
         if (!bookmarkRepository.existsByUserIdAndRoomId(userId, roomId)) {
+            if (bookmarkRepository.countByUserId(userId) >= MAX_BOOKMARKS_PER_USER) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Bạn chỉ có thể lưu tối đa " + MAX_BOOKMARKS_PER_USER + " phòng trọ"
+                );
+            }
             Bookmark bookmark = Bookmark.builder()
                     .userId(userId)
                     .roomId(roomId)
@@ -95,17 +103,14 @@ public class BookmarkService {
             return Collections.emptyList();
         }
 
-        Map<Long, RoomDto> roomMap = new HashMap<>();
-        for (Long id : roomIds) {
-            try {
-                RoomDto dto = roomQueryService.getRoomById(id);
-                if (dto != null) {
-                    dto.setIsBookmarked(true);
-                    roomMap.put(id, dto);
-                }
-            } catch (Exception ignored) {
-            }
-        }
+        List<Room> activeRooms = roomRepository.findAllByIdIn(roomIds).stream()
+                .filter(r -> !r.isDeleted() && !r.isHidden()
+                        && (r.isPublished() || "AVAILABLE".equalsIgnoreCase(r.getStatus())))
+                .toList();
+
+        Map<Long, RoomDto> roomMap = roomQueryService.toRoomDtos(activeRooms).stream()
+                .peek(dto -> dto.setIsBookmarked(true))
+                .collect(Collectors.toMap(RoomDto::getId, Function.identity(), (a, b) -> a));
 
         List<RoomDto> result = new ArrayList<>();
         for (Long id : roomIds) {

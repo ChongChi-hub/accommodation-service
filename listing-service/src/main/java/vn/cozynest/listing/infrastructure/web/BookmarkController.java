@@ -44,8 +44,8 @@ public class BookmarkController {
         return ResponseEntity.ok(ApiResponse.success(bookmarkService.getStatus(userId, roomId)));
     }
 
-    @PostMapping("/{roomId}")
-    @Operation(summary = "Lưu phòng trọ (idempotent)")
+    @RequestMapping(value = "/{roomId}", method = {RequestMethod.POST, RequestMethod.PUT})
+    @Operation(summary = "Lưu phòng trọ (idempotent POST/PUT)")
     public ResponseEntity<ApiResponse<BookmarkStatusDto>> addBookmark(@PathVariable Long roomId,
                                                                       Authentication authentication) {
         String userId = authentication.getName();

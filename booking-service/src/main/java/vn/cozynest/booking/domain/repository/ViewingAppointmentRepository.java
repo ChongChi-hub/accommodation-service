@@ -21,6 +21,9 @@ public interface ViewingAppointmentRepository {
 
     List<ViewingAppointment> findOverlappingConfirmedForUpdate(String landlordId, Instant start, Instant end, String excludeId);
 
+    default void lockOverlappingPending(String landlordId, Instant start, Instant end) {
+    }
+
     List<ViewingAppointment> findExpiredPending(Instant now, Instant pendingCutoff);
 
     int atomicallyExpirePending(String id, Instant now);

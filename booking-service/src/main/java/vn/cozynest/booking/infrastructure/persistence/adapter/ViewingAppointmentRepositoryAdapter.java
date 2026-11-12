@@ -66,6 +66,11 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
     }
 
     @Override
+    public void lockOverlappingPending(String landlordId, Instant start, Instant end) {
+        springDataRepository.findOverlappingPendingForUpdate(landlordId, start, end);
+    }
+
+    @Override
     public List<ViewingAppointment> findExpiredPending(Instant now, Instant pendingCutoff) {
         return springDataRepository.findExpiredPending(now, pendingCutoff)
                 .stream().map(AppointmentPersistenceMapper::toDomain).toList();

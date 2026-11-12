@@ -203,6 +203,29 @@ public class RoomQueryService {
                 .build();
     }
 
+    public List<RoomDto> toRoomDtos(List<Room> rooms) {
+        if (rooms == null || rooms.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> provinceNames = buildProvinceNameMap();
+        List<Long> landlordIds = rooms.stream()
+                .map(Room::getLandlordId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Boolean> landlordVerifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null)
+                ? Map.of()
+                : landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
+                        .collect(Collectors.toMap(
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId,
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified,
+                                (a, b) -> a
+                        ));
+        return rooms.stream()
+                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap))
+                .toList();
+    }
+
     private Map<String, String> buildProvinceNameMap() {
         if (provinceRepository == null) return Map.of();
         return provinceRepository.findAll().stream()

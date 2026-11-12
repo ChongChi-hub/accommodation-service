@@ -148,3 +148,4 @@ class VerifyEmailUseCaseTest {
         verify(userRepository).save(user);
     }
 }
+

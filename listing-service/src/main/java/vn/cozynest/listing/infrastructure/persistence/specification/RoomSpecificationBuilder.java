@@ -43,8 +43,33 @@ public class RoomSpecificationBuilder {
             if (params.getWardCode() != null && !params.getWardCode().isBlank()) {
                 predicates.add(cb.equal(root.get("wardCode"), params.getWardCode().trim()));
             }
+            if (params.getWardIds() != null && !params.getWardIds().isEmpty()) {
+                predicates.add(root.get("wardId").in(params.getWardIds()));
+            }
+            if (params.getRoomTypeIds() != null && !params.getRoomTypeIds().isEmpty()) {
+                predicates.add(root.get("roomTypeId").in(params.getRoomTypeIds()));
+            }
             if (!resolvedRoomTypes.isEmpty()) {
                 predicates.add(root.get("roomTypeCode").in(resolvedRoomTypes));
+            }
+            if (params.getAmenityIds() != null && !params.getAmenityIds().isEmpty()) {
+                if ("or".equalsIgnoreCase(params.getAmenityMode())) {
+                    var sq = query.subquery(Long.class);
+                    var subRoot = sq.from(RoomJpaEntity.class);
+                    var amenityJoin = subRoot.join("amenities");
+                    sq.select(subRoot.get("id"))
+                            .where(cb.equal(subRoot.get("id"), root.get("id")), amenityJoin.get("id").in(params.getAmenityIds()));
+                    predicates.add(cb.exists(sq));
+                } else {
+                    for (Long amenityId : params.getAmenityIds()) {
+                        var sq = query.subquery(Long.class);
+                        var subRoot = sq.from(RoomJpaEntity.class);
+                        var amenityJoin = subRoot.join("amenities");
+                        sq.select(subRoot.get("id"))
+                                .where(cb.equal(subRoot.get("id"), root.get("id")), cb.equal(amenityJoin.get("id"), amenityId));
+                        predicates.add(cb.exists(sq));
+                    }
+                }
             }
             if (params.getPriceMin() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("price"), params.getPriceMin()));

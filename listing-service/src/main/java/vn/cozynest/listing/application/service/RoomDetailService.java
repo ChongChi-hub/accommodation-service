@@ -20,6 +20,8 @@ public class RoomDetailService {
     private final RoomPriceRepository roomPriceRepository;
     private final LandlordSnapshotRepository landlordSnapshotRepository;
     private final ReviewRepository reviewRepository;
+    private final ProvinceRepository provinceRepository;
+    private final RoomTypeRepository roomTypeRepository;
 
     public RoomDetailDto getRoomDetail(String slugOrId) {
         Room room;
@@ -55,6 +57,13 @@ public class RoomDetailService {
                 .map(a -> AmenityDto.builder().id(a.getId()).code(a.getCode()).name(a.getName()).icon(a.getIcon()).category(a.getCategory()).build())
                 .collect(Collectors.toList());
 
+        String resolvedProvinceName = provinceRepository.findByCodeIgnoreCase(room.getProvinceCode())
+                .map(Province::getName)
+                .orElse(room.getProvinceCode());
+        String resolvedRoomTypeName = roomTypeRepository.findByCodeIgnoreCase(room.getRoomTypeCode())
+                .map(RoomType::getName)
+                .orElse(room.getRoomTypeCode());
+
         return RoomDetailDto.builder()
                 .id(room.getId())
                 .roomUuid(room.getRoomUuid())
@@ -63,14 +72,14 @@ public class RoomDetailService {
                 .description(room.getDescription())
                 .address(room.getAddress())
                 .provinceCode(room.getProvinceCode())
-                .provinceName(room.getProvinceCode())
+                .provinceName(resolvedProvinceName)
                 .wardCode(room.getWardCode())
                 .wardId(room.getWardId())
                 .latitude(room.getLatitude())
                 .longitude(room.getLongitude())
                 .roomTypeId(room.getRoomTypeId())
                 .roomTypeCode(room.getRoomTypeCode())
-                .roomTypeName(room.getRoomTypeCode())
+                .roomTypeName(resolvedRoomTypeName)
                 .area(room.getArea())
                 .floor(room.getFloor() != null ? room.getFloor() : 2)
                 .bedrooms(room.getBedrooms() != null ? room.getBedrooms() : 1)

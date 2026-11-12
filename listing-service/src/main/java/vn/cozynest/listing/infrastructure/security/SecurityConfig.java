@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
                         .requestMatchers("/api/v1/rooms", "/api/v1/rooms/**").permitAll()
+                        .requestMatchers("/api/v1/hosts", "/api/v1/hosts/**").permitAll()
                         .requestMatchers("/api/v1/room-types", "/api/v1/room-types/**").permitAll()
                         .requestMatchers("/api/v1/locations/**").permitAll()
                         .requestMatchers("/api/v1/amenities/**").permitAll()

@@ -88,7 +88,7 @@ class LandlordAppointmentServiceTest {
         conflicting.setRoomTitle("Phong 101");
 
         when(appointmentRepository.findByIdAndLandlordId("appt-target", "landlord-01")).thenReturn(Optional.of(target));
-        when(appointmentRepository.findOverlappingConfirmed(eq("landlord-01"), any(), any(), eq("appt-target")))
+        when(appointmentRepository.findOverlappingConfirmedForUpdate(eq("landlord-01"), any(), any(), eq("appt-target")))
                 .thenReturn(List.of(conflicting));
 
         ConfirmAppointmentRequest req = new ConfirmAppointmentRequest(false, "Note", 0L);
@@ -104,7 +104,7 @@ class LandlordAppointmentServiceTest {
         ViewingAppointment conflicting = createSample("appt-existing", "landlord-01", AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findByIdAndLandlordId("appt-target", "landlord-01")).thenReturn(Optional.of(target));
-        when(appointmentRepository.findOverlappingConfirmed(eq("landlord-01"), any(), any(), eq("appt-target")))
+        when(appointmentRepository.findOverlappingConfirmedForUpdate(eq("landlord-01"), any(), any(), eq("appt-target")))
                 .thenReturn(List.of(conflicting));
         when(historyRepository.findByAppointmentIdOrderByCreatedAtAsc("appt-target")).thenReturn(List.of());
 

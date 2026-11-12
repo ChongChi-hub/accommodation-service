@@ -74,6 +74,8 @@ spring:
                 patterns:
                   - /api/v1/rooms
                   - /api/v1/rooms/**
+                  - /api/v1/hosts
+                  - /api/v1/hosts/**
                   - /api/v1/room-types
                   - /api/v1/room-types/**
                   - /api/v1/locations/**

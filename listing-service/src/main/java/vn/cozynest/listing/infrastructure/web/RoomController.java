@@ -35,8 +35,10 @@ public class RoomController {
             @RequestParam(required = false) String provinceSlug,
             @RequestParam(required = false) String districtCode,
             @RequestParam(required = false) String wardCode,
+            @RequestParam(required = false) List<Long> wardIds,
             @RequestParam(required = false) String roomTypeCode,
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) List<Long> roomTypeIds,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) BigDecimal priceMin,
@@ -45,9 +47,16 @@ public class RoomController {
             @RequestParam(required = false) Double maxArea,
             @RequestParam(required = false) Double areaMin,
             @RequestParam(required = false) Double areaMax,
+            @RequestParam(required = false) Integer bedrooms,
             @RequestParam(required = false) Integer occupants,
+            @RequestParam(required = false) Integer minAvailableSpots,
+            @RequestParam(required = false) List<Long> amenityIds,
+            @RequestParam(defaultValue = "all") String amenityMode,
             @RequestParam(required = false) Boolean allowPets,
             @RequestParam(required = false) Boolean allowCooking,
+            @RequestParam(required = false) String genderPreference,
+            @RequestParam(required = false) String furnishing,
+            @RequestParam(required = false) String priceUnit,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "0") Integer page,
@@ -65,7 +74,9 @@ public class RoomController {
                 .provinceSlug(effectiveProvinceSlug)
                 .districtCode(districtCode)
                 .wardCode(wardCode)
+                .wardIds(wardIds)
                 .roomTypeCode(effectiveRoomType)
+                .roomTypeIds(roomTypeIds)
                 .minPrice(minPrice)
                 .maxPrice(maxPrice)
                 .priceMin(priceMin)
@@ -74,9 +85,16 @@ public class RoomController {
                 .maxArea(maxArea)
                 .areaMin(areaMin)
                 .areaMax(areaMax)
+                .bedrooms(bedrooms)
                 .occupants(occupants)
+                .minAvailableSpots(minAvailableSpots)
+                .amenityIds(amenityIds)
+                .amenityMode(amenityMode)
                 .allowPets(allowPets)
                 .allowCooking(allowCooking)
+                .genderPreference(genderPreference)
+                .furnishing(furnishing)
+                .priceUnit(priceUnit)
                 .sort(sort)
                 .sortBy(sortBy)
                 .page(page)
