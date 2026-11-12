@@ -24,6 +24,9 @@ class ApiGatewayRoutingAndCorsTest {
     @Autowired(required = false)
     private org.springframework.test.web.reactive.server.WebTestClient webTestClient;
 
+    @Autowired
+    private org.springframework.cloud.gateway.route.RouteLocator routeLocator;
+
     @Test
     @DisplayName("Verify API Gateway routes are registered for all 6 microservices")
     void testGatewayRoutesRegistered() {
@@ -36,6 +39,7 @@ class ApiGatewayRoutingAndCorsTest {
         }
 
         assertThat(routeIds)
+                .contains("identity-avatars")
                 .contains("identity-auth")
                 .contains("listing-service")
                 .contains("booking-service")
@@ -139,6 +143,25 @@ class ApiGatewayRoutingAndCorsTest {
         assertThat(exchange.getResponse().getHeaders().get("Access-Control-Allow-Origin"))
                 .hasSize(1)
                 .containsExactly("http://localhost:3000");
+    }
+
+    @Test
+    @DisplayName("Verify identity-avatars route takes precedence over listing-service for avatar media URLs")
+    void testAvatarRoutePrecedence() {
+        List<org.springframework.cloud.gateway.route.Route> routes = routeLocator.getRoutes().collectList().block();
+        assertThat(routes).isNotNull();
+
+        org.springframework.cloud.gateway.route.Route avatarRoute = routes.stream()
+                .filter(r -> "identity-avatars".equals(r.getId()))
+                .findFirst()
+                .orElseThrow();
+        org.springframework.cloud.gateway.route.Route listingRoute = routes.stream()
+                .filter(r -> "listing-service".equals(r.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(avatarRoute.getOrder()).isLessThan(listingRoute.getOrder());
+        assertThat(avatarRoute.getUri().toString()).contains("8081");
     }
 }
 

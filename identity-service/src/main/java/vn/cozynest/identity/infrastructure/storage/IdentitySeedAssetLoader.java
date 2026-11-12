@@ -15,7 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 @Component
-@Profile({"dev", "demo", "default"})
+@Profile("!prod & !production")
 public class IdentitySeedAssetLoader implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(IdentitySeedAssetLoader.class);

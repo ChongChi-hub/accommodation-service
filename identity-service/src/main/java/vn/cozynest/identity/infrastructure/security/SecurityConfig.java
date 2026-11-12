@@ -61,6 +61,7 @@ public class SecurityConfig {
                                 "/.well-known/jwks.json",
                                 "/internal/**",
                                 "/uploads/avatars/**",
+                                "/api/v1/media/avatars/**",
                                 "/actuator/health",
                                 "/actuator/health/**",
                                 "/v3/api-docs/**",

@@ -35,11 +35,11 @@
 | FE-01 | FE-01.1, FE-01.5 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | Clean Architecture 4 tầng + bộ công cụ test | Giữ nguyên | Sẽ chạy lại |
 | FE-01 | FE-01.2 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `container.ts` còn wire 6 `Static*Repository` | Đang xử lý (cùng UI-STATIC-01) | Chờ audit & thay thế repo có BE |
 | FE-01 | FE-01.3 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `e2e/auth-rbac-middleware.spec.ts` fail live (selector + luồng RBAC) | Đang xử lý | Chờ Playwright pass |
-| FE-01 | FE-01.4 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `/uploads/avatars/default.png` 404 qua Gateway `:8080` | Đang xử lý | Chờ probe Gateway `:8080` |
+| FE-01 | FE-01.4 | OFFICIAL_REQUIREMENT | `PARTIAL` | `IMPLEMENTED_UNVERIFIED` | Đã tạo `AvatarMediaController` + route `identity-avatars` (`order:-1`) cho `/uploads/avatars/**` & `/api/v1/media/avatars/**` | `AvatarMediaController`, `ApiGatewayApplication`, `application.yml`, `SecurityConfig` | `AvatarMediaControllerTest` (3/3), `ApiGatewayRoutingAndCorsTest` (8/8) pass; chờ Docker rebuild + live `:8080` probe |
 | AUTH-03 | AUTH-03.1 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | Flyway `V6` allow null phone/password | Giữ nguyên | Sẽ chạy regression |
 | AUTH-03 | AUTH-03.2..4 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Google GIS + Redis nonce (live GIS bị chặn nếu thiếu Google token thật -> bổ sung Mock/WireMock JWKS integration test + tài liệu blocker nếu còn) | Đang xử lý | Chờ test bổ sung |
 | AUTH-FLOW-A | AUTH-FLOW-A.1, A.3 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | `V7` `landlord_profiles`, mở quyền `TENANT` nộp KYC | Giữ nguyên | Sẽ chạy regression |
-| AUTH-FLOW-A | AUTH-FLOW-A.2, A.4 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Kiểm chứng toàn luồng live `TENANT (AWAITING_KYC) -> KYC -> approve -> LANDLORD` & `/become-landlord` | Đang xử lý | Chờ live API/E2E test |
+| AUTH-FLOW-A | AUTH-FLOW-A.2, A.4 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Đã kiểm chứng luồng BE `TENANT (AWAITING_KYC) -> nộp KYC -> approve -> nhận role LANDLORD & JWT mới` trên MySQL 9.0 | `KycAndProfileTxTestcontainersTest`, `AuthFlowIntegrationTest` | MySQL 9.0 Testcontainers test (`168/168`) pass; chờ `/become-landlord` live E2E |
 | FE-02 | FE-02.1..2, 2.4..5 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | Tokens, Dark Mode, UI Kit, static pages | Giữ nguyên | Sẽ chạy regression |
 | FE-02 | FE-02.3 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | 737 ESLint warnings `i18next/no-literal-string` trên 99 files | Đang xử lý | Chờ `eslint` 0 warnings |
 | AUTH-UI | AUTH-UI.1, UI.3 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | 2-column AuthShell/BrandPanel + 72-byte UTF-8 validation | Giữ nguyên | Sẽ chạy lại Vitest |
@@ -50,11 +50,11 @@
 | INFRA-01 | INFRA-01.1..3 | OFFICIAL_REQUIREMENT | `PARTIAL` | `IMPLEMENTED_UNVERIFIED` | Healthchecks docker-compose; remove hardcode dev secrets fallback; align CI | Thêm Redis/Gateway healthchecks, user service DB & `HEALTHCHECK` trong 5 Dockerfiles, bỏ fallback `jwt.secret`, chuẩn hóa `.github/workflows/ci.yml` BE/FE | CI/compose/Dockerfile đã cập nhật; chờ rebuild Docker stack & `docker ps` |
 | KYC-01-BE | KYC-01-BE.1, BE.3 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | Flyway `V4` + chặn tự duyệt | Giữ nguyên | Sẽ chạy regression |
 | KYC-01-BE | KYC-01-BE.2 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Kiểm chứng live 401/403/200 cho `/me/kyc/documents` & `/moderation/kyc/**` | Đang xử lý | Chờ Integration/Live Matrix |
-| KYC-01-BE | KYC-01-BE.4 | SECURITY_GAP | `PARTIAL` | `PARTIAL` | Bật `@EnableScheduling` & cấu hình an toàn cho `KycImageCleanupScheduler` | Đang xử lý | Chờ Scheduler test |
+| KYC-01-BE | KYC-01-BE.4 | SECURITY_GAP | `PARTIAL` | `VERIFIED_DONE` | `@EnableScheduling` đã bật trên `IdentityApplication`; `KycImageCleanupScheduler` chỉ purge `REJECTED` quá hạn (default `cleanup-enabled: false`) | `KycImageCleanupScheduler`, `KycImageCleanupSchedulerTest` | `KycImageCleanupSchedulerTest` (2/2) + `IdentityApplication` `@EnableScheduling` |
 | KYC-02 | KYC-02.1..2 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | `V5` + challenges/submissions AES-256-GCM + EXIF strip | Giữ nguyên | Sẽ chạy regression |
 | KYC-02 | KYC-02.3 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Verify `FaceVerificationScanner.tsx` với mock MediaStream + consent | Đang xử lý | Chờ Vitest/Playwright |
-| KYC-02 | KYC-02.4 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `FaceModerationUseCase.getFaceDetail()` ghi `face_access_logs` trong `@Transactional(readOnly = true)`; `KycModerationModal.tsx` còn literal string | Đang xử lý | Chờ MySQL test + ESLint 0 warnings |
-| KYC-02 | KYC-02.5 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `IdentityApplication` thiếu `@EnableScheduling` + `face.cleanup.enabled: false`; `FaceSeedDataLoader` thiếu `@Profile` guard | Đang xử lý | Chờ Cleanup test + Profile test |
+| KYC-02 | KYC-02.4 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | Đã bỏ `readOnly = true` ở `FaceModerationUseCase.getFaceDetail()` & verify lưu `face_access_logs` MySQL; còn `KycModerationModal.tsx` literal string | `FaceModerationUseCase`, `KycAndProfileTxTestcontainersTest` | MySQL Testcontainers test pass; chờ sửa i18n FE |
+| KYC-02 | KYC-02.5 | OFFICIAL_REQUIREMENT | `PARTIAL` | `VERIFIED_DONE` | `@EnableScheduling` bật sẵn; `FaceCleanupScheduler` default `false`; `IdentitySeedAssetLoader` khóa `@Profile("!prod & !production")` | `IdentitySeedAssetLoader`, `FaceCleanupSchedulerTest` | `FaceCleanupSchedulerTest` (2/2) + `ProductionProfileNoSeedSecurityTest` (5/5) pass |
 
 ---
 
@@ -77,7 +77,7 @@
 | SEARCH-FE | SEARCH-FE.1 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | URL sync + Error/Empty states | Giữ nguyên | Sẽ chạy regression |
 | SEARCH-FE | SEARCH-FE.2 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | Thiếu `300ms` debounce trên `RoomFilterBar`/`useRooms` & thiếu UI phân trang ở `RoomsCatalogClient` | Đang xử lý | Chờ Vitest + Playwright |
 | LANDLORD-FE | LANDLORD-FE.1 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Gỡ literal strings ở `KycGateBanner` & verify live `/dashboard/landlord/rooms`, `/new`, `/[id]/edit` | Đang xử lý | Chờ ESLint + Playwright |
-| FE-03 | FE-03.1 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `/uploads/avatars/default.png` 404 qua Gateway `:8080` | Đang xử lý | Chờ live Gateway `:8080` 200 OK |
+| FE-03 | FE-03.1 | OFFICIAL_REQUIREMENT | `PARTIAL` | `IMPLEMENTED_UNVERIFIED` | Đã phục vụ `/uploads/avatars/**` & `default.png` từ `identity-service` qua Gateway route `identity-avatars` | `AvatarMediaController`, `ApiGatewayApplication` | Unit + Gateway route test pass; chờ live Gateway `:8080` 200 OK sau rebuild |
 | HDR-1 | HDR-1.1 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | `RoomCard.tsx:131` overlay `z-10` chặn click `"Ảnh sau"` (làm `list1-verification` fail); `AreaDropdown.tsx:33-36` lệch base URL trên trang danh mục | Đang xử lý | Chờ `list1-verification` 7/7 pass |
 | UI-HOME-01 | UI-HOME-01.1 | OFFICIAL_REQUIREMENT | `VERIFIED_DONE` | `VERIFIED_DONE` | Hero, 8 khu vực, `HomeBanners` `aspect-21/9`, Hero < 250KB, 6/6 E2E | Giữ nguyên | Sẽ chạy regression `home1` |
 | UI-STATIC-01 | UI-STATIC-01.1 | `SPEC_MISSING` | `SPEC_MISSING` | `SPEC_MISSING` | Không có checklist chính thức trong `trello_wbs_cozynest.md` (chỉ có thẻ 5 điểm ở `index.md`) | Giữ nguyên `SPEC_MISSING` cho spec gốc | N/A |
@@ -87,5 +87,5 @@
 | APPT-02-FE | APPT-02-FE.1 | OFFICIAL_REQUIREMENT | `IMPLEMENTED_UNVERIFIED` | `IMPLEMENTED_UNVERIFIED` | Verify live 4 chế độ xem, 3 modal, múi giờ `Asia/Ho_Chi_Minh` ranh giới nửa đêm | Đang xử lý | Chờ Vitest/Playwright |
 | E2E-S2 | E2E-S2.1 | OFFICIAL_REQUIREMENT | `PARTIAL` | `PARTIAL` | Fix `playwright.config.ts` ổn định, `storageState`/fixtures độc lập không mutate dev DB, toàn bộ Playwright E2E + Vitest + Gradle xanh | Đang xử lý | Chờ full suite pass |
 | USER-01 | USER-01.1 | `SPEC_MISSING` | `SPEC_MISSING` | `SPEC_MISSING` | Không nằm trong bảng 30 thẻ `index.md` và không có trong `trello_wbs_cozynest.md` | Giữ nguyên `SPEC_MISSING` | N/A |
-| USER-01 | USER-01.2 | DERIVED_REQUIREMENT | `PARTIAL` | `PARTIAL` | `UserProfileUseCase:54-60` ghi DB trong `@Transactional(readOnly = true)` + avatar fallback 404 qua Gateway `:8080` | Đang xử lý | Chờ MySQL test + Gateway 200 OK |
+| USER-01 | USER-01.2 | DERIVED_REQUIREMENT | `PARTIAL` | `IMPLEMENTED_UNVERIFIED` | Đã bỏ `readOnly = true` ở `UserProfileUseCase.getProfile()` (MySQL tạo profile lazy thành công) + phục vụ avatar qua Gateway | `UserProfileUseCase`, `AvatarMediaController`, `KycAndProfileTxTestcontainersTest` | MySQL 9.0 Testcontainers test pass; chờ live Gateway `:8080` 200 OK sau rebuild |
 

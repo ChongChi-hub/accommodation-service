@@ -52,7 +52,6 @@ public class FaceModerationUseCase {
         this.kycCryptoService = kycCryptoService;
     }
 
-    @Transactional(readOnly = true)
     public FaceModerationDetailDto getFaceDetail(String reviewerId, String reviewerRole, String kycId, String clientIp) {
         FaceVerification v = findVerificationByKycOrId(kycId);
         checkNotSelfReview(reviewerId, v.getUserId());
