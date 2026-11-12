@@ -157,6 +157,7 @@ services:
       DB_PASSWORD: ${LISTING_DB_PASSWORD:-cozynest_svc_pass_2026}
       REDIS_HOST: redis
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8083
     depends_on:
       mysql:
         condition: service_healthy
