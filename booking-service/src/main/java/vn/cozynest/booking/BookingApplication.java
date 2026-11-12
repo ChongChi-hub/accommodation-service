@@ -22,6 +22,6 @@ public class BookingApplication {
 
     @Bean
     public java.time.Clock clock() {
-        return java.time.Clock.system(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        return java.time.Clock.systemUTC();
     }
 }

@@ -60,13 +60,16 @@ public class SecurityConfig {
                                 "/api/v1/auth/jwks",
                                 "/.well-known/jwks.json",
                                 "/internal/**",
+                                "/uploads/avatars/**",
                                 "/actuator/health",
+                                "/actuator/health/**",
                                 "/v3/api-docs/**",
                                 "/docs/**",
                                 "/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(cookieCsrfFilter, UsernamePasswordAuthenticationFilter.class)

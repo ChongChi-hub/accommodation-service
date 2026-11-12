@@ -81,4 +81,16 @@ class ProductionProfileNoSeedSecurityTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("Verify SeedAssetLoader is guarded from prod and application-prod.yml disables Swagger")
+    void testSeedAssetLoaderAndProdConfig() throws IOException {
+        Path prodYml = findDir("src/main/resources/application-prod.yml");
+        assertThat(Files.exists(prodYml)).isTrue();
+        String prodContent = Files.readString(prodYml);
+        assertThat(prodContent).contains("enabled: false");
+
+        Path seedAssetLoader = findDir("src/main/java/vn/cozynest/listing/infrastructure/storage/SeedAssetLoader.java");
+        assertThat(Files.readString(seedAssetLoader)).contains("@Profile");
+    }
 }
