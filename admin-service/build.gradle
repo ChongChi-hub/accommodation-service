@@ -7,9 +7,12 @@ plugins {
 dependencies {
     implementation project(':common')
     implementation libs.spring.boot.starter.webmvc
+    implementation libs.spring.boot.starter.security
     implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.boot.starter.security
     implementation libs.spring.boot.starter.validation
     implementation libs.spring.boot.starter.actuator
+    implementation libs.spring.boot.starter.amqp
 
     // Database & Flyway
     implementation libs.spring.boot.starter.flyway
@@ -22,5 +25,6 @@ dependencies {
     implementation libs.mapstruct
     annotationProcessor libs.mapstruct.processor
 
+    testImplementation libs.spring.boot.starter.test
     testImplementation libs.testcontainers.mysql
 }

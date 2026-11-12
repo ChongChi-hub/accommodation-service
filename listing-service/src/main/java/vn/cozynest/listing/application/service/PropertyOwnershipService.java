@@ -1,30 +1,54 @@
 package vn.cozynest.listing.application.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.cozynest.listing.domain.model.OwnershipDocAccessLog;
 import vn.cozynest.listing.domain.model.PropertyOwnershipDocument;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.repository.OwnershipDocAccessLogRepository;
 import vn.cozynest.listing.domain.repository.PropertyOwnershipDocumentRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class PropertyOwnershipService {
 
     private final PropertyOwnershipDocumentRepository docRepository;
     private final RoomRepository roomRepository;
+    private final Optional<OwnershipDocAccessLogRepository> accessLogRepository;
 
-    public PropertyOwnershipDocument uploadDocument(Long landlordId, Long roomId, String docType, String fileUrl, String rawNumber) {
-        Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
+    public PropertyOwnershipService(
+            PropertyOwnershipDocumentRepository docRepository,
+            RoomRepository roomRepository
+    ) {
+        this(docRepository, roomRepository, Optional.empty());
+    }
+
+    @Autowired
+    public PropertyOwnershipService(
+            PropertyOwnershipDocumentRepository docRepository,
+            RoomRepository roomRepository,
+            Optional<OwnershipDocAccessLogRepository> accessLogRepository
+    ) {
+        this.docRepository = docRepository;
+        this.roomRepository = roomRepository;
+        this.accessLogRepository = accessLogRepository != null ? accessLogRepository : Optional.empty();
+    }
+
+    public PropertyOwnershipDocument uploadDocument(
+            Long landlordId, Long roomId, String docType, String fileUrl, String rawNumber, LocalDateTime expiresAt) {
+        roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 
         String masked = maskDocumentNumber(rawNumber);
@@ -36,6 +60,7 @@ public class PropertyOwnershipService {
                 .fileUrl(fileUrl)
                 .maskedNumber(masked)
                 .status("PENDING")
+                .expiresAt(expiresAt)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -44,8 +69,22 @@ public class PropertyOwnershipService {
         return docRepository.save(doc);
     }
 
-    @Transactional(readOnly = true)
-    public List<PropertyOwnershipDocument> getDocumentsByRoom(Long roomId) {
+    public List<PropertyOwnershipDocument> getDocumentsByRoom(Long roomId, Long requesterLandlordId, boolean isAdminOrMod) {
+        return getDocumentsByRoom(roomId, requesterLandlordId, isAdminOrMod,
+                requesterLandlordId != null ? String.valueOf(requesterLandlordId) : "PRIVILEGED");
+    }
+
+    public List<PropertyOwnershipDocument> getDocumentsByRoom(
+            Long roomId, Long requesterLandlordId, boolean isAdminOrMod, String actorId) {
+        if (!isAdminOrMod) {
+            if (requesterLandlordId == null ||
+                    roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, requesterLandlordId).isEmpty()) {
+                throw new AccessDeniedException("Không có quyền xem hồ sơ sở hữu phòng của chủ trọ khác");
+            }
+        } else {
+            accessLogRepository.ifPresent(repo -> repo.save(OwnershipDocAccessLog.record(
+                    null, roomId, actorId, "ADMIN_OR_MOD", "VIEW_OWNERSHIP_DOCS")));
+        }
         return docRepository.findByRoomId(roomId);
     }
 
@@ -60,19 +99,65 @@ public class PropertyOwnershipService {
 
         if (approve) {
             doc.setStatus("APPROVED");
+            if (doc.getExpiresAt() == null) {
+                doc.setExpiresAt(now.plusYears(1));
+            }
             Room room = roomRepository.findById(doc.getRoomId())
                     .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + doc.getRoomId()));
             room.setVerifiedOwnership(true);
             room.setVerifiedAt(now);
             roomRepository.save(room);
+            accessLogRepository.ifPresent(repo -> repo.save(OwnershipDocAccessLog.record(
+                    docId, doc.getRoomId(), reviewerId, "ADMIN_OR_MOD", "APPROVE_OWNERSHIP_DOC")));
             log.info("Moderator {} approved ownership doc {} for room {}", reviewerId, docId, doc.getRoomId());
         } else {
             doc.setStatus("REJECTED");
             doc.setRejectReason(rejectReason != null ? rejectReason : "Giấy tờ không hợp lệ hoặc thiếu thông tin");
+            boolean stillValid = docRepository.findByRoomId(doc.getRoomId()).stream()
+                    .anyMatch(d -> !docId.equals(d.getId())
+                            && "APPROVED".equals(d.getStatus())
+                            && (d.getExpiresAt() == null || d.getExpiresAt().isAfter(now)));
+            if (!stillValid) {
+                roomRepository.findById(doc.getRoomId()).ifPresent(room -> {
+                    if (room.isVerifiedOwnership()) {
+                        room.setVerifiedOwnership(false);
+                        roomRepository.save(room);
+                    }
+                });
+            }
+            accessLogRepository.ifPresent(repo -> repo.save(OwnershipDocAccessLog.record(
+                    docId, doc.getRoomId(), reviewerId, "ADMIN_OR_MOD", "REJECT_OWNERSHIP_DOC")));
             log.info("Moderator {} rejected ownership doc {}: {}", reviewerId, docId, doc.getRejectReason());
         }
 
         return docRepository.save(doc);
+    }
+
+    @Scheduled(cron = "0 30 2 * * *", zone = "UTC")
+    public int revokeExpiredOwnershipBadges() {
+        LocalDateTime now = LocalDateTime.now();
+        List<PropertyOwnershipDocument> expiredDocs = docRepository.findByStatusAndExpiresAtBefore("APPROVED", now);
+        int revokedRooms = 0;
+        for (PropertyOwnershipDocument doc : expiredDocs) {
+            doc.setStatus("EXPIRED");
+            doc.setUpdatedAt(now);
+            docRepository.save(doc);
+
+            boolean stillValid = docRepository.findByRoomId(doc.getRoomId()).stream()
+                    .anyMatch(d -> "APPROVED".equals(d.getStatus())
+                            && (d.getExpiresAt() == null || d.getExpiresAt().isAfter(now)));
+            if (!stillValid) {
+                roomRepository.findById(doc.getRoomId()).ifPresent(room -> {
+                    if (room.isVerifiedOwnership()) {
+                        room.setVerifiedOwnership(false);
+                        roomRepository.save(room);
+                    }
+                });
+                revokedRooms++;
+                log.info("Revoked verifiedOwnership badge on room {} due to expired doc {}", doc.getRoomId(), doc.getId());
+            }
+        }
+        return revokedRooms;
     }
 
     private String maskDocumentNumber(String raw) {
@@ -81,4 +166,3 @@ public class PropertyOwnershipService {
         return raw.substring(0, 3) + "***" + raw.substring(len - 3);
     }
 }
-

@@ -54,10 +54,13 @@ class CommunicationSecurityMatrixTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        jwtAuthFilter = new JwtAuthFilter("");
         KeyFactory kf = KeyFactory.getInstance("RSA");
         byte[] privBytes = Base64.getDecoder().decode(PRIVATE_KEY_PEM.replaceAll("\\s+", ""));
         this.privateKey = (RSAPrivateKey) kf.generatePrivate(new PKCS8EncodedKeySpec(privBytes));
+        var crt = (java.security.interfaces.RSAPrivateCrtKey) this.privateKey;
+        var pub = (java.security.interfaces.RSAPublicKey) kf.generatePublic(
+                new java.security.spec.RSAPublicKeySpec(crt.getModulus(), crt.getPublicExponent()));
+        jwtAuthFilter = JwtAuthFilter.forTest(pub, "cozynest-identity-key-1");
 
         notificationRepository = mock(NotificationRepository.class);
         chatSummaryRepository = mock(ChatSummaryRepository.class);
@@ -81,7 +84,10 @@ class CommunicationSecurityMatrixTest {
 
     private String generateToken(String userId, List<String> roles, long ttlMillis) {
         return Jwts.builder()
+                .issuer("cozynest-identity")
+                .audience().add("cozynest-web").and()
                 .subject(userId)
+                .audience().add("cozynest-web").and()
                 .claim("roles", String.join(",", roles))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ttlMillis))

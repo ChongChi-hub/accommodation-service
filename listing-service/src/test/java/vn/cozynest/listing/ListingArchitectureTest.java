@@ -16,8 +16,32 @@ public class ListingArchitectureTest {
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
 
     @ArchTest
+    static final ArchRule domainMustNotDependOnApplication =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("..application..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnInterfaces =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("..interfaces..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnJakartaPersistence =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("jakarta.persistence..");
+
+    @ArchTest
+    static final ArchRule domainMustNotDependOnSpringFramework =
+            noClasses().that().resideInAPackage("..domain..")
+                    .should().dependOnClassesThat().resideInAPackage("org.springframework..");
+
+    @ArchTest
     static final ArchRule applicationMustNotDependOnInfrastructure =
             noClasses().that().resideInAPackage("..application..")
                     .should().dependOnClassesThat().resideInAPackage("..infrastructure..");
-}
 
+    @ArchTest
+    static final ArchRule applicationMustNotDependOnJakartaPersistence =
+            noClasses().that().resideInAPackage("..application..")
+                    .should().dependOnClassesThat().resideInAPackage("jakarta.persistence..");
+}

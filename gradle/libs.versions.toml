@@ -1,5 +1,5 @@
 [versions]
-java = "25"
+java = "23"
 springBoot = "4.1.2"
 springCloud = "2025.1.4"
 springDependencyManagement = "1.1.7"
@@ -21,6 +21,7 @@ spring-boot-starter-validation = { module = "org.springframework.boot:spring-boo
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+spring-boot-starter-amqp = { module = "org.springframework.boot:spring-boot-starter-amqp" }
 
 # Spring Cloud Gateway
 spring-cloud-starter-gateway = { module = "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux", version = "5.0.4" }
@@ -50,6 +51,7 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 testcontainers-mysql = { module = "org.testcontainers:mysql", version.ref = "testcontainers" }
+testcontainers-rabbitmq = { module = "org.testcontainers:rabbitmq", version.ref = "testcontainers" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }

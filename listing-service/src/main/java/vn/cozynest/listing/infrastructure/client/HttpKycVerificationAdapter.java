@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import vn.cozynest.common.resilience.ServiceCircuitBreaker;
 import vn.cozynest.listing.domain.port.KycVerificationPort;
 
 import java.time.Duration;
@@ -26,6 +27,7 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
     private final String internalServiceKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, CachedStatus> cache = new ConcurrentHashMap<>();
+    private final ServiceCircuitBreaker circuitBreaker = new ServiceCircuitBreaker(3, Duration.ofSeconds(30));
 
     public HttpKycVerificationAdapter(
             @Value("${services.identity.url:${IDENTITY_SERVICE_URL:http://localhost:8081}}") String identityServiceUrl,
@@ -67,23 +69,26 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
             return cached.status;
         }
 
-        // Inter-service call with fail-closed policy
-        try {
-            String traceId = org.slf4j.MDC.get("requestId");
-            var requestSpec = restClient.get()
-                    .uri("/internal/users/{id}/kyc-status", queryId)
-                    .header("X-Internal-Service-Key", internalServiceKey)
-                    .header(HttpHeaders.ACCEPT, "application/json");
+        // Inter-service call with fail-closed circuit breaker & bounded retry
+        return circuitBreaker.executeWithFallback(2, () -> {
+            try {
+                String traceId = org.slf4j.MDC.get("requestId");
+                var requestSpec = restClient.get()
+                        .uri("/internal/users/{id}/kyc-status", queryId)
+                        .header("X-Internal-Service-Key", internalServiceKey)
+                        .header(HttpHeaders.ACCEPT, "application/json");
 
-            if (traceId != null && !traceId.isBlank()) {
-                requestSpec = requestSpec.header("X-Request-ID", traceId);
-            }
+                if (traceId != null && !traceId.isBlank()) {
+                    requestSpec = requestSpec.header("X-Request-ID", traceId);
+                }
 
-            String json = requestSpec
-                    .retrieve()
-                    .body(String.class);
+                String json = requestSpec
+                        .retrieve()
+                        .body(String.class);
 
-            if (json != null && !json.isBlank()) {
+                if (json == null || json.isBlank()) {
+                    throw new IllegalStateException("Empty response from identity KYC endpoint");
+                }
                 JsonNode root = objectMapper.readTree(json);
                 JsonNode dataNode = root.has("data") ? root.get("data") : root;
                 String kycStatus = dataNode.has("kycStatus") ? dataNode.get("kycStatus").asText() : "NONE";
@@ -94,13 +99,11 @@ public class HttpKycVerificationAdapter implements KycVerificationPort {
                 KycVerificationStatus result = KycVerificationStatus.of(kycStatus, isApproved);
                 cache.put(queryId, new CachedStatus(result, Instant.now()));
                 return result;
+            } catch (Exception e) {
+                log.error("FAIL-CLOSED: Failed to verify KYC status from identity-service for user {}: {}", queryId, e.getMessage());
+                throw new IllegalStateException("Identity KYC lookup failed", e);
             }
-        } catch (Exception e) {
-            log.error("FAIL-CLOSED: Failed to verify KYC status from identity-service for user {}: {}", queryId, e.getMessage());
-        }
-
-        // Fail-closed default: if service unreachable, treat as not approved
-        return KycVerificationStatus.unverified("NONE");
+        }, () -> KycVerificationStatus.unverified("NONE"));
     }
 
     public void invalidateCache(String actorId) {

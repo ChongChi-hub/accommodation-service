@@ -28,8 +28,20 @@ management:
 
 springdoc:
   api-docs:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
     path: /api-docs
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
     path: /docs
+
+jwt:
+  jwks-uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}/.well-known/jwks.json
+  issuer: cozynest-identity
+  audience: cozynest-web
+  public-key: ${JWT_PUBLIC_KEY:}
+
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:false}
+
+spring.rabbitmq.listener.simple.auto-startup: ${COZYNEST_BROKER_ENABLED:false}

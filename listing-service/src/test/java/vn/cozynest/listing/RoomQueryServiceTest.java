@@ -8,16 +8,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import vn.cozynest.listing.application.dto.RoomDto;
 import vn.cozynest.listing.application.dto.RoomFilterParams;
 import vn.cozynest.listing.application.service.RoomQueryService;
+import vn.cozynest.listing.domain.model.DomainPage;
 import vn.cozynest.listing.domain.model.Province;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.model.RoomSearchQuery;
 import vn.cozynest.listing.domain.repository.AmenityRepository;
 import vn.cozynest.listing.domain.repository.ProvinceRepository;
 import vn.cozynest.listing.domain.repository.ReviewRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -25,6 +24,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,9 +48,6 @@ class RoomQueryServiceTest {
 
     @org.mockito.Spy
     private vn.cozynest.listing.application.service.RoomDtoMapper roomDtoMapper = new vn.cozynest.listing.application.service.RoomDtoMapper();
-
-    @org.mockito.Spy
-    private vn.cozynest.listing.application.service.RoomSpecificationBuilder roomSpecificationBuilder = new vn.cozynest.listing.application.service.RoomSpecificationBuilder();
 
     @InjectMocks
     private RoomQueryService roomQueryService;
@@ -92,12 +90,10 @@ class RoomQueryServiceTest {
                 .status("PUBLISHED")
                 .build();
 
-        when(provinceRepository.findBySlugIgnoreCase("ha-noi"))
-                .thenReturn(Optional.of(Province.builder().code("HN").name("Hà Nội").slug("ha-noi").build()));
         when(provinceRepository.findAll())
                 .thenReturn(List.of(Province.builder().code("HN").name("Hà Nội").slug("ha-noi").build()));
-        when(roomRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(mockRoom)));
+        when(roomRepository.searchRooms(any(RoomSearchQuery.class), eq(0), eq(50), eq("priceAsc")))
+                .thenReturn(new DomainPage<>(List.of(mockRoom), 0, 50, 1L));
 
         RoomFilterParams params = RoomFilterParams.builder()
                 .q("cau giay %_")
@@ -113,7 +109,12 @@ class RoomQueryServiceTest {
 
         assertEquals(1, page.getTotalElements());
         assertEquals("Hà Nội", page.getContent().get(0).getProvinceName());
-        verify(roomRepository).findAll(any(Specification.class), argThat((Pageable p) -> p.getPageSize() == 50));
+        verify(roomRepository).searchRooms(
+                argThat((RoomSearchQuery q) -> "ha-noi".equals(q.getProvinceSlug()) && "can-ho".equals(q.getRoomTypeCode())),
+                eq(0),
+                eq(50),
+                eq("priceAsc")
+        );
     }
 }
 

@@ -56,4 +56,14 @@ public class LandlordContextResolver {
         }
         return auth.getName();
     }
+
+    public boolean isPrivilegedModeratorOrAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(a -> a.getAuthority().toUpperCase())
+                .anyMatch(r -> r.equals("ROLE_ADMIN") || r.equals("ROLE_MODERATOR"));
+    }
 }

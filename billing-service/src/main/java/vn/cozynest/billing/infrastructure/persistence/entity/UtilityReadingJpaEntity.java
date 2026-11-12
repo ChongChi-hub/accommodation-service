@@ -48,5 +48,31 @@ public class UtilityReadingJpaEntity {
 
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
+
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String status = "ACTIVE";
+
+    @Column(name = "pricing_model", nullable = false, length = 30)
+    @Builder.Default
+    private String pricingModel = "EVN_TIERED";
+
+    @Column(name = "tariff_config_json", columnDefinition = "TEXT")
+    private String tariffConfigJson;
+
+    @Column(name = "electricity_cost", nullable = false)
+    @Builder.Default
+    private long electricityCost = 0L;
+
+    @Column(name = "water_cost", nullable = false)
+    @Builder.Default
+    private long waterCost = 0L;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int revision = 1;
+
+    @Column(name = "edit_reason", length = 255)
+    private String editReason;
 }
 

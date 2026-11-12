@@ -12,7 +12,6 @@ import vn.cozynest.listing.application.dto.RoomFacetsDto;
 import vn.cozynest.listing.application.service.HomeDataService;
 import vn.cozynest.listing.application.service.RoomDtoMapper;
 import vn.cozynest.listing.application.service.RoomQueryService;
-import vn.cozynest.listing.application.service.RoomSpecificationBuilder;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.repository.CmsArticleRepository;
 import vn.cozynest.listing.domain.repository.ProvinceRepository;
@@ -45,9 +44,6 @@ class SeedHomeCoverageTest {
 
     @Spy
     private RoomDtoMapper roomDtoMapper = new RoomDtoMapper();
-
-    @Spy
-    private RoomSpecificationBuilder roomSpecificationBuilder = new RoomSpecificationBuilder();
 
     @InjectMocks
     private RoomQueryService roomQueryService;

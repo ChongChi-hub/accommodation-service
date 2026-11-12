@@ -26,6 +26,9 @@ public class SagaInstanceJpaEntity {
     @Column(name = "current_step", nullable = false, length = 50)
     private String currentStep;
 
+    @Column(name = "compensation_step", length = 100)
+    private String compensationStep;
+
     @Column(name = "payload_json", nullable = false, columnDefinition = "JSON")
     private String payloadJson;
 
@@ -35,6 +38,11 @@ public class SagaInstanceJpaEntity {
     @Column(nullable = false, length = 30)
     @Builder.Default
     private String status = "IN_PROGRESS";
+
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private long version = 0L;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

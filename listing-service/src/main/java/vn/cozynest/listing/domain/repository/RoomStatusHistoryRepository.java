@@ -1,14 +1,10 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 import vn.cozynest.listing.domain.model.RoomStatusHistory;
 
 import java.util.List;
 
-@Repository
-public interface RoomStatusHistoryRepository extends JpaRepository<RoomStatusHistory, Long> {
-
+public interface RoomStatusHistoryRepository {
     List<RoomStatusHistory> findByRoomIdOrderByCreatedAtDesc(Long roomId);
+    RoomStatusHistory save(RoomStatusHistory history);
 }
-

@@ -37,16 +37,20 @@ public class PropertyOwnershipController {
             throw new NoSuchElementException("Khong the xac dinh danh tinh chu tro tu phien dang nhap.");
         }
         PropertyOwnershipDocument doc = ownershipService.uploadDocument(
-                landlordId, roomId, request.getDocType(), request.getFileUrl(), request.getRawNumber()
+                landlordId, roomId, request.getDocType(), request.getFileUrl(), request.getRawNumber(), request.getExpiresAt()
         );
         return ResponseEntity.ok(ApiResponse.success(doc));
     }
 
     @GetMapping("/api/v1/landlord/rooms/{roomId}/ownership-docs")
-    @PreAuthorize("hasRole('LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN', 'MODERATOR')")
     @Operation(summary = "Xem danh sach giay to so huu cua phong")
     public ResponseEntity<ApiResponse<List<PropertyOwnershipDocument>>> getDocs(@PathVariable Long roomId) {
-        return ResponseEntity.ok(ApiResponse.success(ownershipService.getDocumentsByRoom(roomId)));
+        Long landlordId = contextResolver.getCurrentLandlordId();
+        boolean privileged = contextResolver.isPrivilegedModeratorOrAdmin();
+        String actorId = contextResolver.getCurrentActorId();
+        return ResponseEntity.ok(ApiResponse.success(
+                ownershipService.getDocumentsByRoom(roomId, landlordId, privileged, actorId)));
     }
 
     @PostMapping("/api/v1/admin/rooms/ownership-docs/{docId}/review")

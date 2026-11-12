@@ -3,12 +3,12 @@ package vn.cozynest.listing.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.*;
+import vn.cozynest.listing.domain.model.DomainPage;
 import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.model.RoomImage;
 import vn.cozynest.listing.domain.repository.RoomImageRepository;
@@ -37,8 +37,10 @@ public class LandlordRoomQueryService {
     }
 
     public Page<LandlordRoomListItemDto> getLandlordRooms(Long landlordId, String search, String status, String sortParam, int page, int size) {
-        Sort sort = parseSort(sortParam);
-        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), sort);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, size);
+        String sortField = parseSortField(sortParam);
+        boolean ascending = parseSortAscending(sortParam);
 
         String searchKeyword = null;
         if (search != null && !search.trim().isEmpty()) {
@@ -49,16 +51,16 @@ public class LandlordRoomQueryService {
                 ? status.trim().toUpperCase()
                 : null;
 
-        Page<Room> roomsPage = roomRepository.findLandlordRooms(landlordId, filterStatus, searchKeyword, pageable);
+        DomainPage<Room> roomsPage = roomRepository.findLandlordRooms(landlordId, filterStatus, searchKeyword, safePage, safeSize, sortField, ascending);
 
         // Preload cover images for this page to prevent N+1 queries
-        List<Long> roomIds = roomsPage.getContent().stream().map(Room::getId).toList();
+        List<Long> roomIds = roomsPage.content().stream().map(Room::getId).toList();
         Map<Long, RoomImage> coverMap = new HashMap<>();
         for (Long rId : roomIds) {
             roomImageRepository.findByRoomIdAndCoverTrue(rId).ifPresent(img -> coverMap.put(rId, img));
         }
 
-        return roomsPage.map(room -> {
+        List<LandlordRoomListItemDto> items = roomsPage.content().stream().map(room -> {
             RoomImage cover = coverMap.get(room.getId());
             String thumbUrl = (cover != null && cover.getThumbKey() != null)
                     ? "/api/v1/media/" + cover.getThumbKey()
@@ -97,7 +99,8 @@ public class LandlordRoomQueryService {
                     .ratingAvg(room.getRatingAvg() != null ? room.getRatingAvg() : 0.0)
                     .reviewCount(room.getReviewCount() != null ? room.getReviewCount() : 0)
                     .build();
-        });
+        }).toList();
+        return new PageImpl<>(items, PageRequest.of(safePage, safeSize), roomsPage.totalElements());
     }
 
     public RoomSummaryDto getRoomSummary(Long landlordId) {
@@ -191,22 +194,25 @@ public class LandlordRoomQueryService {
                 .build();
     }
 
-    private Sort parseSort(String sortParam) {
+    private String parseSortField(String sortParam) {
         if (sortParam == null || sortParam.trim().isEmpty()) {
-            return Sort.by(Sort.Direction.DESC, "createdAt");
+            return "createdAt";
+        }
+        String field = sortParam.split(",")[0].trim();
+        return switch (field) {
+            case "price" -> "price";
+            case "views", "viewCount" -> "viewCount";
+            case "publishedAt" -> "publishedAt";
+            default -> "createdAt";
+        };
+    }
+
+    private boolean parseSortAscending(String sortParam) {
+        if (sortParam == null || sortParam.trim().isEmpty()) {
+            return false;
         }
         String[] parts = sortParam.split(",");
-        String field = parts[0].trim();
-        Sort.Direction direction = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim()))
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        return switch (field) {
-            case "price" -> Sort.by(direction, "price");
-            case "views", "viewCount" -> Sort.by(direction, "viewCount");
-            case "publishedAt" -> Sort.by(direction, "publishedAt");
-            default -> Sort.by(direction, "createdAt");
-        };
+        return parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim());
     }
 }
 

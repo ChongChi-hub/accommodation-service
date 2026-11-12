@@ -40,6 +40,16 @@ public class RiskProfileJpaEntity {
     @Column(name = "freeze_reason", length = 255)
     private String freezeReason;
 
+    @Column(name = "bank_changed_at")
+    private Instant bankChangedAt;
+
+    @Column(name = "is_blacklisted", nullable = false)
+    @Builder.Default
+    private boolean blacklisted = false;
+
+    @Column(name = "blacklist_reason", length = 255)
+    private String blacklistReason;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }

@@ -25,6 +25,7 @@ public class RentalRequest {
     private String contractId;
     private String idempotencyKey;
     private Instant holdingExpiresAt;
+    private long version;
     private Instant createdAt;
     private Instant updatedAt;
 

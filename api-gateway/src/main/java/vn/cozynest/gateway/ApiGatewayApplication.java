@@ -72,6 +72,12 @@ public class ApiGatewayApplication {
     @Bean
     public RouteLocator routeLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+                .route("identity-avatars", r -> r
+                        .order(-1)
+                        .path("/uploads/avatars/**", "/api/v1/media/avatars/**")
+                        .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
+                                .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
+                        .uri(identityServiceUrl))
                 .route("identity-service", r -> r
                         .path("/api/v1/auth/**", "/api/v1/users/**", "/api/v1/me", "/api/v1/me/**", "/api/v1/landlord/kyc/**", "/api/v1/moderation/kyc/**", "/api/v1/admin/kyc/**", "/.well-known/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
@@ -84,7 +90,7 @@ public class ApiGatewayApplication {
                         .uri(bookingServiceUrl))
                 .route("listing-service", r -> r
                         .order(10)
-                        .path("/api/v1/rooms", "/api/v1/rooms/**", "/api/v1/room-types", "/api/v1/room-types/**", "/api/v1/locations/**", "/api/v1/amenities/**", "/api/v1/reviews/**", "/api/v1/bookmarks/**", "/api/v1/upload/**", "/uploads/**", "/api/v1/landlord/**", "/api/v1/media/**", "/api/v1/cms/**")
+                        .path("/api/v1/rooms", "/api/v1/rooms/**", "/api/v1/hosts", "/api/v1/hosts/**", "/api/v1/room-types", "/api/v1/room-types/**", "/api/v1/locations/**", "/api/v1/amenities/**", "/api/v1/reviews/**", "/api/v1/bookmarks/**", "/api/v1/upload/**", "/uploads/**", "/api/v1/landlord/**", "/api/v1/media/**", "/api/v1/cms/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(listingServiceUrl))

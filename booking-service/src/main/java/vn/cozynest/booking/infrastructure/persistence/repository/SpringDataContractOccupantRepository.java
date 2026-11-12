@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface SpringDataContractOccupantRepository extends JpaRepository<ContractOccupantJpaEntity, String> {
     List<ContractOccupantJpaEntity> findByContractId(String contractId);
+
+    List<ContractOccupantJpaEntity> findByContractIdAndRemovedAtIsNull(String contractId);
 }
 

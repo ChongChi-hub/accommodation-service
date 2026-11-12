@@ -24,8 +24,11 @@ public final class ContractPersistenceMapper {
                 .paymentDueDay(entity.getPaymentDueDay())
                 .terms(entity.getTerms())
                 .documentHash(entity.getDocumentHash())
+                .verificationCode(entity.getVerificationCode())
                 .pdfUrl(entity.getPdfUrl())
+                .pdfObjectKey(entity.getPdfObjectKey())
                 .status(entity.getStatus())
+                .expiryNotifiedDays(entity.getExpiryNotifiedDays())
                 .holdingExpiresAt(entity.getHoldingExpiresAt())
                 .tenantSignedAt(entity.getTenantSignedAt())
                 .landlordSignedAt(entity.getLandlordSignedAt())
@@ -52,8 +55,11 @@ public final class ContractPersistenceMapper {
                 .paymentDueDay(domain.getPaymentDueDay())
                 .terms(domain.getTerms())
                 .documentHash(domain.getDocumentHash())
+                .verificationCode(domain.getVerificationCode())
                 .pdfUrl(domain.getPdfUrl())
+                .pdfObjectKey(domain.getPdfObjectKey())
                 .status(domain.getStatus())
+                .expiryNotifiedDays(domain.getExpiryNotifiedDays())
                 .holdingExpiresAt(domain.getHoldingExpiresAt())
                 .tenantSignedAt(domain.getTenantSignedAt())
                 .landlordSignedAt(domain.getLandlordSignedAt())
@@ -77,6 +83,7 @@ public final class ContractPersistenceMapper {
                 .contractId(entity.getContractId())
                 .idempotencyKey(entity.getIdempotencyKey())
                 .holdingExpiresAt(entity.getHoldingExpiresAt())
+                .version(entity.getVersion())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -96,6 +103,7 @@ public final class ContractPersistenceMapper {
                 .contractId(domain.getContractId())
                 .idempotencyKey(domain.getIdempotencyKey())
                 .holdingExpiresAt(domain.getHoldingExpiresAt())
+                .version(domain.getVersion())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();
@@ -150,6 +158,9 @@ public final class ContractPersistenceMapper {
                 .relationship(entity.getRelationship())
                 .primaryTenant(entity.isPrimaryTenant())
                 .createdAt(entity.getCreatedAt())
+                .removedAt(entity.getRemovedAt())
+                .removedBy(entity.getRemovedBy())
+                .removalReason(entity.getRemovalReason())
                 .build();
     }
 
@@ -164,6 +175,9 @@ public final class ContractPersistenceMapper {
                 .relationship(domain.getRelationship())
                 .primaryTenant(domain.isPrimaryTenant())
                 .createdAt(domain.getCreatedAt())
+                .removedAt(domain.getRemovedAt())
+                .removedBy(domain.getRemovedBy())
+                .removalReason(domain.getRemovalReason())
                 .build();
     }
 
@@ -174,9 +188,11 @@ public final class ContractPersistenceMapper {
                 .sagaId(entity.getSagaId())
                 .sagaType(entity.getSagaType())
                 .currentStep(entity.getCurrentStep())
+                .compensationStep(entity.getCompensationStep())
                 .payloadJson(entity.getPayloadJson())
                 .errorMessage(entity.getErrorMessage())
                 .status(entity.getStatus())
+                .version(entity.getVersion())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -189,9 +205,11 @@ public final class ContractPersistenceMapper {
                 .sagaId(domain.getSagaId())
                 .sagaType(domain.getSagaType())
                 .currentStep(domain.getCurrentStep())
+                .compensationStep(domain.getCompensationStep())
                 .payloadJson(domain.getPayloadJson())
                 .errorMessage(domain.getErrorMessage())
                 .status(domain.getStatus())
+                .version(domain.getVersion())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())
                 .build();

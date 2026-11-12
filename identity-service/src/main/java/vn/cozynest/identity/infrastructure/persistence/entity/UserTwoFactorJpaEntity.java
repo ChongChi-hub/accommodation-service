@@ -27,6 +27,13 @@ public class UserTwoFactorJpaEntity {
     @Builder.Default
     private boolean enabled = false;
 
+    @Column(name = "failed_attempts", nullable = false)
+    @Builder.Default
+    private int failedAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Column(name = "backup_codes_json", columnDefinition = "JSON")
     private String backupCodesJson;
 

@@ -3,6 +3,7 @@ package vn.cozynest.identity.infrastructure.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import vn.cozynest.identity.domain.port.FacePrivateStoragePort;
@@ -14,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 
 @Component
+@Profile("!prod & !production")
 public class FaceSeedDataLoader {
 
     private static final Logger log = LoggerFactory.getLogger(FaceSeedDataLoader.class);

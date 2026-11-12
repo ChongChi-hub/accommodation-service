@@ -1,6 +1,9 @@
 package vn.cozynest.billing.interfaces.rest;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,16 +22,35 @@ public class BillingDashboardController {
     }
 
     @GetMapping("/landlord")
-    public ResponseEntity<ApiResponse<DashboardStatsDto.LandlordFinancialStats>> getLandlordStats(Authentication authentication) {
-        String landlordId = (String) authentication.getPrincipal();
-        DashboardStatsDto.LandlordFinancialStats stats = dashboardService.getLandlordFinancialStats(landlordId);
-        return ResponseEntity.ok(ApiResponse.success(stats));
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<DashboardStatsDto.LandlordFinancialStats>> getLandlordStats(Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success(
+                dashboardService.getLandlordFinancialStats((String) auth.getPrincipal())));
+    }
+
+    @GetMapping("/tenant")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
+    public ResponseEntity<ApiResponse<DashboardStatsDto.TenantFinancialStats>> getTenantStats(Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success(
+                dashboardService.getTenantFinancialStats((String) auth.getPrincipal())));
     }
 
     @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DashboardStatsDto.AdminFinancialStats>> getAdminStats() {
-        DashboardStatsDto.AdminFinancialStats stats = dashboardService.getAdminFinancialStats();
-        return ResponseEntity.ok(ApiResponse.success(stats));
+        return ResponseEntity.ok(ApiResponse.success(dashboardService.getAdminFinancialStats()));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<byte[]> exportStatsCsv(Authentication auth) {
+        boolean isLandlord = auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_LANDLORD".equalsIgnoreCase(a.getAuthority()));
+        String scope = isLandlord ? "LANDLORD" : "TENANT";
+        byte[] csv = dashboardService.exportInvoicesCsvWithBom(scope, (String) auth.getPrincipal());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"financial-stats.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csv);
     }
 }
-

@@ -51,7 +51,7 @@ public class UserProfileUseCase {
         this.mediaBaseUrl = mediaBaseUrl.replaceAll("/+$", "");
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public UserProfileResponse getProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IdentityDomainException("Khong tim thay nguoi dung", "ERR_AUTH_USER_NOT_FOUND"));

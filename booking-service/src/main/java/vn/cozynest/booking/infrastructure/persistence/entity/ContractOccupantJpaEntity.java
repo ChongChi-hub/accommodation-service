@@ -36,6 +36,15 @@ public class ContractOccupantJpaEntity {
     @Builder.Default
     private boolean primaryTenant = false;
 
+    @Column(name = "removed_at")
+    private Instant removedAt;
+
+    @Column(name = "removed_by", length = 36)
+    private String removedBy;
+
+    @Column(name = "removal_reason", length = 255)
+    private String removalReason;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 }

@@ -59,6 +59,22 @@ public class NotificationApplicationService implements NotificationQueryPort {
         return notificationRepository.markAllAsReadByUserId(userId, LocalDateTime.now());
     }
 
+    @Transactional
+    public NotificationDto createInternalNotification(String userId, String type, String title, String content, String linkUrl) {
+        Notification notification = Notification.builder()
+                .id(java.util.UUID.randomUUID().toString())
+                .userId(userId)
+                .type(type != null && !type.isBlank() ? type : "SYSTEM")
+                .title(title)
+                .content(content)
+                .read(false)
+                .linkUrl(linkUrl)
+                .createdAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                .build();
+        Notification saved = notificationRepository.save(notification);
+        return NotificationDto.fromDomain(saved);
+    }
+
     @Transactional(readOnly = true)
     public long getUnreadChatCount(String userId) {
         return chatSummaryRepository.countUnreadMessagesForUser(userId);

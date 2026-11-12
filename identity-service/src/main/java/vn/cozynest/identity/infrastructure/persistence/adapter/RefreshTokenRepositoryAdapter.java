@@ -1,6 +1,7 @@
 package vn.cozynest.identity.infrastructure.persistence.adapter;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.identity.domain.model.RefreshToken;
 import vn.cozynest.identity.domain.repository.RefreshTokenRepository;
@@ -31,7 +32,7 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void revokeAllByUserId(String userId) {
         springDataRefreshTokenRepository.revokeAllByUserId(userId, Instant.now());
     }

@@ -2,12 +2,13 @@ package vn.cozynest.listing.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.listing.application.dto.*;
+import vn.cozynest.listing.domain.model.DomainPage;
 import vn.cozynest.listing.domain.model.Province;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.model.RoomSearchQuery;
 import vn.cozynest.listing.domain.repository.*;
 
 import java.math.BigDecimal;
@@ -23,35 +24,50 @@ public class RoomQueryService {
     private final AmenityRepository amenityRepository;
     private final ReviewRepository reviewRepository;
     private final ProvinceRepository provinceRepository;
+    private final RoomTypeRepository roomTypeRepository;
     private final LandlordSnapshotRepository landlordSnapshotRepository;
     private final RoomDtoMapper roomDtoMapper;
-    private final RoomSpecificationBuilder roomSpecificationBuilder;
 
     public Page<RoomDto> searchRooms(RoomFilterParams params) {
         int page = params.getPage() != null && params.getPage() >= 0 ? params.getPage() : 0;
         int requestedSize = params.getSize() != null && params.getSize() > 0 ? params.getSize() : 12;
         int size = Math.min(requestedSize, 50);
 
-        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         String sortKey = params.getEffectiveSort();
-        if ("price_asc".equalsIgnoreCase(sortKey) || "priceAsc".equalsIgnoreCase(sortKey)) {
-            sort = Sort.by(Sort.Order.asc("price"), Sort.Order.desc("id"));
-        } else if ("price_desc".equalsIgnoreCase(sortKey) || "priceDesc".equalsIgnoreCase(sortKey)) {
-            sort = Sort.by(Sort.Order.desc("price"), Sort.Order.desc("id"));
-        } else if ("areaAsc".equalsIgnoreCase(sortKey)) {
-            sort = Sort.by(Sort.Order.asc("area"), Sort.Order.desc("id"));
-        } else if ("areaDesc".equalsIgnoreCase(sortKey)) {
-            sort = Sort.by(Sort.Order.desc("area"), Sort.Order.desc("id"));
-        } else if ("rating".equalsIgnoreCase(sortKey)) {
-            sort = Sort.by(Sort.Order.desc("ratingAvg"), Sort.Order.desc("id"));
-        }
+        RoomSearchQuery query = RoomSearchQuery.builder()
+                .q(params.getQ())
+                .provinceId(params.getProvinceId())
+                .provinceCode(params.getProvinceCode())
+                .provinceSlug(params.getProvinceSlug())
+                .wardIds(params.getWardIds())
+                .wardCode(params.getWardCode())
+                .districtCode(params.getDistrictCode())
+                .roomTypeIds(params.getRoomTypeIds())
+                .roomTypeCode(params.getRoomTypeCode())
+                .priceMin(params.getEffectivePriceMin())
+                .priceMax(params.getEffectivePriceMax())
+                .priceUnit(params.getPriceUnit())
+                .areaMin(params.getEffectiveAreaMin())
+                .areaMax(params.getEffectiveAreaMax())
+                .bedrooms(params.getBedrooms())
+                .occupants(params.getOccupants())
+                .minAvailableSpots(params.getMinAvailableSpots())
+                .amenityIds(params.getAmenityIds())
+                .amenityMode(params.getAmenityMode())
+                .allowPets(params.getAllowPets())
+                .allowCooking(params.getAllowCooking())
+                .genderPreference(params.getGenderPreference())
+                .furnishing(params.getFurnishing())
+                .includeUnavailable(params.getIncludeUnavailable())
+                .sort(sortKey)
+                .page(page)
+                .size(size)
+                .build();
 
-        Specification<Room> spec = roomSpecificationBuilder.buildSpecification(params, provinceRepository);
         Map<String, String> provinceNames = buildProvinceNameMap();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Page<Room> roomPage = roomRepository.findAll(spec, pageable);
-        List<Long> landlordIds = roomPage.getContent().stream()
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
+        DomainPage<Room> roomPage = roomRepository.searchRooms(query, page, size, sortKey);
+        List<Long> landlordIds = roomPage.content().stream()
                 .map(Room::getLandlordId)
                 .filter(Objects::nonNull)
                 .distinct()
@@ -65,7 +81,10 @@ public class RoomQueryService {
                                 (a, b) -> a
                         ));
 
-        return roomPage.map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap));
+        List<RoomDto> dtos = roomPage.content().stream()
+                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap, roomTypeNames))
+                .toList();
+        return new PageImpl<>(dtos, PageRequest.of(page, size), roomPage.totalElements());
     }
 
     public RoomDto getRoomById(Long id) {
@@ -81,18 +100,20 @@ public class RoomQueryService {
                     .orElse(false);
         }
         Map<Long, Boolean> map = (room.getLandlordId() != null) ? Map.of(room.getLandlordId(), isVerified) : Map.of();
-        return roomDtoMapper.toDto(room, buildProvinceNameMap(), map);
+        return roomDtoMapper.toDto(room, buildProvinceNameMap(), map, buildRoomTypeNameMap());
     }
 
     public List<RoomDto> getRecommendations(Long roomId) {
         Room current = roomRepository.findById(roomId).orElse(null);
         String provinceCode = current != null ? current.getProvinceCode() : "HN";
-        List<Room> recs = roomRepository.findRecommendations(provinceCode, roomId, PageRequest.of(0, 4));
+        List<Room> recs = roomRepository.findRecommendations(provinceCode, roomId, 4);
         List<Long> landlordIds = recs.stream().map(Room::getLandlordId).filter(Objects::nonNull).distinct().toList();
         Map<Long, Boolean> verifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null) ? Map.of() :
                 landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
                         .collect(Collectors.toMap(vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId, vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified, (a, b) -> a));
-        return recs.stream().map(r -> roomDtoMapper.toDto(r, Map.of(), verifiedMap)).collect(Collectors.toList());
+        Map<String, String> provinceNames = buildProvinceNameMap();
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
+        return recs.stream().map(r -> roomDtoMapper.toDto(r, provinceNames, verifiedMap, roomTypeNames)).collect(Collectors.toList());
     }
 
     public List<AmenityDto> getAllAmenities() {
@@ -186,10 +207,41 @@ public class RoomQueryService {
                 .build();
     }
 
+    public List<RoomDto> toRoomDtos(List<Room> rooms) {
+        if (rooms == null || rooms.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> provinceNames = buildProvinceNameMap();
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
+        List<Long> landlordIds = rooms.stream()
+                .map(Room::getLandlordId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Boolean> landlordVerifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null)
+                ? Map.of()
+                : landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
+                        .collect(Collectors.toMap(
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId,
+                                vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified,
+                                (a, b) -> a
+                        ));
+        return rooms.stream()
+                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap, roomTypeNames))
+                .toList();
+    }
+
     private Map<String, String> buildProvinceNameMap() {
         if (provinceRepository == null) return Map.of();
         return provinceRepository.findAll().stream()
                 .filter(p -> p.getCode() != null && p.getName() != null)
                 .collect(Collectors.toMap(Province::getCode, Province::getName, (a, b) -> a));
+    }
+
+    private Map<String, String> buildRoomTypeNameMap() {
+        if (roomTypeRepository == null) return Map.of();
+        return roomTypeRepository.findAll().stream()
+                .filter(rt -> rt.getCode() != null && rt.getName() != null)
+                .collect(Collectors.toMap(rt -> rt.getCode().toUpperCase(Locale.ROOT), vn.cozynest.listing.domain.model.RoomType::getName, (a, b) -> a));
     }
 }

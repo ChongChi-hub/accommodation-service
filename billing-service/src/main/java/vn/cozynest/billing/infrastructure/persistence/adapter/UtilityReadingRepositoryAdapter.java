@@ -7,6 +7,7 @@ import vn.cozynest.billing.infrastructure.persistence.entity.UtilityReadingJpaEn
 import vn.cozynest.billing.infrastructure.persistence.repository.SpringDataUtilityReadingRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -19,9 +20,7 @@ public class UtilityReadingRepositoryAdapter implements UtilityReadingRepository
 
     @Override
     public UtilityReading save(UtilityReading domain) {
-        UtilityReadingJpaEntity entity = toEntity(domain);
-        UtilityReadingJpaEntity saved = repository.save(entity);
-        return toDomain(saved);
+        return toDomain(repository.save(toEntity(domain)));
     }
 
     @Override
@@ -39,36 +38,30 @@ public class UtilityReadingRepositoryAdapter implements UtilityReadingRepository
         return repository.findFirstByContractIdOrderByPeriodMonthDesc(contractId).map(this::toDomain);
     }
 
-    private UtilityReading toDomain(UtilityReadingJpaEntity entity) {
+    @Override
+    public List<UtilityReading> findByContractId(String contractId) {
+        return repository.findByContractIdOrderByPeriodMonthDesc(contractId).stream().map(this::toDomain).toList();
+    }
+
+    private UtilityReading toDomain(UtilityReadingJpaEntity e) {
         return new UtilityReading(
-                entity.getId(),
-                entity.getContractId(),
-                entity.getRoomId(),
-                entity.getPeriodMonth(),
-                entity.getElectricPrev(),
-                entity.getElectricCurr(),
-                entity.getWaterPrev(),
-                entity.getWaterCurr(),
-                entity.getReadingImagesJson(),
-                entity.getRecordedBy(),
-                entity.getRecordedAt()
+                e.getId(), e.getContractId(), e.getRoomId(), e.getPeriodMonth(),
+                e.getElectricPrev(), e.getElectricCurr(), e.getWaterPrev(), e.getWaterCurr(),
+                e.getReadingImagesJson(), e.getRecordedBy(), e.getRecordedAt(),
+                e.getStatus(), e.getPricingModel(), e.getTariffConfigJson(),
+                e.getElectricityCost(), e.getWaterCost(), e.getRevision(), e.getEditReason()
         );
     }
 
-    private UtilityReadingJpaEntity toEntity(UtilityReading domain) {
+    private UtilityReadingJpaEntity toEntity(UtilityReading d) {
         return UtilityReadingJpaEntity.builder()
-                .id(domain.getId())
-                .contractId(domain.getContractId())
-                .roomId(domain.getRoomId())
-                .periodMonth(domain.getPeriodMonth())
-                .electricPrev(domain.getElectricPrev())
-                .electricCurr(domain.getElectricCurr())
-                .waterPrev(domain.getWaterPrev())
-                .waterCurr(domain.getWaterCurr())
-                .readingImagesJson(domain.getReadingImagesJson())
-                .recordedBy(domain.getRecordedBy())
-                .recordedAt(domain.getRecordedAt())
+                .id(d.getId()).contractId(d.getContractId()).roomId(d.getRoomId())
+                .periodMonth(d.getPeriodMonth()).electricPrev(d.getElectricPrev()).electricCurr(d.getElectricCurr())
+                .waterPrev(d.getWaterPrev()).waterCurr(d.getWaterCurr())
+                .readingImagesJson(d.getReadingImagesJson()).recordedBy(d.getRecordedBy())
+                .recordedAt(d.getRecordedAt()).status(d.getStatus()).pricingModel(d.getPricingModel())
+                .tariffConfigJson(d.getTariffConfigJson()).electricityCost(d.getElectricityCost())
+                .waterCost(d.getWaterCost()).revision(d.getRevision()).editReason(d.getEditReason())
                 .build();
     }
 }
-

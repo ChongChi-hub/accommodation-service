@@ -1,12 +1,11 @@
 package vn.cozynest.listing.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import vn.cozynest.listing.domain.model.Banner;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
-public interface BannerRepository extends JpaRepository<Banner, Long> {
+public interface BannerRepository {
     List<Banner> findByActiveTrueOrderBySortOrderAsc();
+    List<Banner> findAll();
+    Banner save(Banner banner);
 }
-

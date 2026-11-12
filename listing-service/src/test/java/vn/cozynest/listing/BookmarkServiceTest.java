@@ -129,16 +129,18 @@ class BookmarkServiceTest {
     }
 
     @Test
-    @DisplayName("6. Lấy danh sách bookmark của người dùng đúng thứ tự")
+    @DisplayName("6. Lấy danh sách bookmark của người dùng theo batch (không N+1) đúng thứ tự")
     void shouldGetMyBookmarks() {
         String userId = "u-tenant-01";
         when(bookmarkRepository.findRoomIdsByUserId(userId)).thenReturn(List.of(101L, 102L));
 
+        Room room1 = Room.builder().id(101L).title("Phòng 101").status("AVAILABLE").publicationStatus("PUBLISHED").build();
+        Room room2 = Room.builder().id(102L).title("Phòng 102").status("AVAILABLE").publicationStatus("PUBLISHED").build();
         RoomDto dto1 = RoomDto.builder().id(101L).title("Phòng 101").build();
         RoomDto dto2 = RoomDto.builder().id(102L).title("Phòng 102").build();
 
-        when(roomQueryService.getRoomById(101L)).thenReturn(dto1);
-        when(roomQueryService.getRoomById(102L)).thenReturn(dto2);
+        when(roomRepository.findAllByIdIn(List.of(101L, 102L))).thenReturn(List.of(room2, room1));
+        when(roomQueryService.toRoomDtos(anyList())).thenReturn(List.of(dto2, dto1));
 
         List<RoomDto> list = bookmarkService.getMyBookmarks(userId);
 
@@ -147,6 +149,22 @@ class BookmarkServiceTest {
         assertThat(list.get(0).getIsBookmarked()).isTrue();
         assertThat(list.get(1).getId()).isEqualTo(102L);
         assertThat(list.get(1).getIsBookmarked()).isTrue();
+        verify(roomQueryService, never()).getRoomById(anyLong());
+        verify(roomRepository, times(1)).findAllByIdIn(List.of(101L, 102L));
+    }
+
+    @Test
+    @DisplayName("7. Từ chối lưu thêm khi đạt giới hạn tối đa 200 phòng")
+    void shouldRejectWhenBookmarkLimitReached() {
+        String userId = "u-tenant-01";
+        Long roomId = 301L;
+        Room room = Room.builder().id(roomId).bookmarkCount(0).build();
+        when(roomRepository.findById(roomId)).thenReturn(Optional.of(room));
+        when(bookmarkRepository.existsByUserIdAndRoomId(userId, roomId)).thenReturn(false);
+        when(bookmarkRepository.countByUserId(userId)).thenReturn(200L);
+
+        assertThrows(ResponseStatusException.class, () -> bookmarkService.addBookmark(userId, roomId));
+        verify(bookmarkRepository, never()).save(any());
     }
 }
 

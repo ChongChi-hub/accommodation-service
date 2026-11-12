@@ -59,6 +59,21 @@ public interface SpringDataViewingAppointmentRepository
             @Param("excludeId") String excludeId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT a FROM ViewingAppointmentJpaEntity a
+        WHERE a.landlordId = :landlordId
+          AND a.status = vn.cozynest.booking.domain.model.AppointmentStatus.PENDING
+          AND a.scheduledStart < :end
+          AND a.scheduledEnd > :start
+        ORDER BY a.id ASC
+    """)
+    List<ViewingAppointmentJpaEntity> findOverlappingPendingForUpdate(
+            @Param("landlordId") String landlordId,
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
+
     @Query("""
         SELECT a FROM ViewingAppointmentJpaEntity a
         WHERE a.status = vn.cozynest.booking.domain.model.AppointmentStatus.PENDING
@@ -99,6 +114,20 @@ public interface SpringDataViewingAppointmentRepository
             @Param("landlordId") String landlordId,
             @Param("start") Instant start,
             @Param("end") Instant end
+    );
+
+    @Query("""
+        SELECT COUNT(a) FROM ViewingAppointmentJpaEntity a
+        WHERE a.roomId = :roomId
+          AND a.status IN (
+              vn.cozynest.booking.domain.model.AppointmentStatus.PENDING,
+              vn.cozynest.booking.domain.model.AppointmentStatus.CONFIRMED
+          )
+          AND a.scheduledEnd >= :now
+    """)
+    long countActiveAppointmentsByRoomId(
+            @Param("roomId") String roomId,
+            @Param("now") Instant now
     );
 }
 

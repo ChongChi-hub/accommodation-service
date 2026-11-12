@@ -36,43 +36,78 @@ public class PaymentIntent {
 
     public static PaymentIntent create(String paymentCode, String payerId, String orderType,
                                        String orderId, long amount, String qrUrl, long ttlMinutes) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("So tien thanh toan phai lon hon 0");
+        }
         return new PaymentIntent(
-                UUID.randomUUID().toString(),
-                paymentCode,
-                payerId,
-                orderType,
-                orderId,
-                amount,
-                0L,
-                qrUrl,
-                "PENDING",
-                Instant.now().plusSeconds(ttlMinutes * 60),
-                Instant.now(),
-                Instant.now()
-        );
+                UUID.randomUUID().toString(), paymentCode, payerId, orderType, orderId,
+                amount, 0L, qrUrl, "PENDING",
+                Instant.now().plusSeconds(ttlMinutes * 60), Instant.now(), Instant.now());
+    }
+
+    public PaymentOutcome recordGatewayPayment(long actualAmount, Instant now) {
+        if (actualAmount <= 0) {
+            throw new IllegalArgumentException("So tien nhan tu webhook phai lon hon 0");
+        }
+        if ("PAID".equals(this.status) || "OVERPAID".equals(this.status)) {
+            return PaymentOutcome.IDEMPOTENT_ALREADY_PAID;
+        }
+        if ("CANCELLED".equals(this.status)) {
+            this.status = "MISMATCH";
+            this.updatedAt = now;
+            return PaymentOutcome.LATE_AFTER_CANCEL;
+        }
+        if ("EXPIRED".equals(this.status) || now.isAfter(this.expiresAt)) {
+            this.status = "EXPIRED";
+            this.paidAmount += actualAmount;
+            this.updatedAt = now;
+            return PaymentOutcome.LATE_EXPIRED;
+        }
+        this.paidAmount += actualAmount;
+        this.updatedAt = now;
+        if (this.paidAmount < this.amount) {
+            this.status = "PARTIAL_PAID";
+            return PaymentOutcome.UNDERPAID;
+        }
+        if (this.paidAmount > this.amount) {
+            this.status = "OVERPAID";
+            return PaymentOutcome.OVERPAID;
+        }
+        this.status = "PAID";
+        return PaymentOutcome.SETTLED_EXACT;
     }
 
     public void markPaid(long actualAmount) {
-        if ("PAID".equals(this.status)) {
-            return; // Idempotent
+        PaymentOutcome outcome = recordGatewayPayment(actualAmount, Instant.now());
+        if (outcome == PaymentOutcome.LATE_EXPIRED || outcome == PaymentOutcome.LATE_AFTER_CANCEL) {
+            throw new IllegalStateException("Giao dich thanh toan da het han hoac da bi huy");
         }
-        if (Instant.now().isAfter(this.expiresAt)) {
+    }
+
+    public boolean markExpiredIfPast(Instant now) {
+        if ("PENDING".equals(this.status) && now.isAfter(this.expiresAt)) {
             this.status = "EXPIRED";
-            this.updatedAt = Instant.now();
-            throw new IllegalStateException("Giao dich thanh toan da het han");
+            this.updatedAt = now;
+            return true;
         }
-        this.paidAmount = actualAmount;
-        if (actualAmount < this.amount) {
-            this.status = "MISMATCH";
-        } else {
-            this.status = "PAID";
-        }
-        this.updatedAt = Instant.now();
+        return false;
     }
 
     public void cancel() {
+        if ("PAID".equals(this.status) || "OVERPAID".equals(this.status)) {
+            throw new IllegalStateException("Khong the huy giao dich da thanh toan");
+        }
         this.status = "CANCELLED";
         this.updatedAt = Instant.now();
+    }
+
+    public enum PaymentOutcome {
+        SETTLED_EXACT,
+        UNDERPAID,
+        OVERPAID,
+        LATE_EXPIRED,
+        LATE_AFTER_CANCEL,
+        IDEMPOTENT_ALREADY_PAID
     }
 
     public String getId() { return id; }
@@ -88,4 +123,3 @@ public class PaymentIntent {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
-

@@ -1,7 +1,7 @@
 package vn.cozynest.listing.domain.service;
 
-import vn.cozynest.listing.application.dto.RoomFilterParams;
 import vn.cozynest.listing.domain.exception.ValidationException;
+import vn.cozynest.listing.domain.model.RoomSearchQuery;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -9,15 +9,15 @@ import java.util.List;
 
 public class RoomSearchCriteriaValidator {
 
-    public static void validate(RoomFilterParams params) {
+    public static void validate(RoomSearchQuery params) {
         List<ValidationException.FieldError> errors = new ArrayList<>();
 
         if (params.getQ() != null && params.getQ().trim().length() > 100) {
             errors.add(new ValidationException.FieldError("q", "Từ khóa tìm kiếm không được vượt quá 100 ký tự"));
         }
 
-        BigDecimal priceMin = params.getEffectivePriceMin();
-        BigDecimal priceMax = params.getEffectivePriceMax();
+        BigDecimal priceMin = params.getPriceMin();
+        BigDecimal priceMax = params.getPriceMax();
 
         if (priceMin != null && priceMin.compareTo(BigDecimal.ZERO) < 0) {
             errors.add(new ValidationException.FieldError("priceMin", "Giá tối thiểu không được là số âm"));
@@ -29,8 +29,8 @@ public class RoomSearchCriteriaValidator {
             errors.add(new ValidationException.FieldError("priceMin", "priceMin không được lớn hơn priceMax"));
         }
 
-        Double areaMin = params.getEffectiveAreaMin();
-        Double areaMax = params.getEffectiveAreaMax();
+        Double areaMin = params.getAreaMin();
+        Double areaMax = params.getAreaMax();
 
         if (areaMin != null && areaMin < 0) {
             errors.add(new ValidationException.FieldError("areaMin", "Diện tích tối thiểu không được là số âm"));
@@ -54,4 +54,3 @@ public class RoomSearchCriteriaValidator {
         }
     }
 }
-

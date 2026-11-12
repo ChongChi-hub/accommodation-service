@@ -47,5 +47,20 @@ public class RentalRequestRepositoryAdapter implements RentalRequestRepository {
     public List<RentalRequest> findByRoomId(String roomId) {
         return repository.findByRoomId(roomId).stream().map(ContractPersistenceMapper::toDomain).toList();
     }
+
+    @Override
+    public long countByTenantIdCreatedAfter(String tenantId, java.time.Instant since) {
+        return repository.countByTenantIdCreatedAfter(tenantId, since);
+    }
+
+    @Override
+    public boolean existsActiveRequest(String roomId, String tenantId) {
+        return repository.existsActiveRequest(roomId, tenantId);
+    }
+
+    @Override
+    public List<RentalRequest> findExpiredApprovedHoldings(java.time.Instant now) {
+        return repository.findExpiredApprovedHoldings(now).stream().map(ContractPersistenceMapper::toDomain).toList();
+    }
 }
 

@@ -88,5 +88,20 @@ class ProductionProfileNoSeedSecurityTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("Verify Seed loaders and prod profile prohibit demo loading and Swagger in prod")
+    void testProdProfileAndSeedLoaderGuards() throws IOException {
+        Path prodYmlPath = findDir("src/main/resources/application-prod.yml");
+        assertThat(Files.exists(prodYmlPath)).isTrue();
+        String prodContent = Files.readString(prodYmlPath);
+        assertThat(prodContent).contains("enabled: false");
+        assertThat(prodContent).contains("locations: classpath:db/migration");
+
+        Path faceLoader = findDir("src/main/java/vn/cozynest/identity/infrastructure/storage/FaceSeedDataLoader.java");
+        assertThat(Files.readString(faceLoader)).contains("@Profile");
+        Path assetLoader = findDir("src/main/java/vn/cozynest/identity/infrastructure/storage/IdentitySeedAssetLoader.java");
+        assertThat(Files.readString(assetLoader)).contains("@Profile");
+    }
 }
 

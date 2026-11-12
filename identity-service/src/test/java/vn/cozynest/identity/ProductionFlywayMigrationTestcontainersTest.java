@@ -30,7 +30,7 @@ class ProductionFlywayMigrationTestcontainersTest {
             return;
         }
 
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.0")
+        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName("cozynest_identity_test")
                 .withUsername("testuser")
                 .withPassword("testpass")) {

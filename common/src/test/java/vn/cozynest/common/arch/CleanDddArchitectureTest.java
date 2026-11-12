@@ -1,40 +1,29 @@
 package vn.cozynest.common.arch;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.junit.AnalyzeClasses;
+import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+@AnalyzeClasses(packages = "vn.cozynest.common", importOptions = {ImportOption.DoNotIncludeTests.class})
 public class CleanDddArchitectureTest {
 
-    @Test
-    @DisplayName("Domain layer must not depend on application, infrastructure, or interfaces layers")
-    void domainMustNotDependOnOuterLayers() {
-        JavaClasses classes = new ClassFileImporter().importPackages("vn.cozynest");
+    @ArchTest
+    static final ArchRule commonMustNotDependOnJpa =
+            noClasses().that().resideInAPackage("vn.cozynest.common..")
+                    .should().dependOnClassesThat().resideInAPackage("jakarta.persistence..");
 
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("..domain..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage("..application..", "..infrastructure..", "..interfaces..", "org.springframework..", "jakarta.persistence..");
-
-        rule.allowEmptyShould(true).check(classes);
-    }
-
-    @Test
-    @DisplayName("Application layer must not depend on infrastructure or interfaces layers")
-    void applicationMustNotDependOnInfrastructureOrInterfaces() {
-        JavaClasses classes = new ClassFileImporter().importPackages("vn.cozynest");
-
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("..application..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage("..infrastructure..", "..interfaces..");
-
-        rule.allowEmptyShould(true).check(classes);
-    }
+    @ArchTest
+    static final ArchRule commonMustNotDependOnMicroservices =
+            noClasses().that().resideInAPackage("vn.cozynest.common..")
+                    .should().dependOnClassesThat().resideInAnyPackage(
+                            "vn.cozynest.identity..",
+                            "vn.cozynest.listing..",
+                            "vn.cozynest.booking..",
+                            "vn.cozynest.billing..",
+                            "vn.cozynest.communication..",
+                            "vn.cozynest.admin.."
+                    );
 }
-

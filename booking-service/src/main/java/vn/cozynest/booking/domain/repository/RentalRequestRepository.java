@@ -2,6 +2,7 @@ package vn.cozynest.booking.domain.repository;
 
 import vn.cozynest.booking.domain.model.RentalRequest;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,5 +13,8 @@ public interface RentalRequestRepository {
     List<RentalRequest> findByTenantId(String tenantId);
     List<RentalRequest> findByLandlordId(String landlordId);
     List<RentalRequest> findByRoomId(String roomId);
+    long countByTenantIdCreatedAfter(String tenantId, Instant since);
+    boolean existsActiveRequest(String roomId, String tenantId);
+    List<RentalRequest> findExpiredApprovedHoldings(Instant now);
 }
 

@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
                         .requestMatchers("/api/v1/rooms", "/api/v1/rooms/**").permitAll()
+                        .requestMatchers("/api/v1/hosts", "/api/v1/hosts/**").permitAll()
                         .requestMatchers("/api/v1/room-types", "/api/v1/room-types/**").permitAll()
                         .requestMatchers("/api/v1/locations/**").permitAll()
                         .requestMatchers("/api/v1/amenities/**").permitAll()
@@ -56,7 +57,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/*/status").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/actuator/**", "/v3/api-docs/**", "/docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/v3/api-docs/**", "/docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Landlord protected endpoints
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .anyRequest().authenticated()

@@ -12,9 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.identity.application.dto.*;
-import vn.cozynest.identity.application.port.TokenProviderPort;
 import vn.cozynest.identity.application.usecase.*;
-import vn.cozynest.identity.domain.repository.RefreshTokenRepository;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -23,39 +21,36 @@ public class AuthController {
     private final RegisterUseCase registerUseCase;
     private final LoginUseCase loginUseCase;
     private final RefreshTokenUseCase refreshTokenUseCase;
+    private final LogoutUseCase logoutUseCase;
     private final GetProfileUseCase getProfileUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
     private final VerifyEmailUseCase verifyEmailUseCase;
     private final GoogleAuthUseCase googleAuthUseCase;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final TokenProviderPort tokenProvider;
     private final boolean isProduction;
 
     public AuthController(RegisterUseCase registerUseCase,
                           LoginUseCase loginUseCase,
                           RefreshTokenUseCase refreshTokenUseCase,
+                          LogoutUseCase logoutUseCase,
                           GetProfileUseCase getProfileUseCase,
                           ChangePasswordUseCase changePasswordUseCase,
                           ForgotPasswordUseCase forgotPasswordUseCase,
                           ResetPasswordUseCase resetPasswordUseCase,
                           VerifyEmailUseCase verifyEmailUseCase,
                           GoogleAuthUseCase googleAuthUseCase,
-                          RefreshTokenRepository refreshTokenRepository,
-                          TokenProviderPort tokenProvider,
                           @Value("${spring.profiles.active:dev}") String activeProfile) {
         this.registerUseCase = registerUseCase;
         this.loginUseCase = loginUseCase;
         this.refreshTokenUseCase = refreshTokenUseCase;
+        this.logoutUseCase = logoutUseCase;
         this.getProfileUseCase = getProfileUseCase;
         this.changePasswordUseCase = changePasswordUseCase;
         this.forgotPasswordUseCase = forgotPasswordUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.googleAuthUseCase = googleAuthUseCase;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.tokenProvider = tokenProvider;
         this.isProduction = activeProfile != null && (activeProfile.contains("prod") || activeProfile.contains("production"));
     }
 
@@ -127,20 +122,15 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestBody(required = false) RefreshTokenCommand command,
             Authentication authentication,
             HttpServletResponse response
     ) {
-        if (command != null && command.getRefreshToken() != null && !command.getRefreshToken().isBlank()) {
-            String tokenHash = tokenProvider.hashToken(command.getRefreshToken());
-            refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(t -> {
-                t.revoke("LOGOUT");
-                refreshTokenRepository.save(t);
-            });
-        } else if (authentication != null && authentication.getPrincipal() instanceof String userId) {
-            refreshTokenRepository.revokeAllByUserId(userId);
-        }
+        String userId = (authentication != null && authentication.getPrincipal() instanceof String principal) ? principal : null;
+        String rawRefreshToken = command != null ? command.getRefreshToken() : null;
+        logoutUseCase.execute(userId, rawRefreshToken);
 
         ResponseCookie cookie = ResponseCookie.from("cozynest_token", "")
                 .httpOnly(true)

@@ -21,7 +21,12 @@ public class AppointmentEventOutboxRepositoryAdapter implements AppointmentEvent
 
     @Override
     public AppointmentEventOutbox save(AppointmentEventOutbox outbox) {
-        AppointmentEventOutboxJpaEntity entity = AppointmentPersistenceMapper.toEntity(outbox);
+        AppointmentEventOutboxJpaEntity entity = (outbox.getId() != null)
+                ? repository.findByEventId(outbox.getId()).orElseGet(() -> AppointmentPersistenceMapper.toEntity(outbox))
+                : AppointmentPersistenceMapper.toEntity(outbox);
+        if (outbox.getProcessedAt() != null) {
+            entity.setPublishedAt(outbox.getProcessedAt());
+        }
         AppointmentEventOutboxJpaEntity saved = repository.save(entity);
         return AppointmentPersistenceMapper.toDomain(saved);
     }

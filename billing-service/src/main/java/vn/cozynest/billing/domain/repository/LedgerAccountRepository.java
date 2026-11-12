@@ -10,7 +10,9 @@ public interface LedgerAccountRepository {
     LedgerAccount save(LedgerAccount account);
     Optional<LedgerAccount> findById(String id);
     Optional<LedgerAccount> findByAccountNumber(String accountNumber);
+    default Optional<LedgerAccount> findByAccountNumberForUpdate(String accountNumber) {
+        return findByAccountNumber(accountNumber);
+    }
     Optional<LedgerAccount> findByOwnerIdAndType(String ownerId, AccountType type);
     List<LedgerAccount> findAll();
 }
-

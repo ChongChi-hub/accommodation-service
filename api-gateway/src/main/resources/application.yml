@@ -26,6 +26,16 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       routes:
+        - id: identity-avatars
+          uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+          order: -1
+          predicates:
+            - name: Path
+              args:
+                patterns:
+                  - /uploads/avatars/**
+                  - /api/v1/media/avatars/**
+
         - id: identity-auth
           uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}
           predicates:
@@ -64,6 +74,8 @@ spring:
                 patterns:
                   - /api/v1/rooms
                   - /api/v1/rooms/**
+                  - /api/v1/hosts
+                  - /api/v1/hosts/**
                   - /api/v1/room-types
                   - /api/v1/room-types/**
                   - /api/v1/locations/**
@@ -74,6 +86,7 @@ spring:
                   - /uploads/**
                   - /api/v1/landlord/**
                   - /api/v1/media/**
+                  - /api/v1/storage/private/**
                   - /api/v1/cms/**
 
         - id: billing-service

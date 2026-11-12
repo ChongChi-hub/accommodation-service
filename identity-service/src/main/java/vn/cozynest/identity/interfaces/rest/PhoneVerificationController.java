@@ -2,12 +2,15 @@ package vn.cozynest.identity.interfaces.rest;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
+import vn.cozynest.identity.application.dto.ChangePhoneRequest;
 import vn.cozynest.identity.application.dto.SendPhoneOtpRequest;
 import vn.cozynest.identity.application.dto.VerifyPhoneOtpRequest;
 import vn.cozynest.identity.application.service.PhoneVerificationService;
+import vn.cozynest.identity.domain.service.PhoneNumberPolicy;
 
 import java.util.Map;
 
@@ -22,8 +25,8 @@ public class PhoneVerificationController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<Map<String, String>>> sendOtp(@Valid @RequestBody SendPhoneOtpRequest request) {
-        phoneVerificationService.sendOtp(request.phoneNumber());
-        return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi tới số điện thoại", Map.of("phone", request.phoneNumber())));
+        String maskedPhone = phoneVerificationService.sendOtp(request.phoneNumber());
+        return ResponseEntity.ok(ApiResponse.success("Mã OTP đã được gửi tới số điện thoại", Map.of("phone", maskedPhone)));
     }
 
     @PostMapping("/verify-otp")
@@ -35,6 +38,18 @@ public class PhoneVerificationController {
         if (!verified) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Mã OTP không chính xác hoặc đã hết hạn", "ERR_AUTH_INVALID_OTP"));
         }
-        return ResponseEntity.ok(ApiResponse.success("Xác thực số điện thoại thành công", Map.of("verified", true, "phone", request.phoneNumber())));
+        String masked = PhoneNumberPolicy.mask(PhoneNumberPolicy.normalizeAndValidate(request.phoneNumber()));
+        return ResponseEntity.ok(ApiResponse.success("Xác thực số điện thoại thành công", Map.of("verified", true, "phone", masked)));
+    }
+
+    @PostMapping("/change")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> changePhone(
+            @Valid @RequestBody ChangePhoneRequest request,
+            Authentication authentication) {
+        String userId = authentication != null ? (String) authentication.getPrincipal() : null;
+        String maskedNew = phoneVerificationService.changePhoneNumber(
+                userId, request.newPhoneNumber(), request.newOtp(), request.oldOtp());
+        return ResponseEntity.ok(ApiResponse.success("Đổi số điện thoại thành công", Map.of("verified", true, "phone", maskedNew)));
     }
 }
