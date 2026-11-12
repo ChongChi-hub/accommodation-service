@@ -55,6 +55,8 @@ public class PayoutRequestRepositoryAdapter implements PayoutRequestRepository {
                 entity.getAccountHolder(),
                 entity.getStatus(),
                 entity.isOtpVerified(),
+                entity.isRequiresMakerChecker(),
+                entity.getMakerCheckerRequestId(),
                 entity.getFailureReason(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
@@ -72,6 +74,8 @@ public class PayoutRequestRepositoryAdapter implements PayoutRequestRepository {
                 .accountHolder(domain.getAccountHolder())
                 .status(domain.getStatus())
                 .otpVerified(domain.isOtpVerified())
+                .requiresMakerChecker(domain.isRequiresMakerChecker())
+                .makerCheckerRequestId(domain.getMakerCheckerRequestId())
                 .failureReason(domain.getFailureReason())
                 .createdAt(domain.getCreatedAt())
                 .updatedAt(domain.getUpdatedAt())

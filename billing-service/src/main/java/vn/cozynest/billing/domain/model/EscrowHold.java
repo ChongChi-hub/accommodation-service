@@ -12,6 +12,9 @@ public class EscrowHold {
     private final long amount;
     private String status;
     private final boolean sandboxMode;
+    private boolean tenantConfirmedMoveIn;
+    private boolean landlordConfirmedMoveIn;
+    private Instant moveInConfirmedAt;
     private final Instant inspectionEndsAt;
     private String disputeReason;
     private Instant releasedAt;
@@ -21,6 +24,15 @@ public class EscrowHold {
     public EscrowHold(String id, String contractId, String tenantId, String landlordId, long amount,
                       String status, boolean sandboxMode, Instant inspectionEndsAt, String disputeReason,
                       Instant releasedAt, Instant createdAt, Instant updatedAt) {
+        this(id, contractId, tenantId, landlordId, amount, status, sandboxMode,
+                false, false, null, inspectionEndsAt, disputeReason, releasedAt, createdAt, updatedAt);
+    }
+
+    public EscrowHold(String id, String contractId, String tenantId, String landlordId, long amount,
+                      String status, boolean sandboxMode, boolean tenantConfirmedMoveIn,
+                      boolean landlordConfirmedMoveIn, Instant moveInConfirmedAt,
+                      Instant inspectionEndsAt, String disputeReason,
+                      Instant releasedAt, Instant createdAt, Instant updatedAt) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.contractId = contractId;
         this.tenantId = tenantId;
@@ -28,6 +40,9 @@ public class EscrowHold {
         this.amount = amount;
         this.status = status != null ? status : "HELD";
         this.sandboxMode = sandboxMode;
+        this.tenantConfirmedMoveIn = tenantConfirmedMoveIn;
+        this.landlordConfirmedMoveIn = landlordConfirmedMoveIn;
+        this.moveInConfirmedAt = moveInConfirmedAt;
         this.inspectionEndsAt = inspectionEndsAt != null ? inspectionEndsAt : Instant.now().plus(72, ChronoUnit.HOURS);
         this.disputeReason = disputeReason;
         this.releasedAt = releasedAt;
@@ -87,6 +102,26 @@ public class EscrowHold {
         this.updatedAt = this.releasedAt;
     }
 
+    public void confirmMoveIn(boolean isTenant, boolean isLandlord) {
+        if ("DISPUTE_FROZEN".equals(status) || "RELEASED".equals(status) || "REFUNDED".equals(status)) {
+            throw new IllegalStateException("Trang thai ky quy khong cho phep xac nhan nhan phong: " + status);
+        }
+        if (isTenant) {
+            this.tenantConfirmedMoveIn = true;
+        }
+        if (isLandlord) {
+            this.landlordConfirmedMoveIn = true;
+        }
+        if (this.tenantConfirmedMoveIn && this.landlordConfirmedMoveIn && this.moveInConfirmedAt == null) {
+            this.moveInConfirmedAt = Instant.now();
+        }
+        this.updatedAt = Instant.now();
+    }
+
+    public boolean isBothConfirmedMoveIn() {
+        return tenantConfirmedMoveIn && landlordConfirmedMoveIn;
+    }
+
     public String getId() { return id; }
     public String getContractId() { return contractId; }
     public String getTenantId() { return tenantId; }
@@ -94,6 +129,9 @@ public class EscrowHold {
     public long getAmount() { return amount; }
     public String getStatus() { return status; }
     public boolean isSandboxMode() { return sandboxMode; }
+    public boolean isTenantConfirmedMoveIn() { return tenantConfirmedMoveIn; }
+    public boolean isLandlordConfirmedMoveIn() { return landlordConfirmedMoveIn; }
+    public Instant getMoveInConfirmedAt() { return moveInConfirmedAt; }
     public Instant getInspectionEndsAt() { return inspectionEndsAt; }
     public String getDisputeReason() { return disputeReason; }
     public Instant getReleasedAt() { return releasedAt; }

@@ -26,7 +26,8 @@ public class RefundRequestRepositoryAdapter implements RefundRequestRepository {
                 .accountHolder(r.getAccountHolder()).otpVerified(r.isOtpVerified())
                 .kycNameMatched(r.isKycNameMatched()).requiresMakerChecker(r.isRequiresMakerChecker())
                 .makerCheckerRequestId(r.getMakerCheckerRequestId()).status(r.getStatus())
-                .reason(r.getReason()).createdAt(r.getCreatedAt()).updatedAt(r.getUpdatedAt())
+                .reason(r.getReason()).failureReason(r.getFailureReason()).retryCount(r.getRetryCount())
+                .createdAt(r.getCreatedAt()).updatedAt(r.getUpdatedAt())
                 .build());
         return toDomain(saved);
     }
@@ -46,6 +47,16 @@ public class RefundRequestRepositoryAdapter implements RefundRequestRepository {
         return repository.findAll().stream().map(this::toDomain).toList();
     }
 
+    @Override
+    public List<RefundRequest> findByPaymentIntentId(String paymentIntentId) {
+        return repository.findByPaymentIntentId(paymentIntentId).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<RefundRequest> findByStatus(String status) {
+        return repository.findByStatusOrderByUpdatedAtDesc(status).stream().map(this::toDomain).toList();
+    }
+
     private RefundRequest toDomain(RefundRequestJpaEntity e) {
         return RefundRequest.builder()
                 .id(e.getId()).refundCode(e.getRefundCode()).paymentIntentId(e.getPaymentIntentId())
@@ -54,7 +65,8 @@ public class RefundRequestRepositoryAdapter implements RefundRequestRepository {
                 .accountHolder(e.getAccountHolder()).otpVerified(e.isOtpVerified())
                 .kycNameMatched(e.isKycNameMatched()).requiresMakerChecker(e.isRequiresMakerChecker())
                 .makerCheckerRequestId(e.getMakerCheckerRequestId()).status(e.getStatus())
-                .reason(e.getReason()).createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .reason(e.getReason()).failureReason(e.getFailureReason()).retryCount(e.getRetryCount())
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
                 .build();
     }
 }

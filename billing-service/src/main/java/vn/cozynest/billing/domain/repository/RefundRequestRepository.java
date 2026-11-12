@@ -10,5 +10,7 @@ public interface RefundRequestRepository {
     Optional<RefundRequest> findById(String id);
     List<RefundRequest> findByTenantId(String tenantId);
     List<RefundRequest> findAll();
+    default List<RefundRequest> findByPaymentIntentId(String paymentIntentId) { return List.of(); }
+    default List<RefundRequest> findByStatus(String status) { return List.of(); }
 }
 

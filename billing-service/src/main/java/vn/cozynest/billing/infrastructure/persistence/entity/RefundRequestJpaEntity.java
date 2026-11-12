@@ -62,6 +62,13 @@ public class RefundRequestJpaEntity {
     @Column(nullable = false, length = 255)
     private String reason;
 
+    @Column(name = "failure_reason", length = 500)
+    private String failureReason;
+
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private int retryCount = 0;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

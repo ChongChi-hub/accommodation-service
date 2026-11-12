@@ -29,6 +29,8 @@ public class RefundRequest {
     private String makerCheckerRequestId;
     private String status;
     private String reason;
+    private String failureReason;
+    private int retryCount;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -64,8 +66,21 @@ public class RefundRequest {
                 .build();
     }
 
+    public void markProcessing() {
+        this.status = "PROCESSING";
+        this.updatedAt = Instant.now();
+    }
+
     public void markCompleted() {
         this.status = "COMPLETED";
+        this.failureReason = null;
+        this.updatedAt = Instant.now();
+    }
+
+    public void markFailed(String reason) {
+        this.status = "FAILED";
+        this.failureReason = reason;
+        this.retryCount++;
         this.updatedAt = Instant.now();
     }
 

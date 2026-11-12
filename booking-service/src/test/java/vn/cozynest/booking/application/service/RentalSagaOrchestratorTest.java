@@ -1,6 +1,8 @@
 package vn.cozynest.booking.application.service;
 
 import org.junit.jupiter.api.Test;
+import vn.cozynest.booking.application.port.BookingBillingPort;
+import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.domain.model.*;
 import vn.cozynest.booking.domain.repository.*;
 
@@ -10,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -48,6 +51,34 @@ class RentalSagaOrchestratorTest {
         assertThat(draft.getStatus()).isEqualTo("TERMINATED");
         assertThat(req.getStatus()).isEqualTo("CANCELLED");
         verify(outboxRepo).save(any(AppointmentEventOutbox.class));
+    }
+
+    @Test
+    void shouldRouteToManualInterventionOnCompensationFailureAndRejectOutOfOrderTransition() {
+        SagaInstanceRepository sagaRepo = mock(SagaInstanceRepository.class);
+        ContractRepository contractRepo = mock(ContractRepository.class);
+        RentalRequestRepository reqRepo = mock(RentalRequestRepository.class);
+        AppointmentEventOutboxRepository outboxRepo = mock(AppointmentEventOutboxRepository.class);
+        BookingListingPort listingPort = mock(BookingListingPort.class);
+        BookingBillingPort billingPort = mock(BookingBillingPort.class);
+
+        RentalSagaOrchestrator orchestrator = new RentalSagaOrchestrator(
+                sagaRepo, contractRepo, reqRepo, outboxRepo, Optional.of(listingPort), Optional.of(billingPort));
+
+        SagaInstance saga = SagaInstance.start("saga-err", "RENTAL_FLOW", "LOCK_HOLDING",
+                "{\"contractId\":\"c-err\",\"roomId\":\"r-err\"}");
+        when(sagaRepo.findBySagaId("saga-err")).thenReturn(Optional.of(saga));
+        when(sagaRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        doThrow(new RuntimeException("Billing gateway timeout"))
+                .when(billingPort).refundOrReleaseOnCompensation("c-err", "Cancel");
+
+        SagaInstance manual = orchestrator.compensateSaga("saga-err", "Cancel");
+        assertThat(manual.getStatus()).isEqualTo("MANUAL_INTERVENTION_REQUIRED");
+        assertThatThrownBy(() -> orchestrator.advanceToDepositPaid("saga-err", null))
+                .isInstanceOf(IllegalStateException.class);
+
+        SagaInstance resolved = orchestrator.resolveManualSaga("saga-err", "Manually refunded by ops");
+        assertThat(resolved.getStatus()).isEqualTo("COMPENSATED");
     }
 }
 

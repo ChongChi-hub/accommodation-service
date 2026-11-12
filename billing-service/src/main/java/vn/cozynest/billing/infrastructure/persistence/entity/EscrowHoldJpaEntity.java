@@ -35,6 +35,15 @@ public class EscrowHoldJpaEntity {
     @Column(name = "sandbox_mode", nullable = false)
     private boolean sandboxMode;
 
+    @Column(name = "tenant_confirmed_move_in", nullable = false)
+    private boolean tenantConfirmedMoveIn;
+
+    @Column(name = "landlord_confirmed_move_in", nullable = false)
+    private boolean landlordConfirmedMoveIn;
+
+    @Column(name = "move_in_confirmed_at")
+    private Instant moveInConfirmedAt;
+
     @Column(name = "inspection_ends_at", nullable = false)
     private Instant inspectionEndsAt;
 

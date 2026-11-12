@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import vn.cozynest.billing.application.dto.*;
+import vn.cozynest.billing.application.port.BillingContractPort;
 import vn.cozynest.billing.domain.model.*;
 import vn.cozynest.billing.domain.repository.*;
 import vn.cozynest.billing.domain.service.UtilityTariffCalculator;
@@ -146,6 +147,77 @@ class MeterInvoiceRefundDashboardTest {
         String csv = new String(dash.exportInvoicesCsvWithBom("TENANT", "t1"), StandardCharsets.UTF_8);
         assertThat(csv).startsWith("\uFEFF");
         assertThat(csv).contains("\"'=CMD()\"");
+    }
+
+    @Test
+    void shouldEnforceMeterIdorGenerateContractInvoiceWithCreditsLateFeePdfAndAnalytics() {
+        UtilityReadingRepository readingRepo = mock(UtilityReadingRepository.class);
+        UtilityReadingAuditRepository auditRepo = mock(UtilityReadingAuditRepository.class);
+        InvoiceRepository invRepo = mock(InvoiceRepository.class);
+        BillingContractPort contractPort = mock(BillingContractPort.class);
+        BillingEventOutboxRepository outboxRepo = mock(BillingEventOutboxRepository.class);
+        LedgerService ledger = mock(LedgerService.class);
+
+        LocalDate period = LocalDate.of(2026, 12, 1);
+        when(contractPort.getContractSnapshot("c-wave4", period))
+                .thenReturn(Optional.of(new BillingContractPort.ContractSnapshot(
+                        "c-wave4", "r-4", "t-owner", "l-owner", "ACTIVE", 4_200_000L, 5)));
+        when(contractPort.getContractSnapshot("c-wave4", LocalDate.now()))
+                .thenReturn(Optional.of(new BillingContractPort.ContractSnapshot(
+                        "c-wave4", "r-4", "t-owner", "l-owner", "ACTIVE", 4_200_000L, 5)));
+
+        UtilityReadingService meterService = new UtilityReadingService(
+                readingRepo, auditRepo, invRepo, new ObjectMapper(), Optional.of(contractPort));
+        UtilityReading sampleReading = new UtilityReading(
+                "ur-4", "c-wave4", "r-4", period,
+                BigDecimal.ZERO, new BigDecimal("50"), BigDecimal.ZERO, new BigDecimal("2"),
+                "[]", "l-owner", null, "ACTIVE", "FIXED", "{}", 150_000L, 40_000L, 1, null);
+        when(readingRepo.findById("ur-4")).thenReturn(Optional.of(sampleReading));
+        when(readingRepo.findByContractIdAndPeriodMonth("c-wave4", period)).thenReturn(Optional.of(sampleReading));
+        when(readingRepo.findByContractId("c-wave4")).thenReturn(List.of(sampleReading));
+
+        assertThatThrownBy(() -> meterService.getReadingsForContract("c-wave4", "stranger", false))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> meterService.getAuditHistory("ur-4", "stranger", false))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(meterService.getReadingsForContract("c-wave4", "t-owner", false)).hasSize(1);
+
+        Invoice priorOverpaid = Invoice.create("INV-PRIOR", "c-wave4", null, "t-owner", "l-owner",
+                LocalDate.of(2026, 11, 1), 1_000_000L, 0L, 0L, 0L, 0L, LocalDate.of(2026, 11, 5));
+        priorOverpaid.recordPayment(1_200_000L);
+        assertThat(priorOverpaid.getOverpaymentCreditAmount()).isEqualTo(200_000L);
+
+        when(invRepo.findByContractId("c-wave4")).thenReturn(List.of(priorOverpaid));
+        when(invRepo.findByContractIdAndPeriodMonth("c-wave4", period)).thenReturn(List.of());
+        when(invRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        InvoiceService invService = new InvoiceService(
+                invRepo, ledger, Optional.of(contractPort), Optional.of(readingRepo),
+                Optional.of(outboxRepo), Optional.of(new InvoicePdfService()));
+        InvoiceDto.InvoiceResponse generated = invService.generateFromContract(
+                new InvoiceDto.GenerateFromContractCommand("c-wave4", period, 100_000L, 0L),
+                "l-owner", false);
+        // 4,200,000 rent + 150,000 elec + 40,000 water + 100,000 svc - 200,000 overpayment credit = 4,290,000
+        assertThat(generated.totalAmount()).isEqualTo(4_290_000L);
+        verify(outboxRepo, atLeastOnce()).save(argThat(e -> "INVOICE_GENERATED".equals(e.getEventType())));
+
+        Invoice stored = Invoice.create(generated.invoiceCode(), "c-wave4", "ur-4", "t-owner", "l-owner",
+                period, 4_290_000L, 0L, 0L, 0L, 0L, period.plusDays(4));
+        when(invRepo.findById(stored.getId())).thenReturn(Optional.of(stored));
+        InvoiceDto.InvoiceResponse withFee = invService.applyLateFee(stored.getId(), 100_000L, "l-owner", false);
+        assertThat(withFee.totalAmount()).isEqualTo(4_390_000L);
+
+        byte[] receipt = invService.generateReceiptPdf(stored.getId(), "t-owner", false);
+        assertThat(new String(receipt, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
+
+        BillingDashboardService dash = new BillingDashboardService(ledger, invRepo, mock(JournalEntryRepository.class));
+        when(invRepo.findByLandlordId("l-owner")).thenReturn(List.of(stored));
+        DashboardStatsDto.LandlordAnalyticsResponse analytics = dash.getLandlordAnalytics("l-owner", 3, 4);
+        assertThat(analytics.occupancyRatePercent()).isEqualTo(75.0);
+        assertThat(analytics.revenueSeries()).hasSize(1);
+        assertThatThrownBy(() -> dash.exportInvoicesCsvWithBom(
+                "LANDLORD", "l-owner", LocalDate.of(2025, 1, 1), LocalDate.of(2026, 6, 1)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }
 

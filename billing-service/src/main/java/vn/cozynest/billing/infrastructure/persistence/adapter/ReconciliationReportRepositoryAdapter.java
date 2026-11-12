@@ -44,8 +44,14 @@ public class ReconciliationReportRepositoryAdapter implements ReconciliationRepo
                 entity.getTotalGatewayTx(),
                 entity.getMatchedTx(),
                 entity.getMismatchedTx(),
+                entity.getMissingInternalTx(),
+                entity.getMissingProviderTx(),
                 entity.getStatus(),
                 entity.getSummaryNotes(),
+                entity.getSlaDueAt(),
+                entity.getAssignedTo(),
+                entity.getResolvedBy(),
+                entity.getResolvedAt(),
                 entity.getCreatedAt()
         );
     }
@@ -58,8 +64,14 @@ public class ReconciliationReportRepositoryAdapter implements ReconciliationRepo
                 .totalGatewayTx(domain.getTotalGatewayTx())
                 .matchedTx(domain.getMatchedTx())
                 .mismatchedTx(domain.getMismatchedTx())
+                .missingInternalTx(domain.getMissingInternalTx())
+                .missingProviderTx(domain.getMissingProviderTx())
                 .status(domain.getStatus())
                 .summaryNotes(domain.getSummaryNotes())
+                .slaDueAt(domain.getSlaDueAt())
+                .assignedTo(domain.getAssignedTo())
+                .resolvedBy(domain.getResolvedBy())
+                .resolvedAt(domain.getResolvedAt())
                 .createdAt(domain.getCreatedAt())
                 .build();
     }
