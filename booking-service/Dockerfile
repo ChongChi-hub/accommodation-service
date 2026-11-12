@@ -4,6 +4,7 @@ RUN apk add --no-cache curl tzdata \
     && cp /usr/share/zoneinfo/UTC /etc/localtime \
     && echo "UTC" > /etc/timezone
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN mkdir -p /app/storage/booking-private && chown -R appuser:appgroup /app
 COPY --chown=appuser:appgroup booking-service/build/libs/booking-service-*.jar app.jar
 USER appuser
 EXPOSE 8083

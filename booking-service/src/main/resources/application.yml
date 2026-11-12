@@ -39,3 +39,7 @@ jwt:
   issuer: cozynest-identity
   audience: cozynest-web
   public-key: ${JWT_PUBLIC_KEY:}
+
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:false}

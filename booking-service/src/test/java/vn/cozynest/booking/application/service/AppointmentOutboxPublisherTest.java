@@ -64,6 +64,20 @@ class AppointmentOutboxPublisherTest {
             int failedCount = scheduler.publishPendingEvents();
             assertThat(failedCount).isZero();
             verify(repo, never()).save(any());
+
+            // When RabbitMQ broker is enabled, publishes DomainEventEnvelope to cozynest.events
+            var rabbitTemplate = mock(org.springframework.amqp.rabbit.core.RabbitTemplate.class);
+            AppointmentOutboxPublisherScheduler brokerScheduler = new AppointmentOutboxPublisherScheduler(
+                    repo, adapter, java.util.Optional.of(rabbitTemplate), true
+            );
+            when(repo.findUnprocessed()).thenReturn(List.of(retryEvent));
+            int brokerCount = brokerScheduler.publishPendingEvents();
+            assertThat(brokerCount).isEqualTo(1);
+            verify(rabbitTemplate).convertAndSend(
+                    eq(vn.cozynest.common.events.EventTopology.EVENTS_EXCHANGE),
+                    eq("booking.appointment.confirmed"),
+                    anyString()
+            );
         } finally {
             server.stop(0);
         }

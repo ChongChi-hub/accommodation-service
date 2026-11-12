@@ -3,6 +3,7 @@ package vn.cozynest.booking.application.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import vn.cozynest.booking.application.dto.CreateRentalRequestDto;
+import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
 import vn.cozynest.booking.domain.model.RentalRequest;
@@ -80,6 +81,23 @@ class RentalRequestServiceTest {
         assertThat(count).isEqualTo(1);
         assertThat(expired.getStatus()).isEqualTo("CANCELLED");
         verify(outbox).save(any(AppointmentEventOutbox.class));
+    }
+
+    @Test
+    void shouldRejectRentalRequestWhenListingReportsOverCapacityOrUnavailable() {
+        BookingListingPort listingPort = mock(BookingListingPort.class);
+        RentalRequestService serviceWithListing = new RentalRequestService(
+                repo, identityPort, outbox, Optional.of(listingPort));
+        when(identityPort.isPhoneVerified("t1")).thenReturn(true);
+        when(repo.countByTenantIdCreatedAfter(eq("t1"), any())).thenReturn(0L);
+        when(repo.existsActiveRequest("r-full", "t1")).thenReturn(false);
+        when(listingPort.checkRoomAvailability("r-full", 5))
+                .thenReturn(new BookingListingPort.RoomAvailabilityCheck(false, 2, "AVAILABLE", "Vuot qua so nguoi toi da"));
+
+        CreateRentalRequestDto dto = new CreateRentalRequestDto("r-full", "l1", LocalDate.now().plusDays(2), 5, "hi", "ik-cap");
+        assertThatThrownBy(() -> serviceWithListing.createRequest("t1", dto))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("toi da");
     }
 }
 

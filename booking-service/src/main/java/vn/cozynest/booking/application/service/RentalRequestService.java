@@ -2,12 +2,14 @@ package vn.cozynest.booking.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.dto.CreateRentalRequestDto;
 import vn.cozynest.booking.application.dto.RentalRequestDto;
+import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
 import vn.cozynest.booking.domain.model.RentalRequest;
@@ -29,15 +31,27 @@ public class RentalRequestService {
     private final RentalRequestRepository rentalRequestRepository;
     private final IdentityVerificationPort identityVerificationPort;
     private final AppointmentEventOutboxRepository outboxRepository;
+    private final Optional<BookingListingPort> listingPort;
 
     public RentalRequestService(
             RentalRequestRepository rentalRequestRepository,
             IdentityVerificationPort identityVerificationPort,
             AppointmentEventOutboxRepository outboxRepository
     ) {
+        this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty());
+    }
+
+    @Autowired
+    public RentalRequestService(
+            RentalRequestRepository rentalRequestRepository,
+            IdentityVerificationPort identityVerificationPort,
+            AppointmentEventOutboxRepository outboxRepository,
+            Optional<BookingListingPort> listingPort
+    ) {
         this.rentalRequestRepository = rentalRequestRepository;
         this.identityVerificationPort = identityVerificationPort;
         this.outboxRepository = outboxRepository;
+        this.listingPort = listingPort != null ? listingPort : Optional.empty();
     }
 
     public RentalRequestDto createRequest(String tenantId, CreateRentalRequestDto dto) {
@@ -58,6 +72,14 @@ public class RentalRequestService {
         if (rentalRequestRepository.existsActiveRequest(dto.roomId(), tenantId)) {
             throw new IllegalStateException("Ban da co yeu cau thue phong dang cho xu ly cho phong nay");
         }
+        listingPort.ifPresent(port -> {
+            BookingListingPort.RoomAvailabilityCheck availability = port.checkRoomAvailability(
+                    dto.roomId(), dto.numOccupants());
+            if (!availability.available()) {
+                throw new IllegalStateException(
+                        availability.reason() != null ? availability.reason() : "Phong khong kha dung hoac vuot so nguoi o toi da");
+            }
+        });
 
         RentalRequest saved = rentalRequestRepository.save(RentalRequest.create(
                 dto.roomId(), tenantId, dto.landlordId(),

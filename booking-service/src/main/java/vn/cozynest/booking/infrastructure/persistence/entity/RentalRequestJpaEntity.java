@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.*;
 
 import java.time.Instant;
@@ -52,6 +53,11 @@ public class RentalRequestJpaEntity {
 
     @Column(name = "holding_expires_at")
     private Instant holdingExpiresAt;
+
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private long version = 0L;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

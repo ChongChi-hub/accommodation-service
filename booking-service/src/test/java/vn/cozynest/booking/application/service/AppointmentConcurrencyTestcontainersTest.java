@@ -52,7 +52,7 @@ class AppointmentConcurrencyTestcontainersTest {
         });
         notifServer.start();
 
-        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:9.0")
+        try (MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4")
                 .withDatabaseName("cozynest_booking")
                 .withUsername("testuser")
                 .withPassword("testpass")) {
