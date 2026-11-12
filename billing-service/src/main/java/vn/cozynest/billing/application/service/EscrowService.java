@@ -3,34 +3,48 @@ package vn.cozynest.billing.application.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.LedgerDto;
+import vn.cozynest.billing.domain.model.BillingEventOutbox;
 import vn.cozynest.billing.domain.model.EscrowHold;
 import vn.cozynest.billing.domain.model.PostingDirection;
+import vn.cozynest.billing.domain.repository.BillingEventOutboxRepository;
 import vn.cozynest.billing.domain.repository.EscrowHoldRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EscrowService {
     private final LedgerService ledgerService;
     private final EscrowHoldRepository escrowHoldRepository;
+    private final BillingEventOutboxRepository outboxRepository;
     private final String fintechMode;
     private final boolean liveCustodyEnabled;
 
     public EscrowService(LedgerService ledgerService) {
-        this(ledgerService, null, "SANDBOX_ONLY", false);
+        this(ledgerService, null, Optional.empty(), "SANDBOX_ONLY", false);
+    }
+
+    public EscrowService(LedgerService ledgerService,
+                         EscrowHoldRepository escrowHoldRepository,
+                         String fintechMode,
+                         boolean liveCustodyEnabled) {
+        this(ledgerService, escrowHoldRepository, Optional.empty(), fintechMode, liveCustodyEnabled);
     }
 
     @Autowired
     public EscrowService(LedgerService ledgerService,
                          EscrowHoldRepository escrowHoldRepository,
+                         Optional<BillingEventOutboxRepository> outboxRepository,
                          @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
                          @Value("${fintech.escrow.live-custody-enabled:false}") boolean liveCustodyEnabled) {
         this.ledgerService = ledgerService;
         this.escrowHoldRepository = escrowHoldRepository;
+        this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
         this.fintechMode = fintechMode;
         this.liveCustodyEnabled = liveCustodyEnabled;
     }
@@ -46,53 +60,113 @@ public class EscrowService {
                         EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours)));
     }
 
+    @Transactional(readOnly = true)
+    public EscrowHold getHoldForParticipant(String contractId, String actorId, boolean isAdmin) {
+        EscrowHold hold = requireHold(contractId);
+        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Khong co quyen truy cap thong tin ky quy hop dong nay");
+        }
+        return hold;
+    }
+
+    @Transactional
+    public EscrowHold confirmMoveIn(String contractId, String actorId, boolean isAdmin) {
+        assertSandboxOrSignedOff();
+        EscrowHold hold = requireHold(contractId);
+        boolean isTenant = hold.getTenantId().equals(actorId);
+        boolean isLandlord = hold.getLandlordId().equals(actorId);
+        if (!isAdmin && !isTenant && !isLandlord) {
+            throw new AccessDeniedException("Chi nguoi thue hoac chu tro cua hop dong moi duoc xac nhan nhan phong");
+        }
+        hold.confirmMoveIn(isTenant || isAdmin, isLandlord || isAdmin);
+        EscrowHold saved = escrowHoldRepository.save(hold);
+        emitOutbox("ESCROW_MOVE_IN_CONFIRMED", saved);
+        return saved;
+    }
+
+    @Transactional
+    public EscrowHold freezeForDispute(String contractId, String actorId, boolean isAdmin, String reason) {
+        EscrowHold hold = requireHold(contractId);
+        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Khong co quyen dong bang ky quy hop dong nay");
+        }
+        hold.freezeForDispute(reason);
+        EscrowHold saved = escrowHoldRepository.save(hold);
+        emitOutbox("ESCROW_DISPUTE_FROZEN", saved);
+        return saved;
+    }
+
     @Transactional
     public EscrowHold freezeForDispute(String contractId, String reason) {
-        EscrowHold hold = requireHold(contractId);
-        hold.freezeForDispute(reason);
-        return escrowHoldRepository.save(hold);
+        return freezeForDispute(contractId, "SYSTEM_ADMIN", true, reason);
     }
 
     @Transactional
     public EscrowHold unfreezeDispute(String contractId) {
         EscrowHold hold = requireHold(contractId);
         hold.unfreezeDispute();
-        return escrowHoldRepository.save(hold);
+        EscrowHold saved = escrowHoldRepository.save(hold);
+        emitOutbox("ESCROW_DISPUTE_UNFROZEN", saved);
+        return saved;
     }
 
     @Transactional
     public void disburseDeposit(String contractId, String landlordId, long amount, String actorId) {
         assertSandboxOrSignedOff();
+        String targetLandlord = landlordId;
+        long targetAmount = amount;
         if (escrowHoldRepository != null) {
-            escrowHoldRepository.findByContractId(contractId).ifPresent(hold -> {
+            Optional<EscrowHold> opt = escrowHoldRepository.findByContractId(contractId);
+            if (opt.isPresent()) {
+                EscrowHold hold = opt.get();
                 hold.release(true);
                 escrowHoldRepository.save(hold);
-            });
+                targetLandlord = hold.getLandlordId();
+                targetAmount = hold.getAmount();
+                emitOutbox("ESCROW_RELEASED", hold);
+            }
         }
-        ledgerService.getOrCreateWallet(landlordId, "Chủ trọ");
+        ledgerService.getOrCreateWallet(targetLandlord, "Chủ trọ");
         ledgerService.postEntryIdempotent("ESC-REL-" + contractId,
                 "Giải ngân tiền cọc hợp đồng " + contractId + " cho chủ trọ",
                 "ESCROW_DISBURSE", contractId, actorId,
                 List.of(
-                        new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.DEBIT, amount),
-                        new LedgerDto.PostingItem(ledgerService.getWalletAccountNumber(landlordId), PostingDirection.CREDIT, amount)));
+                        new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.DEBIT, targetAmount),
+                        new LedgerDto.PostingItem(ledgerService.getWalletAccountNumber(targetLandlord), PostingDirection.CREDIT, targetAmount)));
     }
 
     @Transactional
     public void refundDeposit(String contractId, String tenantId, long amount, String reason, String actorId) {
         assertSandboxOrSignedOff();
+        long targetAmount = amount;
         if (escrowHoldRepository != null) {
-            escrowHoldRepository.findByContractId(contractId).ifPresent(hold -> {
+            Optional<EscrowHold> opt = escrowHoldRepository.findByContractId(contractId);
+            if (opt.isPresent()) {
+                EscrowHold hold = opt.get();
                 hold.refund(reason);
                 escrowHoldRepository.save(hold);
-            });
+                targetAmount = hold.getAmount();
+                emitOutbox("ESCROW_REFUNDED", hold);
+            }
         }
         ledgerService.postEntryIdempotent("ESC-REF-" + contractId,
                 "Hoàn tiền cọc hợp đồng " + contractId + " cho người thuê: " + reason,
                 "ESCROW_REFUND", contractId, actorId,
                 List.of(
-                        new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.DEBIT, amount),
-                        new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.CREDIT, amount)));
+                        new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.DEBIT, targetAmount),
+                        new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.CREDIT, targetAmount)));
+    }
+
+    private void emitOutbox(String eventType, EscrowHold hold) {
+        if (outboxRepository == null) {
+            return;
+        }
+        String payload = String.format(
+                "{\"contractId\":\"%s\",\"tenantId\":\"%s\",\"landlordId\":\"%s\",\"status\":\"%s\",\"amount\":%d,\"message\":\"Trang thai ky quy %s: %s\"}",
+                hold.getContractId(), hold.getTenantId(), hold.getLandlordId(),
+                hold.getStatus(), hold.getAmount(), hold.getContractId(), hold.getStatus()
+        );
+        outboxRepository.save(BillingEventOutbox.create(eventType, "ESCROW", hold.getId(), payload));
     }
 
     @Scheduled(cron = "${fintech.escrow.auto-release-cron:0 15 * * * ?}")

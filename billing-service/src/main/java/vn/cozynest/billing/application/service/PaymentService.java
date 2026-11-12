@@ -8,8 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.LedgerDto;
 import vn.cozynest.billing.application.dto.PaymentDto;
+import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.billing.application.port.PaymentGatewayPort;
 import vn.cozynest.billing.domain.model.*;
+import vn.cozynest.billing.domain.repository.BillingEventOutboxRepository;
 import vn.cozynest.billing.domain.repository.InvoiceRepository;
 import vn.cozynest.billing.domain.repository.PaymentIntentRepository;
 import vn.cozynest.billing.domain.repository.PaymentWebhookLogRepository;
@@ -29,10 +31,27 @@ public class PaymentService {
     private final ObjectMapper objectMapper;
     private final PaymentGatewayPort gatewayPort;
     private final PaymentWebhookLogRepository webhookLogRepository;
+    private final BillingEventOutboxRepository outboxRepository;
     private final String webhookSecret;
     private final String previousWebhookSecret;
     private final boolean strictIpAllowlist;
     private final Set<String> allowedIps;
+
+    public PaymentService(
+            PaymentIntentRepository paymentIntentRepository,
+            InvoiceRepository invoiceRepository,
+            LedgerService ledgerService,
+            ObjectMapper objectMapper,
+            PaymentGatewayPort gatewayPort,
+            PaymentWebhookLogRepository webhookLogRepository,
+            String webhookSecret,
+            String previousWebhookSecret,
+            boolean strictIpAllowlist,
+            String allowedIpsRaw) {
+        this(paymentIntentRepository, invoiceRepository, ledgerService, objectMapper, gatewayPort,
+                webhookLogRepository, Optional.empty(), webhookSecret, previousWebhookSecret,
+                strictIpAllowlist, allowedIpsRaw);
+    }
 
     @Autowired
     public PaymentService(
@@ -42,6 +61,7 @@ public class PaymentService {
             ObjectMapper objectMapper,
             PaymentGatewayPort gatewayPort,
             PaymentWebhookLogRepository webhookLogRepository,
+            Optional<BillingEventOutboxRepository> outboxRepository,
             @Value("${fintech.gateway.webhook-secret:${cozynest.fintech.webhook-secret:toam_fintech_webhook_secret_2026}}") String webhookSecret,
             @Value("${fintech.gateway.webhook-secret-previous:}") String previousWebhookSecret,
             @Value("${fintech.gateway.webhook-strict-ip-allowlist:false}") boolean strictIpAllowlist,
@@ -52,6 +72,7 @@ public class PaymentService {
         this.objectMapper = objectMapper;
         this.gatewayPort = gatewayPort;
         this.webhookLogRepository = webhookLogRepository;
+        this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
         this.webhookSecret = webhookSecret;
         this.previousWebhookSecret = previousWebhookSecret;
         this.strictIpAllowlist = strictIpAllowlist;
@@ -76,6 +97,45 @@ public class PaymentService {
         }
         intent.cancel();
         return toResponse(paymentIntentRepository.save(intent));
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentDto.IntentResponse getIntent(String paymentCode, String actorId, boolean isAdmin) {
+        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
+        if (!isAdmin && !intent.getPayerId().equals(actorId)) {
+            throw new WebhookSecurityException(403, "Khong co quyen xem giao dich thanh toan cua nguoi khac");
+        }
+        return toResponse(intent);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentDto.IntentResponse> getManualInterventionQueue() {
+        return paymentIntentRepository.findAll().stream()
+                .filter(i -> "OVERPAID".equals(i.getStatus())
+                        || "MISMATCH".equals(i.getStatus())
+                        || ("EXPIRED".equals(i.getStatus()) && i.getPaidAmount() > 0)
+                        || "PARTIAL_PAID".equals(i.getStatus()))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public PaymentDto.IntentResponse simulateSandboxWebhook(String paymentCode, long amount, String actorId, boolean isAdmin) {
+        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
+        if (!isAdmin && !intent.getPayerId().equals(actorId)) {
+            throw new WebhookSecurityException(403, "Khong co quyen gia lap thanh toan cho ma nay");
+        }
+        long payAmount = amount > 0 ? amount : intent.getAmount();
+        long ts = Instant.now().getEpochSecond();
+        String rawBody = String.format(
+                "{\"paymentCode\":\"%s\",\"amount\":%d,\"status\":\"SUCCESS\",\"timestamp\":%d}",
+                paymentCode, payAmount, ts
+        );
+        String sig = computeHmacSha256(rawBody + "." + ts, webhookSecret);
+        processWebhook(rawBody, sig, ts, "127.0.0.1");
+        return paymentIntentRepository.findByPaymentCode(paymentCode).map(this::toResponse).orElseThrow();
     }
 
     @Scheduled(fixedDelayString = "${fintech.gateway.expire-poll-ms:60000}")
@@ -105,7 +165,7 @@ public class PaymentService {
         }
         if (strictIpAllowlist && (sourceIp == null || !allowedIps.contains(sourceIp))) {
             logWebhook(null, sourceIp, false, "IP_REJECTED", "IP khong thuoc whitelist", rawBody);
-            throw new SecurityException("Webhook IP khong thuoc danh sach tin cay");
+            throw new WebhookSecurityException(403, "Webhook IP khong thuoc danh sach tin cay");
         }
         if (Math.abs(Instant.now().getEpochSecond() - timestamp) > 300) {
             logWebhook(null, sourceIp, false, "REPLAY_REJECTED", "Timestamp expired", rawBody);
@@ -113,7 +173,7 @@ public class PaymentService {
         }
         if (!isValidSignature(rawBody + "." + timestamp, signature)) {
             logWebhook(null, sourceIp, false, "INVALID_SIGNATURE", "HMAC mismatch", rawBody);
-            throw new SecurityException("Chữ ký Webhook HMAC không hợp lệ");
+            throw new WebhookSecurityException(401, "Chữ ký Webhook HMAC không hợp lệ");
         }
 
         try {
@@ -134,6 +194,7 @@ public class PaymentService {
             }
 
             postLedgerForPayment(intent, payload.amount());
+            publishPaymentEvent(intent, outcome);
             logWebhook(payload.paymentCode(), sourceIp, true, outcome.name(), null, rawBody);
             return true;
         } catch (IllegalArgumentException | SecurityException e) {
@@ -195,6 +256,20 @@ public class PaymentService {
         } catch (Exception e) {
             throw new IllegalStateException("Lỗi tính HMAC-SHA256", e);
         }
+    }
+
+    private void publishPaymentEvent(PaymentIntent intent, PaymentIntent.PaymentOutcome outcome) {
+        if (outboxRepository == null) {
+            return;
+        }
+        String eventType = "PAYMENT_" + outcome.name();
+        String payload = String.format(
+                "{\"paymentCode\":\"%s\",\"orderType\":\"%s\",\"orderId\":\"%s\",\"tenantId\":\"%s\",\"paidAmount\":%d,\"status\":\"%s\",\"message\":\"Thanh toan %s trang thai %s\"}",
+                intent.getPaymentCode(), intent.getOrderType(), intent.getOrderId(),
+                intent.getPayerId(), intent.getPaidAmount(), intent.getStatus(),
+                intent.getPaymentCode(), intent.getStatus()
+        );
+        outboxRepository.save(BillingEventOutbox.create(eventType, "PAYMENT", intent.getId(), payload));
     }
 
     private void logWebhook(String paymentCode, String ip, boolean sigValid, String status, String err, String raw) {

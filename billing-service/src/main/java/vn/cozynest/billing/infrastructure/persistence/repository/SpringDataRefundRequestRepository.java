@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface SpringDataRefundRequestRepository extends JpaRepository<RefundRequestJpaEntity, String> {
     List<RefundRequestJpaEntity> findByTenantIdOrderByCreatedAtDesc(String tenantId);
+    List<RefundRequestJpaEntity> findByPaymentIntentId(String paymentIntentId);
+    List<RefundRequestJpaEntity> findByStatusOrderByUpdatedAtDesc(String status);
 }
 

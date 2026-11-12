@@ -23,7 +23,11 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
         EscrowHoldJpaEntity saved = repository.save(EscrowHoldJpaEntity.builder()
                 .id(h.getId()).contractId(h.getContractId()).tenantId(h.getTenantId())
                 .landlordId(h.getLandlordId()).amount(h.getAmount()).status(h.getStatus())
-                .sandboxMode(h.isSandboxMode()).inspectionEndsAt(h.getInspectionEndsAt())
+                .sandboxMode(h.isSandboxMode())
+                .tenantConfirmedMoveIn(h.isTenantConfirmedMoveIn())
+                .landlordConfirmedMoveIn(h.isLandlordConfirmedMoveIn())
+                .moveInConfirmedAt(h.getMoveInConfirmedAt())
+                .inspectionEndsAt(h.getInspectionEndsAt())
                 .disputeReason(h.getDisputeReason()).releasedAt(h.getReleasedAt())
                 .createdAt(h.getCreatedAt()).updatedAt(h.getUpdatedAt())
                 .build());
@@ -42,7 +46,9 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
 
     private EscrowHold toDomain(EscrowHoldJpaEntity e) {
         return new EscrowHold(e.getId(), e.getContractId(), e.getTenantId(), e.getLandlordId(),
-                e.getAmount(), e.getStatus(), e.isSandboxMode(), e.getInspectionEndsAt(),
+                e.getAmount(), e.getStatus(), e.isSandboxMode(),
+                e.isTenantConfirmedMoveIn(), e.isLandlordConfirmedMoveIn(), e.getMoveInConfirmedAt(),
+                e.getInspectionEndsAt(),
                 e.getDisputeReason(), e.getReleasedAt(), e.getCreatedAt(), e.getUpdatedAt());
     }
 }

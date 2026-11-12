@@ -38,12 +38,32 @@ public class ReconciliationReportJpaEntity {
     @Builder.Default
     private int mismatchedTx = 0;
 
+    @Column(name = "missing_internal_tx", nullable = false)
+    @Builder.Default
+    private int missingInternalTx = 0;
+
+    @Column(name = "missing_provider_tx", nullable = false)
+    @Builder.Default
+    private int missingProviderTx = 0;
+
     @Column(length = 30, nullable = false)
     @Builder.Default
     private String status = "COMPLETED";
 
     @Column(name = "summary_notes", columnDefinition = "TEXT")
     private String summaryNotes;
+
+    @Column(name = "sla_due_at")
+    private Instant slaDueAt;
+
+    @Column(name = "assigned_to", length = 36)
+    private String assignedTo;
+
+    @Column(name = "resolved_by", length = 36)
+    private String resolvedBy;
+
+    @Column(name = "resolved_at")
+    private Instant resolvedAt;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

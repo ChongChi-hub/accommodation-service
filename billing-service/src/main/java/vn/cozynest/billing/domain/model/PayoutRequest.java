@@ -13,6 +13,8 @@ public class PayoutRequest {
     private final String accountHolder;
     private String status;
     private boolean otpVerified;
+    private boolean requiresMakerChecker;
+    private String makerCheckerRequestId;
     private String failureReason;
     private final Instant createdAt;
     private Instant updatedAt;
@@ -20,6 +22,15 @@ public class PayoutRequest {
     public PayoutRequest(String id, String payoutCode, String landlordId, long amount,
                          String bankCode, String accountNumber, String accountHolder,
                          String status, boolean otpVerified, String failureReason,
+                         Instant createdAt, Instant updatedAt) {
+        this(id, payoutCode, landlordId, amount, bankCode, accountNumber, accountHolder,
+                status, otpVerified, false, null, failureReason, createdAt, updatedAt);
+    }
+
+    public PayoutRequest(String id, String payoutCode, String landlordId, long amount,
+                         String bankCode, String accountNumber, String accountHolder,
+                         String status, boolean otpVerified, boolean requiresMakerChecker,
+                         String makerCheckerRequestId, String failureReason,
                          Instant createdAt, Instant updatedAt) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.payoutCode = payoutCode;
@@ -30,6 +41,8 @@ public class PayoutRequest {
         this.accountHolder = accountHolder;
         this.status = status != null ? status : "REQUESTED";
         this.otpVerified = otpVerified;
+        this.requiresMakerChecker = requiresMakerChecker;
+        this.makerCheckerRequestId = makerCheckerRequestId;
         this.failureReason = failureReason;
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
@@ -38,6 +51,12 @@ public class PayoutRequest {
     public static PayoutRequest create(String payoutCode, String landlordId, long amount,
                                        String bankCode, String accountNumber, String accountHolder,
                                        boolean otpVerified) {
+        return create(payoutCode, landlordId, amount, bankCode, accountNumber, accountHolder, otpVerified, false, null);
+    }
+
+    public static PayoutRequest create(String payoutCode, String landlordId, long amount,
+                                       String bankCode, String accountNumber, String accountHolder,
+                                       boolean otpVerified, boolean requiresMakerChecker, String makerCheckerRequestId) {
         return new PayoutRequest(
                 UUID.randomUUID().toString(),
                 payoutCode,
@@ -46,8 +65,10 @@ public class PayoutRequest {
                 bankCode,
                 accountNumber,
                 accountHolder,
-                "REQUESTED",
+                requiresMakerChecker ? "PENDING_APPROVAL" : "REQUESTED",
                 otpVerified,
+                requiresMakerChecker,
+                makerCheckerRequestId,
                 null,
                 Instant.now(),
                 Instant.now()
@@ -61,6 +82,12 @@ public class PayoutRequest {
 
     public void complete() {
         this.status = "COMPLETED";
+        this.updatedAt = Instant.now();
+    }
+
+    public void fail(String reason) {
+        this.status = "FAILED";
+        this.failureReason = reason;
         this.updatedAt = Instant.now();
     }
 
@@ -79,6 +106,8 @@ public class PayoutRequest {
     public String getAccountHolder() { return accountHolder; }
     public String getStatus() { return status; }
     public boolean isOtpVerified() { return otpVerified; }
+    public boolean isRequiresMakerChecker() { return requiresMakerChecker; }
+    public String getMakerCheckerRequestId() { return makerCheckerRequestId; }
     public String getFailureReason() { return failureReason; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

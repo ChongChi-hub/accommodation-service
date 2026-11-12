@@ -38,6 +38,20 @@ public class RefundController {
                 refundService.approveRefund(id, (String) auth.getPrincipal())));
     }
 
+    @PostMapping("/{id}/retry")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RefundDto.RefundResponse>> retryFailedRefund(
+            @PathVariable String id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Da thu lai giai ngan hoan tien",
+                refundService.retryFailedRefund(id, (String) auth.getPrincipal())));
+    }
+
+    @GetMapping("/failed")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<RefundDto.RefundResponse>>> getFailedRefunds() {
+        return ResponseEntity.ok(ApiResponse.success(refundService.getFailedRefunds()));
+    }
+
     @GetMapping("/tenant")
     @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<RefundDto.RefundResponse>>> getTenantRefunds(Authentication auth) {

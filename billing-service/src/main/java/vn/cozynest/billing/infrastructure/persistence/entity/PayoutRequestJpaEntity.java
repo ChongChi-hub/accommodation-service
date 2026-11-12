@@ -43,6 +43,13 @@ public class PayoutRequestJpaEntity {
     @Builder.Default
     private boolean otpVerified = false;
 
+    @Column(name = "requires_maker_checker", nullable = false)
+    @Builder.Default
+    private boolean requiresMakerChecker = false;
+
+    @Column(name = "maker_checker_request_id", length = 36)
+    private String makerCheckerRequestId;
+
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
