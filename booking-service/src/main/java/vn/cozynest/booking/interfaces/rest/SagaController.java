@@ -54,4 +54,18 @@ public class SagaController {
     public ResponseEntity<ApiResponse<SagaInstance>> getSaga(@PathVariable String sagaId) {
         return ResponseEntity.ok(ApiResponse.success(orchestrator.getSaga(sagaId)));
     }
+
+    @GetMapping("/manual-queue")
+    public ResponseEntity<ApiResponse<java.util.List<SagaInstance>>> getManualQueue() {
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.getManualInterventionSagas()));
+    }
+
+    @PostMapping("/{sagaId}/resolve-manual")
+    public ResponseEntity<ApiResponse<SagaInstance>> resolveManual(
+            @PathVariable String sagaId,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String note = body != null ? body.get("resolutionNote") : "Resolved by operator";
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.resolveManualSaga(sagaId, note)));
+    }
 }
