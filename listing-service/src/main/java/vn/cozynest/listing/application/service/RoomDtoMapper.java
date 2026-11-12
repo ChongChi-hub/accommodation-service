@@ -21,6 +21,14 @@ public class RoomDtoMapper {
     }
 
     public RoomDto toDto(Room r, Map<String, String> provinceNames, Map<Long, Boolean> landlordVerifiedMap) {
+        return toDto(r, provinceNames, landlordVerifiedMap, Map.of());
+    }
+
+    public RoomDto toDto(
+            Room r,
+            Map<String, String> provinceNames,
+            Map<Long, Boolean> landlordVerifiedMap,
+            Map<String, String> roomTypeNames) {
         List<String> images = r.getImages().stream()
                 .sorted(Comparator.comparingInt(img -> img.getDisplayOrder() != null ? img.getDisplayOrder() : 0))
                 .map(RoomImage::getImageUrl)
@@ -52,6 +60,9 @@ public class RoomDtoMapper {
                 .landlordName(r.getLandlordName())
                 .landlordPhone(r.getLandlordPhone())
                 .roomTypeCode(r.getRoomTypeCode())
+                .roomTypeName(r.getRoomTypeCode() != null && roomTypeNames != null
+                        ? roomTypeNames.get(r.getRoomTypeCode().toUpperCase(Locale.ROOT))
+                        : null)
                 .title(r.getTitle())
                 .description(r.getDescription())
                 .address(r.getAddress())

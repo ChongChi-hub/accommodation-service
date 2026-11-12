@@ -24,6 +24,7 @@ public class RoomQueryService {
     private final AmenityRepository amenityRepository;
     private final ReviewRepository reviewRepository;
     private final ProvinceRepository provinceRepository;
+    private final RoomTypeRepository roomTypeRepository;
     private final LandlordSnapshotRepository landlordSnapshotRepository;
     private final RoomDtoMapper roomDtoMapper;
 
@@ -64,6 +65,7 @@ public class RoomQueryService {
                 .build();
 
         Map<String, String> provinceNames = buildProvinceNameMap();
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
         DomainPage<Room> roomPage = roomRepository.searchRooms(query, page, size, sortKey);
         List<Long> landlordIds = roomPage.content().stream()
                 .map(Room::getLandlordId)
@@ -80,7 +82,7 @@ public class RoomQueryService {
                         ));
 
         List<RoomDto> dtos = roomPage.content().stream()
-                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap))
+                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap, roomTypeNames))
                 .toList();
         return new PageImpl<>(dtos, PageRequest.of(page, size), roomPage.totalElements());
     }
@@ -98,7 +100,7 @@ public class RoomQueryService {
                     .orElse(false);
         }
         Map<Long, Boolean> map = (room.getLandlordId() != null) ? Map.of(room.getLandlordId(), isVerified) : Map.of();
-        return roomDtoMapper.toDto(room, buildProvinceNameMap(), map);
+        return roomDtoMapper.toDto(room, buildProvinceNameMap(), map, buildRoomTypeNameMap());
     }
 
     public List<RoomDto> getRecommendations(Long roomId) {
@@ -109,7 +111,9 @@ public class RoomQueryService {
         Map<Long, Boolean> verifiedMap = (landlordIds.isEmpty() || landlordSnapshotRepository == null) ? Map.of() :
                 landlordSnapshotRepository.findByLandlordIdIn(landlordIds).stream()
                         .collect(Collectors.toMap(vn.cozynest.listing.domain.model.LandlordSnapshot::getLandlordId, vn.cozynest.listing.domain.model.LandlordSnapshot::isVerified, (a, b) -> a));
-        return recs.stream().map(r -> roomDtoMapper.toDto(r, Map.of(), verifiedMap)).collect(Collectors.toList());
+        Map<String, String> provinceNames = buildProvinceNameMap();
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
+        return recs.stream().map(r -> roomDtoMapper.toDto(r, provinceNames, verifiedMap, roomTypeNames)).collect(Collectors.toList());
     }
 
     public List<AmenityDto> getAllAmenities() {
@@ -208,6 +212,7 @@ public class RoomQueryService {
             return List.of();
         }
         Map<String, String> provinceNames = buildProvinceNameMap();
+        Map<String, String> roomTypeNames = buildRoomTypeNameMap();
         List<Long> landlordIds = rooms.stream()
                 .map(Room::getLandlordId)
                 .filter(Objects::nonNull)
@@ -222,7 +227,7 @@ public class RoomQueryService {
                                 (a, b) -> a
                         ));
         return rooms.stream()
-                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap))
+                .map(r -> roomDtoMapper.toDto(r, provinceNames, landlordVerifiedMap, roomTypeNames))
                 .toList();
     }
 
@@ -231,5 +236,12 @@ public class RoomQueryService {
         return provinceRepository.findAll().stream()
                 .filter(p -> p.getCode() != null && p.getName() != null)
                 .collect(Collectors.toMap(Province::getCode, Province::getName, (a, b) -> a));
+    }
+
+    private Map<String, String> buildRoomTypeNameMap() {
+        if (roomTypeRepository == null) return Map.of();
+        return roomTypeRepository.findAll().stream()
+                .filter(rt -> rt.getCode() != null && rt.getName() != null)
+                .collect(Collectors.toMap(rt -> rt.getCode().toUpperCase(Locale.ROOT), vn.cozynest.listing.domain.model.RoomType::getName, (a, b) -> a));
     }
 }
