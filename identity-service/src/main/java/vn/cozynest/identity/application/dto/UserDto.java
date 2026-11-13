@@ -28,6 +28,7 @@ public class UserDto {
     private List<String> permissions;
     private boolean emailVerified;
     private boolean phoneMissing;
+    private boolean hasPassword;
     private LandlordApplicationSummaryDto landlordApplication;
     private String workspaceHint;
     private String createdAt;
@@ -80,6 +81,7 @@ public class UserDto {
                 .permissions(permissions)
                 .emailVerified(emailVerified)
                 .phoneMissing(phoneMissing)
+                .hasPassword(user.hasPassword())
                 .landlordApplication(LandlordApplicationSummaryDto.fromDomain(landlordProfile))
                 .workspaceHint(workspaceHint)
                 .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null)

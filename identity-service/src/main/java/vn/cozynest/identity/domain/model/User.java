@@ -161,6 +161,10 @@ public class User {
         this.updatedAt = Instant.now();
     }
 
+    public boolean hasPassword() {
+        return passwordHash != null && !passwordHash.isBlank();
+    }
+
     // Getters
     public String getId() { return id; }
     public String getEmail() { return email; }

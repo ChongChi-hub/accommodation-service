@@ -17,6 +17,7 @@ public class AuthResult {
     private UserDto user;
     private List<String> roles;
     private Boolean isNewUser;
+    private Boolean hasPassword;
     private LandlordApplicationSummaryDto landlordApplication;
     private Boolean emailVerified;
 }
