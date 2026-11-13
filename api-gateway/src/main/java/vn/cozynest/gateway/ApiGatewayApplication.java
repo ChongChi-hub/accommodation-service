@@ -78,12 +78,26 @@ public class ApiGatewayApplication {
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(identityServiceUrl))
+                .route("admin-users", r -> r
+                        .order(1)
+                        .path("/api/v1/admin/users", "/api/v1/admin/users/**")
+                        .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
+                                .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
+                        .uri(identityServiceUrl))
+                .route("admin-listing", r -> r
+                        .order(2)
+                        .path("/api/v1/admin/rooms", "/api/v1/admin/rooms/**", "/api/v1/admin/reviews", "/api/v1/admin/reviews/**")
+                        .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
+                                .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
+                        .uri(listingServiceUrl))
                 .route("identity-service", r -> r
+                        .order(5)
                         .path("/api/v1/auth/**", "/api/v1/users/**", "/api/v1/me", "/api/v1/me/**", "/api/v1/landlord/kyc/**", "/api/v1/moderation/kyc/**", "/api/v1/admin/kyc/**", "/.well-known/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(identityServiceUrl))
                 .route("booking-service", r -> r
+                        .order(5)
                         .path("/api/v1/landlord/appointments/**", "/api/v1/tenant/appointments/**", "/api/v1/booking/**", "/api/v1/appointments/**", "/api/v1/rental-requests/**", "/api/v1/contracts/**", "/api/v1/maintenance/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
@@ -95,16 +109,19 @@ public class ApiGatewayApplication {
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(listingServiceUrl))
                 .route("billing-service", r -> r
+                        .order(5)
                         .path("/api/v1/billing/**", "/api/v1/payments/**", "/api/v1/invoices/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(billingServiceUrl))
                 .route("communication-service", r -> r
+                        .order(5)
                         .path("/api/v1/communication/**", "/api/v1/notifications", "/api/v1/notifications/**", "/api/v1/chat/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))
                         .uri(communicationServiceUrl))
                 .route("admin-service", r -> r
+                        .order(50)
                         .path("/api/v1/admin-service/**", "/api/v1/admin/**", "/api/v1/reports/**", "/api/v1/disputes/**")
                         .filters(f -> f.dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_UNIQUE")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_UNIQUE"))

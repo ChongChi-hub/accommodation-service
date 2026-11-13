@@ -50,28 +50,24 @@ public class GoogleTokenVerifier {
         try {
             jwt = decoder.decode(tokenString);
         } catch (Exception ex) {
-            throw new IdentityDomainException("Chữ ký hoặc định dạng Google ID token không hợp lệ", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Chữ ký hoặc định dạng Google ID token không hợp lệ", "ERR_GOOGLE_TOKEN_INVALID");
         }
 
-        // 1. Check expiration
         Instant expiresAt = jwt.getExpiresAt();
         if (expiresAt == null || expiresAt.isBefore(Instant.now())) {
-            throw new IdentityDomainException("Google ID token đã hết hạn", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Google ID token đã hết hạn", "ERR_GOOGLE_TOKEN_INVALID");
         }
 
-        // 2. Check issuer
         String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : "";
         if (!"https://accounts.google.com".equals(issuer) && !"accounts.google.com".equals(issuer)) {
-            throw new IdentityDomainException("Issuer của Google ID token không hợp lệ: " + issuer, "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Issuer của Google ID token không hợp lệ: " + issuer, "ERR_GOOGLE_TOKEN_INVALID");
         }
 
-        // 3. Check audience
         List<String> audience = jwt.getAudience();
         if (audience == null || !audience.contains(clientId)) {
-            throw new IdentityDomainException("Audience của Google ID token không khớp với Google Client ID", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Audience của Google ID token không khớp với Google Client ID", "ERR_GOOGLE_TOKEN_INVALID");
         }
 
-        // 4. Check email_verified
         Map<String, Object> claims = jwt.getClaims();
         Object emailVerifiedObj = claims.get("email_verified");
         boolean emailVerified = false;
@@ -81,24 +77,22 @@ public class GoogleTokenVerifier {
             emailVerified = Boolean.parseBoolean(s);
         }
         if (!emailVerified) {
-            throw new IdentityDomainException("Email Google chưa được xác minh (email_verified=false)", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Email Google chưa được xác minh (email_verified=false)", "ERR_GOOGLE_EMAIL_NOT_VERIFIED");
         }
 
-        // 5. Check sub
         String sub = jwt.getSubject();
         if (sub == null || sub.isBlank()) {
-            throw new IdentityDomainException("Google ID token thiếu thông tin định danh người dùng (sub)", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Google ID token thiếu thông tin định danh người dùng (sub)", "ERR_GOOGLE_TOKEN_INVALID");
         }
 
-        // 6. Check nonce
         String tokenNonce = jwt.getClaimAsString("nonce");
         if (tokenNonce == null || !tokenNonce.equals(expectedNonce)) {
-            throw new IdentityDomainException("Mã xác thực nonce không khớp", "ERR_INVALID_NONCE");
+            throw new IdentityDomainException("Mã xác thực nonce không khớp", "ERR_GOOGLE_NONCE_INVALID");
         }
 
         String email = jwt.getClaimAsString("email");
         if (email == null || email.isBlank()) {
-            throw new IdentityDomainException("Google ID token thiếu thông tin email", "ERR_INVALID_GOOGLE_TOKEN");
+            throw new IdentityDomainException("Google ID token thiếu thông tin email", "ERR_GOOGLE_TOKEN_INVALID");
         }
 
         String name = jwt.getClaimAsString("name");
@@ -106,9 +100,18 @@ public class GoogleTokenVerifier {
             name = email.split("@")[0];
         }
 
-        return new GoogleTokenClaims(sub, email.trim().toLowerCase(), name, tokenNonce);
+        String picture = jwt.getClaimAsString("picture");
+        String locale = jwt.getClaimAsString("locale");
+        if (locale == null || locale.isBlank()) {
+            locale = "vi";
+        }
+
+        return new GoogleTokenClaims(sub, email.trim().toLowerCase(), name, tokenNonce, picture, locale);
     }
 
-    public record GoogleTokenClaims(String sub, String email, String name, String nonce) {}
+    public record GoogleTokenClaims(String sub, String email, String name, String nonce, String pictureUrl, String locale) {
+        public GoogleTokenClaims(String sub, String email, String name, String nonce) {
+            this(sub, email, name, nonce, null, "vi");
+        }
+    }
 }
-

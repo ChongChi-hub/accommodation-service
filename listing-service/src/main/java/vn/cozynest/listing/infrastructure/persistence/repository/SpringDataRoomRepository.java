@@ -30,6 +30,8 @@ public interface SpringDataRoomRepository
 
     Optional<RoomJpaEntity> findBySlugAndDeletedAtIsNull(String slug);
 
+    Optional<RoomJpaEntity> findByRoomUuidAndDeletedAtIsNull(String roomUuid);
+
     Optional<RoomJpaEntity> findByIdAndDeletedAtIsNull(Long id);
 
     @Query("""

@@ -75,7 +75,7 @@ class GoogleTokenVerifierTest {
     }
 
     @Test
-    @DisplayName("Sai aud: Token có audience không khớp Client ID -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("Sai aud: Token có audience không khớp Client ID -> ném ERR_GOOGLE_TOKEN_INVALID")
     void testInvalidAudience() {
         String token = buildToken(
                 "https://accounts.google.com",
@@ -90,11 +90,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_TOKEN_INVALID");
     }
 
     @Test
-    @DisplayName("Sai iss: Token có issuer lạ không thuộc accounts.google.com -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("Sai iss: Token có issuer lạ không thuộc accounts.google.com -> ném ERR_GOOGLE_TOKEN_INVALID")
     void testInvalidIssuer() {
         String token = buildToken(
                 "https://evil.com",
@@ -109,11 +109,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_TOKEN_INVALID");
     }
 
     @Test
-    @DisplayName("Hết hạn: Token quá hạn exp -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("Hết hạn: Token quá hạn exp -> ném ERR_GOOGLE_TOKEN_INVALID")
     void testExpiredToken() {
         String token = buildToken(
                 "https://accounts.google.com",
@@ -128,11 +128,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_TOKEN_INVALID");
     }
 
     @Test
-    @DisplayName("Sai chữ ký: Token ký bằng khóa lạ khác JWKS -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("Sai chữ ký: Token ký bằng khóa lạ khác JWKS -> ném ERR_GOOGLE_TOKEN_INVALID")
     void testInvalidSignature() {
         String token = buildToken(
                 "https://accounts.google.com",
@@ -147,11 +147,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_TOKEN_INVALID");
     }
 
     @Test
-    @DisplayName("email_verified=false: Email chưa xác thực phía Google -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("email_verified=false: Email chưa xác thực phía Google -> ném ERR_GOOGLE_EMAIL_NOT_VERIFIED")
     void testEmailNotVerified() {
         String token = buildToken(
                 "https://accounts.google.com",
@@ -166,11 +166,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_EMAIL_NOT_VERIFIED");
     }
 
     @Test
-    @DisplayName("Thiếu sub: Token không có claim sub -> ném ERR_INVALID_GOOGLE_TOKEN")
+    @DisplayName("Thiếu sub: Token không có claim sub -> ném ERR_GOOGLE_TOKEN_INVALID")
     void testMissingSub() {
         String token = Jwts.builder()
                 .issuer("https://accounts.google.com")
@@ -184,11 +184,11 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_GOOGLE_TOKEN");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_TOKEN_INVALID");
     }
 
     @Test
-    @DisplayName("Sai nonce: Nonce trong token không khớp nonce gửi lên -> ném ERR_INVALID_NONCE")
+    @DisplayName("Sai nonce: Nonce trong token không khớp nonce gửi lên -> ném ERR_GOOGLE_NONCE_INVALID")
     void testMismatchedNonce() {
         String token = buildToken(
                 "https://accounts.google.com",
@@ -203,7 +203,7 @@ class GoogleTokenVerifierTest {
 
         assertThatThrownBy(() -> verifier.verify(token, "different-nonce-xyz"))
                 .isInstanceOf(IdentityDomainException.class)
-                .hasFieldOrPropertyWithValue("errorCode", "ERR_INVALID_NONCE");
+                .hasFieldOrPropertyWithValue("errorCode", "ERR_GOOGLE_NONCE_INVALID");
     }
 }
 

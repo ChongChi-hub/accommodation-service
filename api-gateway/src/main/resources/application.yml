@@ -50,6 +50,8 @@ spring:
                   - /api/v1/landlord/kyc/**
                   - /api/v1/moderation/kyc/**
                   - /api/v1/admin/kyc/**
+                  - /api/v1/admin/users
+                  - /api/v1/admin/users/**
                   - /.well-known/**
 
         - id: booking-service
@@ -76,6 +78,10 @@ spring:
                   - /api/v1/rooms/**
                   - /api/v1/hosts
                   - /api/v1/hosts/**
+                  - /api/v1/admin/rooms
+                  - /api/v1/admin/rooms/**
+                  - /api/v1/admin/reviews
+                  - /api/v1/admin/reviews/**
                   - /api/v1/room-types
                   - /api/v1/room-types/**
                   - /api/v1/locations/**

@@ -49,6 +49,10 @@ google:
   client-id: ${GOOGLE_CLIENT_ID:}
   jwks-uri: ${GOOGLE_JWKS_URI:https://www.googleapis.com/oauth2/v3/certs}
 
+auth:
+  google:
+    allow-staff: ${GOOGLE_ALLOW_STAFF:false}
+
 springdoc:
   api-docs:
     enabled: ${SWAGGER_ENABLED:false}

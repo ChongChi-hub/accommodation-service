@@ -144,8 +144,8 @@ services:
       DB_NAME: cozynest_identity
       DB_USER: ${IDENTITY_DB_USER:-identity_user}
       DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?IDENTITY_DB_PASSWORD must be set in .env}
-      GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_LOGIN_ENABLED: ${GOOGLE_LOGIN_ENABLED:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-865044247606-e93b5l98l4mp66eqkfdlatvks5rsn8r4.apps.googleusercontent.com}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       REDIS_HOST: redis
@@ -337,6 +337,10 @@ services:
     build:
       context: ../accommodation-web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-865044247606-e93b5l98l4mp66eqkfdlatvks5rsn8r4.apps.googleusercontent.com}
+        NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED: "true"
+        NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
     container_name: cozynest_web
     restart: always
     ports:
@@ -344,6 +348,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
       INTERNAL_API_URL: http://api-gateway:8080/api/v1
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-865044247606-e93b5l98l4mp66eqkfdlatvks5rsn8r4.apps.googleusercontent.com}
+      NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED: "true"
     depends_on:
       - api-gateway
     networks:

@@ -9,5 +9,8 @@ import java.util.Optional;
 public interface LandlordSnapshotRepository {
     Optional<LandlordSnapshot> findByLandlordId(Long landlordId);
     List<LandlordSnapshot> findByLandlordIdIn(Collection<Long> landlordIds);
+    default List<LandlordSnapshot> findAll() {
+        return java.util.Collections.emptyList();
+    }
     LandlordSnapshot save(LandlordSnapshot snapshot);
 }

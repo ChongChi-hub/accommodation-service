@@ -21,13 +21,19 @@ public interface RoomRepository {
 
     Optional<Room> findById(Long id);
 
-    List<Room> findAll();
+    default List<Room> findAll() {
+        return java.util.Collections.emptyList();
+    }
 
     List<Room> findAllByIdIn(Collection<Long> ids);
 
     Optional<Room> findByIdAndLandlordIdAndDeletedAtIsNull(Long id, Long landlordId);
 
     Optional<Room> findBySlugAndDeletedAtIsNull(String slug);
+
+    default Optional<Room> findByRoomUuidAndDeletedAtIsNull(String roomUuid) {
+        return Optional.empty();
+    }
 
     Optional<Room> findByIdAndDeletedAtIsNull(Long id);
 

@@ -43,3 +43,12 @@ jwt:
 cozynest:
   broker:
     enabled: ${COZYNEST_BROKER_ENABLED:false}
+
+fintech:
+  gateway:
+    qr-base-url: ${FINTECH_GATEWAY_QR_BASE_URL:https://img.vietqr.io/image}
+    bank-bin: ${FINTECH_GATEWAY_BANK_BIN:970436}
+    virtual-account: ${FINTECH_GATEWAY_VIRTUAL_ACCOUNT:1042701900}
+    account-name: ${FINTECH_GATEWAY_ACCOUNT_NAME:LE THANH CUONG}
+    kill-switch: ${FINTECH_GATEWAY_KILL_SWITCH:false}
+

@@ -12,6 +12,7 @@ import vn.cozynest.identity.infrastructure.persistence.repository.SpringDataUser
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -51,6 +52,11 @@ public class UserRepositoryAdapter implements UserRepository {
     @Override
     public boolean existsByPhone(String phone) {
         return springDataUserRepository.existsByPhone(phone);
+    }
+
+    @Override
+    public List<User> findAll() {
+        return springDataUserRepository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override

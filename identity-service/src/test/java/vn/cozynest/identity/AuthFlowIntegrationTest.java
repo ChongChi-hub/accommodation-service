@@ -131,13 +131,18 @@ class AuthFlowIntegrationTest {
         );
 
         OAuthAccountRepository oauthRepo = mock(OAuthAccountRepository.class);
+        UserIdentityRepository userIdentityRepo = mock(UserIdentityRepository.class);
+        IdentityAuditLogRepository auditLogRepo = mock(IdentityAuditLogRepository.class);
+        vn.cozynest.identity.infrastructure.security.GoogleNonceManager nonceMgr =
+                new vn.cozynest.identity.infrastructure.security.GoogleNonceManager(null, "dev");
         googleTokenVerifier = mock(GoogleTokenVerifier.class);
         vn.cozynest.identity.infrastructure.persistence.repository.SpringDataLoginHistoryRepository loginHistoryRepo = mock(vn.cozynest.identity.infrastructure.persistence.repository.SpringDataLoginHistoryRepository.class);
         vn.cozynest.identity.infrastructure.persistence.repository.SpringDataUserEventOutboxRepository userEventRepo = mock(vn.cozynest.identity.infrastructure.persistence.repository.SpringDataUserEventOutboxRepository.class);
 
         googleAuthUseCase = new GoogleAuthUseCase(
-                userRepository, oauthRepo, refreshTokenRepository, profileRepository,
-                tokenProvider, rateLimiter, googleTokenVerifier, loginHistoryRepo, userEventRepo, null, true, "test-client-id", "dev"
+                userRepository, userIdentityRepo, oauthRepo, refreshTokenRepository, profileRepository,
+                auditLogRepo, tokenProvider, rateLimiter, googleTokenVerifier, nonceMgr,
+                loginHistoryRepo, userEventRepo, true, "test-client-id", false
         );
 
         SpringDataEmailVerificationTokenRepository emailTokenRepo = mock(SpringDataEmailVerificationTokenRepository.class);
