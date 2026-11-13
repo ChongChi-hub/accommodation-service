@@ -84,13 +84,44 @@ public class ContractController {
 
     @GetMapping("/{id}/pdf/download")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<byte[]> downloadSignedPdf(@PathVariable String id, @RequestParam String token) {
+    public ResponseEntity<byte[]> downloadSignedPdf(
+            @PathVariable String id,
+            @RequestParam(required = false) String token
+    ) {
         byte[] bytes = contractService.downloadSignedPdf(
                 id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"), token);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"contract-" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(bytes);
+    }
+
+    @PostMapping("/{id}/upload-scan")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ContractDto>> uploadPhysicalContractScan(
+            @PathVariable String id,
+            @Valid @RequestBody UploadContractScanDto dto
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(contractService.uploadPhysicalSignedContract(
+                id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"), dto.scanUrl())));
+    }
+
+    @PostMapping("/{id}/tenant-confirm")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ContractDto>> tenantConfirmPhysicalContract(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.success(contractService.tenantConfirmPhysicalContract(
+                id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"))));
+    }
+
+    @PostMapping("/{id}/tenant-reject")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ContractDto>> tenantRejectPhysicalContract(
+            @PathVariable String id,
+            @RequestBody(required = false) TenantRejectContractDto dto
+    ) {
+        String reason = dto != null ? dto.reason() : null;
+        return ResponseEntity.ok(ApiResponse.success(contractService.tenantRejectPhysicalContract(
+                id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"), reason)));
     }
 
     @PostMapping("/{id}/occupants")

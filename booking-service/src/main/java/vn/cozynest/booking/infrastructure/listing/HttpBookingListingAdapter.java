@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.common.resilience.ServiceCircuitBreaker;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Map;
 
@@ -64,8 +65,80 @@ public class HttpBookingListingAdapter implements BookingListingPort {
     }
 
     @Override
+    public RoomContractSnapshot getRoomContractSnapshot(String roomId) {
+        if (roomId == null || !roomId.matches("\\d+")) {
+            return new RoomContractSnapshot(
+                    3500000L, 3500000L,
+                    BigDecimal.valueOf(3500), BigDecimal.valueOf(25000),
+                    BigDecimal.ZERO, BigDecimal.ZERO,
+                    "Phòng trọ CozyNest", ""
+            );
+        }
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/api/v1/rooms/{id}", roomId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data) {
+                Long monthlyRent = toLong(data.get("price"), 3500000L);
+                Long depositAmount = toLong(data.get("deposit"), monthlyRent);
+                BigDecimal electricityRate = toBigDecimal(data.get("electricityCost"), BigDecimal.valueOf(3500));
+                BigDecimal waterRate = toBigDecimal(data.get("waterCost"), BigDecimal.valueOf(25000));
+                BigDecimal initialElec = toBigDecimal(data.get("initialElectricityReading"), BigDecimal.ZERO);
+                BigDecimal initialWater = toBigDecimal(data.get("initialWaterReading"), BigDecimal.ZERO);
+                String title = data.get("title") != null ? String.valueOf(data.get("title")) : "Phòng trọ CozyNest";
+                String address = data.get("address") != null ? String.valueOf(data.get("address")) : "";
+                return new RoomContractSnapshot(
+                        monthlyRent, depositAmount, electricityRate, waterRate, initialElec, initialWater, title, address
+                );
+            }
+            return new RoomContractSnapshot(
+                    3500000L, 3500000L,
+                    BigDecimal.valueOf(3500), BigDecimal.valueOf(25000),
+                    BigDecimal.ZERO, BigDecimal.ZERO,
+                    "Phòng trọ CozyNest", ""
+            );
+        }, () -> {
+            log.warn("Listing getRoomContractSnapshot fallback for roomId={}", roomId);
+            return new RoomContractSnapshot(
+                    3500000L, 3500000L,
+                    BigDecimal.valueOf(3500), BigDecimal.valueOf(25000),
+                    BigDecimal.ZERO, BigDecimal.ZERO,
+                    "Phòng trọ CozyNest", ""
+            );
+        });
+    }
+
+    @Override
     public void releaseRoomHold(String roomId) {
         log.info("Saga compensation notified listing hold release for roomId={}", roomId);
     }
-}
 
+    private Long toLong(Object value, Long defaultValue) {
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        if (value instanceof String s && !s.isBlank()) {
+            try {
+                return new BigDecimal(s).longValue();
+            } catch (Exception ignored) {}
+        }
+        return defaultValue;
+    }
+
+    private BigDecimal toBigDecimal(Object value, BigDecimal defaultValue) {
+        if (value instanceof BigDecimal bd) {
+            return bd;
+        }
+        if (value instanceof Number n) {
+            return BigDecimal.valueOf(n.doubleValue());
+        }
+        if (value instanceof String s && !s.isBlank()) {
+            try {
+                return new BigDecimal(s);
+            } catch (Exception ignored) {}
+        }
+        return defaultValue;
+    }
+}

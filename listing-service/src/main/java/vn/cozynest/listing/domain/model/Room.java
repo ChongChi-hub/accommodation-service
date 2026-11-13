@@ -57,6 +57,13 @@ public class Room {
     private BigDecimal waterCost;
     private BigDecimal internetCost;
     private BigDecimal serviceCost;
+
+    @Builder.Default
+    private BigDecimal initialElectricityReading = BigDecimal.ZERO;
+
+    @Builder.Default
+    private BigDecimal initialWaterReading = BigDecimal.ZERO;
+
     private String status;
 
     @Builder.Default

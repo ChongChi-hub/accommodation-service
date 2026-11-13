@@ -175,6 +175,8 @@ public class LandlordRoomQueryService {
                 .waterCost(room.getWaterCost())
                 .internetCost(room.getInternetCost())
                 .serviceCost(room.getServiceCost())
+                .initialElectricityReading(room.getInitialElectricityReading() != null ? room.getInitialElectricityReading() : java.math.BigDecimal.ZERO)
+                .initialWaterReading(room.getInitialWaterReading() != null ? room.getInitialWaterReading() : java.math.BigDecimal.ZERO)
                 .status(room.getStatus())
                 .approved(room.isApproved())
                 .allowPets(room.isAllowPets())

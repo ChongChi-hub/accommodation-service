@@ -50,6 +50,14 @@ public class CreateRoomRequest {
     private BigDecimal internetCost;
     private BigDecimal serviceCost;
 
+    @NotNull(message = "Chỉ số công tơ điện ban đầu không được để trống")
+    @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "Chỉ số công tơ điện ban đầu phải từ 0 trở lên")
+    private BigDecimal initialElectricityReading;
+
+    @NotNull(message = "Chỉ số đồng hồ nước ban đầu không được để trống")
+    @jakarta.validation.constraints.DecimalMin(value = "0.0", message = "Chỉ số đồng hồ nước ban đầu phải từ 0 trở lên")
+    private BigDecimal initialWaterReading;
+
     private Boolean allowPets;
     private Boolean allowCooking;
 

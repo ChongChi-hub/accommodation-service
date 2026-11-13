@@ -30,6 +30,20 @@ public record CreateContractDto(
         @Min(value = 0, message = "depositAmount phai >= 0")
         long depositAmount,
 
-        String terms
-) {}
+        String terms,
+
+        java.math.BigDecimal initialElectricityReading,
+        java.math.BigDecimal initialWaterReading,
+        java.math.BigDecimal electricityRate,
+        java.math.BigDecimal waterRate
+) {
+    public CreateContractDto(
+            String roomId, String tenantId, String landlordId, String requestId,
+            LocalDate startDate, LocalDate endDate, long monthlyRent, long depositAmount, String terms
+    ) {
+        this(roomId, tenantId, landlordId, requestId, startDate, endDate, monthlyRent, depositAmount, terms,
+                java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO,
+                java.math.BigDecimal.valueOf(3500), java.math.BigDecimal.valueOf(25000));
+    }
+}
 

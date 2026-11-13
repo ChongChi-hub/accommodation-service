@@ -98,6 +98,17 @@ public class ContractSigningCoordinator {
         return "/api/v1/booking/contracts/" + contract.getId() + "/pdf/download?token=" + token;
     }
 
+    public byte[] getOrGeneratePdf(Contract contract) {
+        if (contract.getPdfObjectKey() != null && !contract.getPdfObjectKey().isBlank()) {
+            byte[] content = storagePort.loadPrivate(CONTRACTS_BUCKET, contract.getPdfObjectKey());
+            if (content != null) {
+                return content;
+            }
+        }
+        ContractPdfService.GeneratedPdf pdf = pdfService.generateContractPdf(contract);
+        return pdf.bytes();
+    }
+
     public byte[] downloadSignedPdfByToken(String contractId, String actorId, boolean isAdmin, String token) {
         SignedDownloadTokenService.VerifiedToken verified = tokenService.verify(token);
         if (!CONTRACTS_BUCKET.equals(verified.bucket())

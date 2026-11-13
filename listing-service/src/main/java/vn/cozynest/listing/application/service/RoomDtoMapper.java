@@ -86,6 +86,8 @@ public class RoomDtoMapper {
                 .waterCost(r.getWaterCost())
                 .internetCost(r.getInternetCost())
                 .serviceCost(r.getServiceCost())
+                .initialElectricityReading(r.getInitialElectricityReading() != null ? r.getInitialElectricityReading() : java.math.BigDecimal.ZERO)
+                .initialWaterReading(r.getInitialWaterReading() != null ? r.getInitialWaterReading() : java.math.BigDecimal.ZERO)
                 .status(r.getStatus())
                 .approved(r.isApproved())
                 .allowPets(r.isAllowPets())

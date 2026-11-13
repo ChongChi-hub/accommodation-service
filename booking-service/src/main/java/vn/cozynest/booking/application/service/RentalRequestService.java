@@ -135,10 +135,43 @@ public class RentalRequestService {
             String code = "HD-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
             LocalDate start = request.getProposedMoveInDate() != null ? request.getProposedMoveInDate() : LocalDate.now().plusDays(3);
             LocalDate end = start.plusMonths(6);
+
+            long monthlyRent = 3500000L;
+            long depositAmount = 3500000L;
+            java.math.BigDecimal elecRate = java.math.BigDecimal.valueOf(3500);
+            java.math.BigDecimal waterRate = java.math.BigDecimal.valueOf(25000);
+            java.math.BigDecimal initialElec = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal initialWater = java.math.BigDecimal.ZERO;
+
+            if (listingPort.isPresent()) {
+                BookingListingPort.RoomContractSnapshot snapshot = listingPort.get().getRoomContractSnapshot(request.getRoomId());
+                if (snapshot != null) {
+                    if (snapshot.monthlyRent() != null && snapshot.monthlyRent() > 0) {
+                        monthlyRent = snapshot.monthlyRent();
+                    }
+                    if (snapshot.depositAmount() != null && snapshot.depositAmount() > 0) {
+                        depositAmount = snapshot.depositAmount();
+                    }
+                    if (snapshot.electricityRate() != null) {
+                        elecRate = snapshot.electricityRate();
+                    }
+                    if (snapshot.waterRate() != null) {
+                        waterRate = snapshot.waterRate();
+                    }
+                    if (snapshot.initialElectricityReading() != null) {
+                        initialElec = snapshot.initialElectricityReading();
+                    }
+                    if (snapshot.initialWaterReading() != null) {
+                        initialWater = snapshot.initialWaterReading();
+                    }
+                }
+            }
+
             Contract newContract = contractRepository.get().save(Contract.create(
                     code, request.getRoomId(), request.getTenantId(), request.getLandlordId(),
-                    request.getId(), start, end, 3500000L, 3500000L,
-                    "Hop dong thue phong tro tieu chuan To Am. Thoi han 06 thang, dat coc 01 thang."
+                    request.getId(), start, end, monthlyRent, depositAmount,
+                    "Hop dong thue phong tro tieu chuan To Am. Thoi han 06 thang, dat coc 01 thang.",
+                    initialElec, initialWater, elecRate, waterRate
             ));
             resolvedContractId = newContract.getId();
             final String finalCid = resolvedContractId;

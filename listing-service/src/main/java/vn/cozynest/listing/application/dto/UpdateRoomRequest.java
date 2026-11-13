@@ -50,6 +50,9 @@ public class UpdateRoomRequest {
     private BigDecimal internetCost;
     private BigDecimal serviceCost;
 
+    private BigDecimal initialElectricityReading;
+    private BigDecimal initialWaterReading;
+
     private Boolean allowPets;
     private Boolean allowCooking;
 

@@ -69,7 +69,9 @@ public class ContractService {
         Contract saved = contractRepository.save(Contract.create(
                 code, dto.roomId(), dto.tenantId(), dto.landlordId(),
                 dto.requestId(), dto.startDate(), dto.endDate(),
-                dto.monthlyRent(), dto.depositAmount(), dto.terms()
+                dto.monthlyRent(), dto.depositAmount(), dto.terms(),
+                dto.initialElectricityReading(), dto.initialWaterReading(),
+                dto.electricityRate(), dto.waterRate()
         ));
         emitContractEvent("CONTRACT_CREATED", saved);
         return ContractDto.from(saved);
@@ -101,7 +103,10 @@ public class ContractService {
     public byte[] downloadSignedPdf(String contractId, String actorId, boolean isAdmin, String token) {
         Contract contract = findContractOrThrow(contractId);
         assertParticipantOrAdmin(contract, actorId, isAdmin);
-        return signingCoordinator.downloadSignedPdfByToken(contractId, actorId, isAdmin, token);
+        if (token != null && !token.isBlank()) {
+            return signingCoordinator.downloadSignedPdfByToken(contractId, actorId, isAdmin, token);
+        }
+        return signingCoordinator.getOrGeneratePdf(contract);
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +127,45 @@ public class ContractService {
         contract.updateDraft(dto.startDate(), dto.endDate(), dto.monthlyRent(), dto.depositAmount(), dto.terms());
         Contract saved = contractRepository.save(contract);
         emitContractEvent("CONTRACT_DRAFT_UPDATED", saved);
+        return ContractDto.from(saved);
+    }
+
+    public ContractDto uploadPhysicalSignedContract(String contractId, String actorId, boolean isAdmin, String scanUrl) {
+        Contract contract = findContractOrThrow(contractId);
+        if (!isAdmin && !contract.getLandlordId().equals(actorId)) {
+            throw new AccessDeniedException("Chi chu tro moi co quyen tai len ban scan hop dong da ky");
+        }
+        if (scanUrl == null || scanUrl.isBlank()) {
+            throw new IllegalArgumentException("Duong dan anh scan hop dong khong duoc de trong");
+        }
+        contract.uploadPhysicalSignedContract(scanUrl);
+        Contract saved = contractRepository.save(contract);
+        emitContractEvent("CONTRACT_PHYSICAL_SCAN_UPLOADED", saved);
+        return ContractDto.from(saved);
+    }
+
+    public ContractDto tenantConfirmPhysicalContract(String contractId, String actorId, boolean isAdmin) {
+        Contract contract = findContractOrThrow(contractId);
+        if (!isAdmin && !contract.getTenantId().equals(actorId)) {
+            throw new AccessDeniedException("Chi khach thue moi co quyen xac nhan hop dong giay hop le");
+        }
+        if (!"WAITING_TENANT_CONFIRMATION".equals(contract.getPhysicalContractStatus())) {
+            throw new IllegalStateException("Hop dong chua co ban scan cho khach xac nhan");
+        }
+        contract.tenantConfirmPhysicalContract();
+        Contract saved = contractRepository.save(contract);
+        emitContractEvent("CONTRACT_ACTIVATED", saved);
+        return ContractDto.from(saved);
+    }
+
+    public ContractDto tenantRejectPhysicalContract(String contractId, String actorId, boolean isAdmin, String reason) {
+        Contract contract = findContractOrThrow(contractId);
+        if (!isAdmin && !contract.getTenantId().equals(actorId)) {
+            throw new AccessDeniedException("Chi khach thue moi co quyen tu choi ban scan hop dong");
+        }
+        contract.tenantRejectPhysicalContract(reason != null ? reason : "Khach thue phat hien sai lech thong tin tren ban scan");
+        Contract saved = contractRepository.save(contract);
+        emitContractEvent("CONTRACT_PHYSICAL_SCAN_REJECTED", saved);
         return ContractDto.from(saved);
     }
 

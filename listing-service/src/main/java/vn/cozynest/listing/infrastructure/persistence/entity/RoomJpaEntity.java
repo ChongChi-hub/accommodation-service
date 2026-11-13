@@ -116,6 +116,14 @@ public class RoomJpaEntity {
     @Column(name = "service_cost", precision = 10, scale = 2)
     private BigDecimal serviceCost;
 
+    @Column(name = "initial_electricity_reading", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal initialElectricityReading = BigDecimal.ZERO;
+
+    @Column(name = "initial_water_reading", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal initialWaterReading = BigDecimal.ZERO;
+
     @Column(nullable = false, length = 30)
     private String status;
 

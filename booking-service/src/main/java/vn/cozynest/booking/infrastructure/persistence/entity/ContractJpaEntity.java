@@ -85,6 +85,38 @@ public class ContractJpaEntity {
     @Column(name = "landlord_signed_at")
     private Instant landlordSignedAt;
 
+    @Column(name = "initial_electricity_reading", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal initialElectricityReading = java.math.BigDecimal.ZERO;
+
+    @Column(name = "initial_water_reading", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal initialWaterReading = java.math.BigDecimal.ZERO;
+
+    @Column(name = "electricity_rate", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal electricityRate = java.math.BigDecimal.valueOf(3500);
+
+    @Column(name = "water_rate", precision = 10, scale = 2)
+    @Builder.Default
+    private java.math.BigDecimal waterRate = java.math.BigDecimal.valueOf(25000);
+
+    @Column(name = "physical_contract_status", length = 32)
+    @Builder.Default
+    private String physicalContractStatus = "PENDING_PHYSICAL_SIGN";
+
+    @Column(name = "physical_contract_scan_url", length = 500)
+    private String physicalContractScanUrl;
+
+    @Column(name = "physical_signed_at")
+    private Instant physicalSignedAt;
+
+    @Column(name = "tenant_confirmed_at")
+    private Instant tenantConfirmedAt;
+
+    @Column(name = "tenant_reject_reason", length = 500)
+    private String tenantRejectReason;
+
     @Version
     @Column(nullable = false)
     @Builder.Default

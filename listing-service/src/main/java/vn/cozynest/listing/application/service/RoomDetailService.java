@@ -94,6 +94,8 @@ public class RoomDetailService {
                 .waterCost(room.getWaterCost())
                 .internetCost(room.getInternetCost())
                 .serviceCost(room.getServiceCost())
+                .initialElectricityReading(room.getInitialElectricityReading() != null ? room.getInitialElectricityReading() : java.math.BigDecimal.ZERO)
+                .initialWaterReading(room.getInitialWaterReading() != null ? room.getInitialWaterReading() : java.math.BigDecimal.ZERO)
                 .status(room.getStatus())
                 .publicationStatus(room.getPublicationStatus())
                 .occupancyStatus(room.getOccupancyStatus())

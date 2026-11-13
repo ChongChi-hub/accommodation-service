@@ -149,6 +149,8 @@ public class LandlordRoomManagementService {
         if (req.getWaterCost() != null) room.setWaterCost(req.getWaterCost());
         if (req.getInternetCost() != null) room.setInternetCost(req.getInternetCost());
         if (req.getServiceCost() != null) room.setServiceCost(req.getServiceCost());
+        if (req.getInitialElectricityReading() != null) room.setInitialElectricityReading(req.getInitialElectricityReading());
+        if (req.getInitialWaterReading() != null) room.setInitialWaterReading(req.getInitialWaterReading());
         if (req.getAllowPets() != null) room.setAllowPets(req.getAllowPets());
         if (req.getAllowCooking() != null) room.setAllowCooking(req.getAllowCooking());
         if (req.getHouseRules() != null) room.setHouseRules(req.getHouseRules());
@@ -194,6 +196,8 @@ public class LandlordRoomManagementService {
                 .waterCost(req.getWaterCost())
                 .internetCost(req.getInternetCost())
                 .serviceCost(req.getServiceCost())
+                .initialElectricityReading(req.getInitialElectricityReading() != null ? req.getInitialElectricityReading() : java.math.BigDecimal.ZERO)
+                .initialWaterReading(req.getInitialWaterReading() != null ? req.getInitialWaterReading() : java.math.BigDecimal.ZERO)
                 .status("DRAFT")
                 .approved(false)
                 .allowPets(Boolean.TRUE.equals(req.getAllowPets()))

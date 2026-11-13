@@ -42,6 +42,8 @@ public class RoomDto {
     private BigDecimal waterCost;
     private BigDecimal internetCost;
     private BigDecimal serviceCost;
+    private BigDecimal initialElectricityReading;
+    private BigDecimal initialWaterReading;
     private String status;
     private boolean approved;
     private boolean allowPets;

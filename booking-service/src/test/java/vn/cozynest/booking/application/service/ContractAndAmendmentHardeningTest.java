@@ -176,5 +176,47 @@ class ContractAndAmendmentHardeningTest {
                         LocalDate.now(), LocalDate.now().plusMonths(12), 4_000_000L, 4_000_000L, "Tamper")))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void shouldHandlePhysicalContractSigningFlow() {
+        ContractRepository contractRepo = mock(ContractRepository.class);
+        ContractAmendmentRepository amendRepo = mock(ContractAmendmentRepository.class);
+        ContractOccupantRepository occRepo = mock(ContractOccupantRepository.class);
+        AppointmentEventOutboxRepository outboxRepo = mock(AppointmentEventOutboxRepository.class);
+        ContractSigningCoordinator coordinator = mock(ContractSigningCoordinator.class);
+        ContractService service = new ContractService(contractRepo, amendRepo, occRepo, coordinator, outboxRepo);
+
+        Contract contract = Contract.create("HD-PHYSICAL-01", "room-101", "t1", "l1", "req-101",
+                LocalDate.now(), LocalDate.now().plusMonths(12), 4_000_000L, 4_000_000L, "Dieu khoan");
+        when(contractRepo.findById(contract.getId())).thenReturn(Optional.of(contract));
+        when(contractRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        // Unauthorized user attempts upload
+        assertThatThrownBy(() -> service.uploadPhysicalSignedContract(contract.getId(), "intruder", false, "https://cdn.example.com/scan.pdf"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        // Landlord uploads scan
+        ContractDto uploaded = service.uploadPhysicalSignedContract(contract.getId(), "l1", false, "https://cdn.example.com/scan.pdf");
+        assertThat(uploaded.physicalContractStatus()).isEqualTo("WAITING_TENANT_CONFIRMATION");
+        assertThat(uploaded.physicalContractScanUrl()).isEqualTo("https://cdn.example.com/scan.pdf");
+
+        // Tenant rejects first with reason
+        ContractDto rejected = service.tenantRejectPhysicalContract(contract.getId(), "t1", false, "Sai thong tin gia dien");
+        assertThat(rejected.physicalContractStatus()).isEqualTo("REJECTED_BY_TENANT");
+        assertThat(rejected.tenantRejectReason()).isEqualTo("Sai thong tin gia dien");
+
+        // Landlord uploads revised scan
+        service.uploadPhysicalSignedContract(contract.getId(), "l1", false, "https://cdn.example.com/scan_v2.pdf");
+
+        // Landlord cannot confirm for tenant
+        assertThatThrownBy(() -> service.tenantConfirmPhysicalContract(contract.getId(), "l1", false))
+                .isInstanceOf(AccessDeniedException.class);
+
+        // Tenant confirms
+        ContractDto activated = service.tenantConfirmPhysicalContract(contract.getId(), "t1", false);
+        assertThat(activated.status()).isEqualTo("ACTIVE");
+        assertThat(activated.physicalContractStatus()).isEqualTo("PHYSICAL_SIGNED");
+        assertThat(activated.tenantConfirmedAt()).isNotNull();
+    }
 }
 

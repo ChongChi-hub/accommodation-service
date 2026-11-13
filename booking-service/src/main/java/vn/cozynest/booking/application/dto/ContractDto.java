@@ -25,6 +25,15 @@ public record ContractDto(
         Instant holdingExpiresAt,
         Instant tenantSignedAt,
         Instant landlordSignedAt,
+        java.math.BigDecimal initialElectricityReading,
+        java.math.BigDecimal initialWaterReading,
+        java.math.BigDecimal electricityRate,
+        java.math.BigDecimal waterRate,
+        String physicalContractStatus,
+        String physicalContractScanUrl,
+        Instant physicalSignedAt,
+        Instant tenantConfirmedAt,
+        String tenantRejectReason,
         Instant createdAt
 ) {
     public static ContractDto from(Contract c) {
@@ -49,6 +58,15 @@ public record ContractDto(
                 c.getHoldingExpiresAt(),
                 c.getTenantSignedAt(),
                 c.getLandlordSignedAt(),
+                c.getInitialElectricityReading(),
+                c.getInitialWaterReading(),
+                c.getElectricityRate(),
+                c.getWaterRate(),
+                c.getPhysicalContractStatus(),
+                c.getPhysicalContractScanUrl(),
+                c.getPhysicalSignedAt(),
+                c.getTenantConfirmedAt(),
+                c.getTenantRejectReason(),
                 c.getCreatedAt()
         );
     }

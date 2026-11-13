@@ -39,6 +39,23 @@ public class Contract {
     private Instant holdingExpiresAt;
     private Instant tenantSignedAt;
     private Instant landlordSignedAt;
+
+    @Builder.Default
+    private java.math.BigDecimal initialElectricityReading = java.math.BigDecimal.ZERO;
+    @Builder.Default
+    private java.math.BigDecimal initialWaterReading = java.math.BigDecimal.ZERO;
+    @Builder.Default
+    private java.math.BigDecimal electricityRate = java.math.BigDecimal.valueOf(3500);
+    @Builder.Default
+    private java.math.BigDecimal waterRate = java.math.BigDecimal.valueOf(25000);
+
+    @Builder.Default
+    private String physicalContractStatus = "PENDING_PHYSICAL_SIGN";
+    private String physicalContractScanUrl;
+    private Instant physicalSignedAt;
+    private Instant tenantConfirmedAt;
+    private String tenantRejectReason;
+
     private long version;
     private Instant createdAt;
     private Instant updatedAt;
@@ -46,6 +63,19 @@ public class Contract {
     public static Contract create(String contractCode, String roomId, String tenantId, String landlordId,
                                   String requestId, LocalDate startDate, LocalDate endDate,
                                   long monthlyRent, long depositAmount, String terms) {
+        return create(contractCode, roomId, tenantId, landlordId, requestId, startDate, endDate,
+                monthlyRent, depositAmount, terms,
+                java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO,
+                java.math.BigDecimal.valueOf(3500), java.math.BigDecimal.valueOf(25000));
+    }
+
+    public static Contract create(String contractCode, String roomId, String tenantId, String landlordId,
+                                  String requestId, LocalDate startDate, LocalDate endDate,
+                                  long monthlyRent, long depositAmount, String terms,
+                                  java.math.BigDecimal initialElectricityReading,
+                                  java.math.BigDecimal initialWaterReading,
+                                  java.math.BigDecimal electricityRate,
+                                  java.math.BigDecimal waterRate) {
         String hash = computeHash(contractCode + terms + startDate + endDate + monthlyRent + depositAmount);
         return Contract.builder()
                 .id(UUID.randomUUID().toString())
@@ -61,6 +91,11 @@ public class Contract {
                 .paymentCycleMonths(1)
                 .paymentDueDay(5)
                 .terms(terms)
+                .initialElectricityReading(initialElectricityReading != null ? initialElectricityReading : java.math.BigDecimal.ZERO)
+                .initialWaterReading(initialWaterReading != null ? initialWaterReading : java.math.BigDecimal.ZERO)
+                .electricityRate(electricityRate != null ? electricityRate : java.math.BigDecimal.valueOf(3500))
+                .waterRate(waterRate != null ? waterRate : java.math.BigDecimal.valueOf(25000))
+                .physicalContractStatus("PENDING_PHYSICAL_SIGN")
                 .verificationCode("CN-" + contractCode)
                 .documentHash(hash)
                 .status("PENDING_SIGN")
@@ -69,6 +104,26 @@ public class Contract {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+    }
+
+    public void uploadPhysicalSignedContract(String scanUrl) {
+        this.physicalContractScanUrl = scanUrl;
+        this.physicalContractStatus = "WAITING_TENANT_CONFIRMATION";
+        this.physicalSignedAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    public void tenantConfirmPhysicalContract() {
+        this.physicalContractStatus = "PHYSICAL_SIGNED";
+        this.tenantConfirmedAt = Instant.now();
+        this.status = "ACTIVE";
+        this.updatedAt = Instant.now();
+    }
+
+    public void tenantRejectPhysicalContract(String reason) {
+        this.physicalContractStatus = "REJECTED_BY_TENANT";
+        this.tenantRejectReason = reason;
+        this.updatedAt = Instant.now();
     }
 
     public void signByTenant() {
