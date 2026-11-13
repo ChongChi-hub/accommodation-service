@@ -21,7 +21,9 @@ public interface RoomRepository {
 
     Optional<Room> findById(Long id);
 
-    List<Room> findAll();
+    default List<Room> findAll() {
+        return java.util.Collections.emptyList();
+    }
 
     List<Room> findAllByIdIn(Collection<Long> ids);
 
@@ -29,7 +31,9 @@ public interface RoomRepository {
 
     Optional<Room> findBySlugAndDeletedAtIsNull(String slug);
 
-    Optional<Room> findByRoomUuidAndDeletedAtIsNull(String roomUuid);
+    default Optional<Room> findByRoomUuidAndDeletedAtIsNull(String roomUuid) {
+        return Optional.empty();
+    }
 
     Optional<Room> findByIdAndDeletedAtIsNull(Long id);
 

@@ -11,7 +11,9 @@ public interface UserRepository {
     Optional<User> findByPhone(String phone);
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
-    List<User> findAll();
+    default List<User> findAll() {
+        return java.util.Collections.emptyList();
+    }
     User save(User user);
 }
 

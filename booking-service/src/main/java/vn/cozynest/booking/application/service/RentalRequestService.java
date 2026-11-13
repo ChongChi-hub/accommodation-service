@@ -45,6 +45,15 @@ public class RentalRequestService {
         this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty(), null, null);
     }
 
+    public RentalRequestService(
+            RentalRequestRepository rentalRequestRepository,
+            IdentityVerificationPort identityVerificationPort,
+            AppointmentEventOutboxRepository outboxRepository,
+            Optional<BookingListingPort> listingPort
+    ) {
+        this(rentalRequestRepository, identityVerificationPort, outboxRepository, listingPort, null, null);
+    }
+
     @Autowired
     public RentalRequestService(
             RentalRequestRepository rentalRequestRepository,
