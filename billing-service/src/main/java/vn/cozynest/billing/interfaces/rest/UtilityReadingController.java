@@ -53,6 +53,17 @@ public class UtilityReadingController {
                 readingService.cancelReading(id, command.reason(), actorId)));
     }
 
+    @PostMapping("/{id}/dispute")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<UtilityReadingDto.ReadingResponse>> disputeReading(
+            @PathVariable String id,
+            @Valid @RequestBody UtilityReadingDto.DisputeReadingCommand command,
+            Authentication authentication) {
+        String actorId = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi yêu cầu đối soát chỉ số điện nước",
+                readingService.disputeReading(id, command.reason(), actorId, isAdmin(authentication))));
+    }
+
     @GetMapping("/contract/{contractId}/latest")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UtilityReadingDto.ReadingResponse>> getLatest(

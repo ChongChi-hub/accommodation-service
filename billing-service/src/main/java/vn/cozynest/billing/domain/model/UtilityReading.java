@@ -96,6 +96,12 @@ public class UtilityReading {
         this.revision++;
     }
 
+    public void markDisputed(String reason) {
+        this.status = "DISPUTED";
+        this.editReason = reason;
+        this.revision++;
+    }
+
     public BigDecimal getElectricConsumption() { return electricCurr.subtract(electricPrev); }
     public BigDecimal getWaterConsumption() { return waterCurr.subtract(waterPrev); }
 

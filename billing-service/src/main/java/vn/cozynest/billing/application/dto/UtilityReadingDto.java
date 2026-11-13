@@ -53,6 +53,10 @@ public class UtilityReadingDto {
             @NotBlank(message = "Ly do huy chi so khong duoc de trong") String reason
     ) {}
 
+    public record DisputeReadingCommand(
+            @NotBlank(message = "Ly do doi soat khong duoc de trong") String reason
+    ) {}
+
     public record ReadingResponse(
             String id,
             String contractId,
@@ -70,6 +74,10 @@ public class UtilityReadingDto {
             String pricingModel,
             long electricityCost,
             long waterCost,
-            int revision
+            int revision,
+            List<String> imageUrls,
+            Long fixedElectricUnitPrice,
+            Long fixedWaterUnitPrice,
+            String editReason
     ) {}
 }

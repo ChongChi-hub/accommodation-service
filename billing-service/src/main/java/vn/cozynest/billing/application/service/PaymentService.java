@@ -222,7 +222,8 @@ public class PaymentService {
             Invoice invoice = invoiceRepository.findById(intent.getOrderId()).orElse(null);
             String landlordId = invoice != null ? invoice.getLandlordId() : "landlord-system";
             ledgerService.getOrCreateWallet(landlordId, "Chủ trọ");
-            long platformFee = paidChunk * 5 / 100;
+            long baseRent = invoice != null ? invoice.getBaseRent() : 0L;
+            long platformFee = (baseRent > 0 && paidChunk >= baseRent) ? (baseRent * 5 / 100) : (paidChunk * 5 / 100);
             long landlordAmount = paidChunk - platformFee;
             ledgerService.postEntryIdempotent(idemKey, "Thanh toán hóa đơn phòng " + intent.getOrderId(),
                     "INVOICE_PAYMENT", intent.getOrderId(), "SYSTEM_WEBHOOK",

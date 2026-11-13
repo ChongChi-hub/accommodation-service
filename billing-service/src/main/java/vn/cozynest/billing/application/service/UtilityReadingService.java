@@ -119,6 +119,17 @@ public class UtilityReadingService {
         return toResponse(saved, false);
     }
 
+    @Transactional
+    public UtilityReadingDto.ReadingResponse disputeReading(String readingId, String reason, String actorId, boolean isAdmin) {
+        UtilityReading reading = repository.findById(readingId)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay chi so dien nuoc: " + readingId));
+        assertContractParticipantOrAdmin(reading.getContractId(), actorId, isAdmin);
+        auditRepository.save(UtilityReadingAudit.of(reading.getId(), "DISPUTED", writeSnapshot(reading), actorId, reason));
+        reading.markDisputed(reason);
+        UtilityReading saved = repository.save(reading);
+        return toResponse(saved, saved.isSurgeAnomaly(new BigDecimal("100"), new BigDecimal("10")));
+    }
+
     @Transactional(readOnly = true)
     public UtilityReadingDto.ReadingResponse getLatestReading(String contractId) {
         return repository.findLatestByContractId(contractId)
@@ -211,13 +222,35 @@ public class UtilityReadingService {
         ), "{}");
     }
 
+    @SuppressWarnings("unchecked")
+    private List<String> readImagesJsonSafe(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, List.class);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     private UtilityReadingDto.ReadingResponse toResponse(UtilityReading r, boolean surge) {
+        List<String> images = readImagesJsonSafe(r.getReadingImagesJson());
+        Long fixedElec = null;
+        Long fixedWater = null;
+        if (r.getTariffConfigJson() != null && !r.getTariffConfigJson().isBlank()) {
+            try {
+                Map<String, Object> map = objectMapper.readValue(r.getTariffConfigJson(), Map.class);
+                if (map.get("fixedElectric") instanceof Number n) fixedElec = n.longValue();
+                if (map.get("fixedWater") instanceof Number n) fixedWater = n.longValue();
+            } catch (Exception ignored) {}
+        }
         return new UtilityReadingDto.ReadingResponse(
                 r.getId(), r.getContractId(), r.getRoomId(), r.getPeriodMonth(),
                 r.getElectricPrev(), r.getElectricCurr(), r.getElectricConsumption(),
                 r.getWaterPrev(), r.getWaterCurr(), r.getWaterConsumption(),
                 surge, r.getRecordedAt(), r.getStatus(), r.getPricingModel(),
-                r.getElectricityCost(), r.getWaterCost(), r.getRevision()
+                r.getElectricityCost(), r.getWaterCost(), r.getRevision(),
+                images, fixedElec, fixedWater, r.getEditReason()
         );
     }
 }
