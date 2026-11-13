@@ -22,7 +22,7 @@ public class HttpBookingListingAdapter implements BookingListingPort {
 
     @Autowired
     public HttpBookingListingAdapter(
-            @Value("${app.listing-service.url:http://localhost:8082}") String listingBaseUrl
+            @Value("${app.listing-service.url:${LISTING_SERVICE_URL:http://localhost:8082}}") String listingBaseUrl
     ) {
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout(Duration.ofSeconds(3));
@@ -64,8 +64,31 @@ public class HttpBookingListingAdapter implements BookingListingPort {
     }
 
     @Override
+    public void holdRoom(String roomId) {
+        log.info("Saga holding room for roomId={}", roomId);
+        try {
+            restClient.put()
+                    .uri("/internal/rooms/{id}/hold", roomId)
+                    .header("X-Internal-Service-Key", "CozyNestInternalServiceKeySecret2026")
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Failed to hold room {}: {}", roomId, e.getMessage());
+        }
+    }
+
+    @Override
     public void releaseRoomHold(String roomId) {
         log.info("Saga compensation notified listing hold release for roomId={}", roomId);
+        try {
+            restClient.put()
+                    .uri("/internal/rooms/{id}/release", roomId)
+                    .header("X-Internal-Service-Key", "CozyNestInternalServiceKeySecret2026")
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Failed to release room hold {}: {}", roomId, e.getMessage());
+        }
     }
 }
 

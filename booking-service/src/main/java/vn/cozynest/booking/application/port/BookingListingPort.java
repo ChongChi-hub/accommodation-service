@@ -6,6 +6,8 @@ package vn.cozynest.booking.application.port;
 public interface BookingListingPort {
     RoomAvailabilityCheck checkRoomAvailability(String roomId, int requestedOccupants);
 
+    void holdRoom(String roomId);
+
     void releaseRoomHold(String roomId);
 
     record RoomAvailabilityCheck(boolean available, int maxOccupants, String status, String reason) {}

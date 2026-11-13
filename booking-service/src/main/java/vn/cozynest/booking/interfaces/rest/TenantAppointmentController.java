@@ -16,7 +16,7 @@ import vn.cozynest.common.dto.PaginationResponse;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/tenant/appointments")
+@RequestMapping({"/api/v1/tenant/appointments", "/api/v1/booking/appointments/tenant"})
 @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
 public class TenantAppointmentController {
 

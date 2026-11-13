@@ -13,7 +13,7 @@ import vn.cozynest.common.dto.ApiResponse;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/booking/rental-requests")
+@RequestMapping({"/api/v1/booking/rental-requests", "/api/v1/rental-requests"})
 public class RentalRequestController {
 
     private final RentalRequestService rentalRequestService;

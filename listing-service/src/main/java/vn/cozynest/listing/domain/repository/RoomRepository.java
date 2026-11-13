@@ -29,6 +29,8 @@ public interface RoomRepository {
 
     Optional<Room> findBySlugAndDeletedAtIsNull(String slug);
 
+    Optional<Room> findByRoomUuidAndDeletedAtIsNull(String roomUuid);
+
     Optional<Room> findByIdAndDeletedAtIsNull(Long id);
 
     Room save(Room room);

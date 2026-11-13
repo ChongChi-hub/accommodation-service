@@ -30,7 +30,17 @@ public class RoomDetailService {
             room = roomRepository.findByIdAndDeletedAtIsNull(id)
                     .orElseGet(() -> roomRepository.findBySlugAndDeletedAtIsNull(slugOrId).orElse(null));
         } else {
-            room = roomRepository.findBySlugAndDeletedAtIsNull(slugOrId).orElse(null);
+            room = roomRepository.findByRoomUuidAndDeletedAtIsNull(slugOrId)
+                    .orElseGet(() -> roomRepository.findBySlugAndDeletedAtIsNull(slugOrId)
+                            .orElseGet(() -> {
+                                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)$").matcher(slugOrId);
+                                if (m.find()) {
+                                    try {
+                                        return roomRepository.findByIdAndDeletedAtIsNull(Long.parseLong(m.group(1))).orElse(null);
+                                    } catch (Exception ignored) {}
+                                }
+                                return null;
+                            }));
         }
 
         if (room == null || room.isDeleted() || room.isHidden() || !room.isApproved()) {
@@ -40,6 +50,7 @@ public class RoomDetailService {
         boolean isPublicStatus = "PUBLISHED".equalsIgnoreCase(room.getPublicationStatus())
                 || "PUBLISHED".equalsIgnoreCase(room.getStatus())
                 || "AVAILABLE".equalsIgnoreCase(room.getStatus())
+                || "HOLD".equalsIgnoreCase(room.getStatus())
                 || "OCCUPIED".equalsIgnoreCase(room.getStatus())
                 || "MAINTENANCE".equalsIgnoreCase(room.getStatus());
 

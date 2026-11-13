@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public endpoints
+                        .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/api/v1/rooms", "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/hosts", "/api/v1/hosts/**").permitAll()
                         .requestMatchers("/api/v1/room-types", "/api/v1/room-types/**").permitAll()

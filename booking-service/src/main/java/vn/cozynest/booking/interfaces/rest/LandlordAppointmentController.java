@@ -15,7 +15,7 @@ import java.time.Instant;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/landlord/appointments")
+@RequestMapping({"/api/v1/landlord/appointments", "/api/v1/booking/appointments/landlord"})
 @PreAuthorize("hasRole('LANDLORD')")
 public class LandlordAppointmentController {
 

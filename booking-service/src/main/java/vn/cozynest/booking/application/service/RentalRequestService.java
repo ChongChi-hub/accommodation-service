@@ -12,14 +12,18 @@ import vn.cozynest.booking.application.dto.RentalRequestDto;
 import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
+import vn.cozynest.booking.domain.model.Contract;
 import vn.cozynest.booking.domain.model.RentalRequest;
 import vn.cozynest.booking.domain.repository.AppointmentEventOutboxRepository;
+import vn.cozynest.booking.domain.repository.ContractRepository;
 import vn.cozynest.booking.domain.repository.RentalRequestRepository;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -32,13 +36,15 @@ public class RentalRequestService {
     private final IdentityVerificationPort identityVerificationPort;
     private final AppointmentEventOutboxRepository outboxRepository;
     private final Optional<BookingListingPort> listingPort;
+    private final Optional<ContractRepository> contractRepository;
+    private final Optional<RentalSagaOrchestrator> sagaOrchestrator;
 
     public RentalRequestService(
             RentalRequestRepository rentalRequestRepository,
             IdentityVerificationPort identityVerificationPort,
             AppointmentEventOutboxRepository outboxRepository
     ) {
-        this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty());
+        this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     @Autowired
@@ -46,12 +52,16 @@ public class RentalRequestService {
             RentalRequestRepository rentalRequestRepository,
             IdentityVerificationPort identityVerificationPort,
             AppointmentEventOutboxRepository outboxRepository,
-            Optional<BookingListingPort> listingPort
+            Optional<BookingListingPort> listingPort,
+            Optional<ContractRepository> contractRepository,
+            Optional<RentalSagaOrchestrator> sagaOrchestrator
     ) {
         this.rentalRequestRepository = rentalRequestRepository;
         this.identityVerificationPort = identityVerificationPort;
         this.outboxRepository = outboxRepository;
         this.listingPort = listingPort != null ? listingPort : Optional.empty();
+        this.contractRepository = contractRepository != null ? contractRepository : Optional.empty();
+        this.sagaOrchestrator = sagaOrchestrator != null ? sagaOrchestrator : Optional.empty();
     }
 
     public RentalRequestDto createRequest(String tenantId, CreateRentalRequestDto dto) {
@@ -81,8 +91,14 @@ public class RentalRequestService {
             }
         });
 
+        String rawLandlordId = dto.landlordId() != null ? dto.landlordId().trim() : "";
+        String normalizedLandlordId = rawLandlordId;
+        if (normalizedLandlordId.matches("\\d+")) {
+            normalizedLandlordId = String.format("u-landlord-%02d", Integer.parseInt(normalizedLandlordId));
+        }
+
         RentalRequest saved = rentalRequestRepository.save(RentalRequest.create(
-                dto.roomId(), tenantId, dto.landlordId(),
+                dto.roomId(), tenantId, normalizedLandlordId,
                 dto.proposedMoveInDate(), dto.numOccupants(), dto.message(), dto.idempotencyKey()
         ));
         publishOutbox("RENTAL_REQUEST_CREATED", saved);
@@ -91,10 +107,64 @@ public class RentalRequestService {
 
     public RentalRequestDto approveRequest(String landlordId, String requestId, String contractId) {
         RentalRequest request = findOrThrow(requestId);
-        if (!request.getLandlordId().equals(landlordId)) {
+        boolean landlordMatches = request.getLandlordId().equals(landlordId)
+                || (landlordId != null && landlordId.matches("u-landlord-0*(\\d+)") && request.getLandlordId().equals(landlordId.replaceFirst("u-landlord-0*", "")))
+                || (request.getLandlordId().matches("\\d+") && landlordId != null && landlordId.equals(String.format("u-landlord-%02d", Integer.parseInt(request.getLandlordId()))));
+        if (!landlordMatches) {
             throw new AccessDeniedException("Ban khong co quyen duyet yeu cau thue nay");
         }
-        request.approve(24, contractId);
+
+        String effectiveContractId = contractId;
+        if ((effectiveContractId == null || effectiveContractId.isBlank()) && contractRepository.isPresent()) {
+            String contractCode = "HD-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            LocalDate start = request.getProposedMoveInDate() != null ? request.getProposedMoveInDate() : LocalDate.now().plusDays(3);
+            LocalDate end = start.plusMonths(12);
+            long monthlyRent = 4500000L;
+            long depositAmount = 4500000L;
+            String terms = "Hợp đồng thuê phòng điện tử CozyNest tiêu chuẩn. Người thuê cam kết tuân thủ đầy đủ nội quy phòng trọ.";
+
+            Contract newContract = Contract.create(
+                    contractCode,
+                    request.getRoomId(),
+                    request.getTenantId(),
+                    landlordId,
+                    request.getId(),
+                    start,
+                    end,
+                    monthlyRent,
+                    depositAmount,
+                    terms
+            );
+            Contract savedContract = contractRepository.get().save(newContract);
+            effectiveContractId = savedContract.getId();
+            log.info("Auto-generated electronic contract {} (code {}) for approved request {}",
+                    effectiveContractId, contractCode, request.getId());
+        }
+
+        String sagaId = UUID.randomUUID().toString();
+        String payloadJson = String.format(
+                "{\"requestId\":\"%s\",\"roomId\":\"%s\",\"tenantId\":\"%s\",\"landlordId\":\"%s\",\"contractId\":\"%s\"}",
+                request.getId(), request.getRoomId(), request.getTenantId(), landlordId, effectiveContractId != null ? effectiveContractId : ""
+        );
+        sagaOrchestrator.ifPresent(orchestrator -> {
+            try {
+                orchestrator.startRentalSaga(sagaId, payloadJson);
+                log.info("Started rental saga {} for approved request {}", sagaId, request.getId());
+            } catch (Exception e) {
+                log.warn("Failed to start saga for request {}: {}", request.getId(), e.getMessage());
+            }
+        });
+
+        listingPort.ifPresent(port -> {
+            try {
+                port.holdRoom(request.getRoomId());
+                log.info("Requested listing-service to HOLD room {}", request.getRoomId());
+            } catch (Exception e) {
+                log.warn("Failed to hold room {}: {}", request.getRoomId(), e.getMessage());
+            }
+        });
+
+        request.approve(24, effectiveContractId);
         RentalRequest saved = rentalRequestRepository.save(request);
         publishOutbox("RENTAL_REQUEST_APPROVED", saved);
         return RentalRequestDto.from(saved);
@@ -102,7 +172,10 @@ public class RentalRequestService {
 
     public RentalRequestDto rejectRequest(String landlordId, String requestId) {
         RentalRequest request = findOrThrow(requestId);
-        if (!request.getLandlordId().equals(landlordId)) {
+        boolean landlordMatches = request.getLandlordId().equals(landlordId)
+                || (landlordId != null && landlordId.matches("u-landlord-0*(\\d+)") && request.getLandlordId().equals(landlordId.replaceFirst("u-landlord-0*", "")))
+                || (request.getLandlordId().matches("\\d+") && landlordId != null && landlordId.equals(String.format("u-landlord-%02d", Integer.parseInt(request.getLandlordId()))));
+        if (!landlordMatches) {
             throw new AccessDeniedException("Ban khong co quyen tu choi yeu cau thue nay");
         }
         request.reject();

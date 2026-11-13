@@ -78,11 +78,17 @@ public class TenantAppointmentService {
             throw new IllegalArgumentException("Chu tro khong the tu dat lich xem phong cua chinh minh");
         }
 
+        String rawLandlordId = req.landlordId() != null ? req.landlordId().trim() : "";
+        String normalizedLandlordId = rawLandlordId;
+        if (normalizedLandlordId.matches("\\d+")) {
+            normalizedLandlordId = String.format("u-landlord-%02d", Integer.parseInt(normalizedLandlordId));
+        }
+
         ViewingAppointment appointment = new ViewingAppointment();
         appointment.setId(UUID.randomUUID().toString());
         appointment.setRoomId(req.roomId().trim());
         appointment.setTenantId(tenantId);
-        appointment.setLandlordId(req.landlordId().trim());
+        appointment.setLandlordId(normalizedLandlordId);
         appointment.setScheduledStart(req.scheduledStart());
         appointment.setScheduledEnd(end);
         appointment.setTenantNote(req.tenantNote() != null ? req.tenantNote().trim() : null);

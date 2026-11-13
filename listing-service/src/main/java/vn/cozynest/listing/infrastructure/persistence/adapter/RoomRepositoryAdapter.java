@@ -83,6 +83,11 @@ public class RoomRepositoryAdapter implements RoomRepository {
     }
 
     @Override
+    public Optional<Room> findByRoomUuidAndDeletedAtIsNull(String roomUuid) {
+        return springRepo.findByRoomUuidAndDeletedAtIsNull(roomUuid).map(mapper::toDomain);
+    }
+
+    @Override
     public Optional<Room> findByIdAndDeletedAtIsNull(Long id) {
         return springRepo.findByIdAndDeletedAtIsNull(id).map(mapper::toDomain);
     }

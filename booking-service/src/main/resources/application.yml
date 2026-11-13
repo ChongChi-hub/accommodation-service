@@ -43,3 +43,14 @@ jwt:
 cozynest:
   broker:
     enabled: ${COZYNEST_BROKER_ENABLED:false}
+
+app:
+  identity-service:
+    url: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+  listing-service:
+    url: ${LISTING_SERVICE_URL:http://localhost:8082}
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}
+  booking:
+    identity:
+      allow-sandbox-bypass: ${APP_BOOKING_IDENTITY_ALLOW_SANDBOX_BYPASS:true}

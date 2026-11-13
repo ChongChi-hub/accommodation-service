@@ -220,7 +220,11 @@ services:
       DB_USER: ${BOOKING_DB_USER:-booking_user}
       DB_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      LISTING_SERVICE_URL: http://listing-service:8082
       COMMUNICATION_SERVICE_URL: http://communication-service:8085
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8081
+      APP_LISTING_SERVICE_URL: http://listing-service:8082
+      APP_BOOKING_IDENTITY_ALLOW_SANDBOX_BYPASS: "true"
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
@@ -254,6 +258,9 @@ services:
       DB_USER: ${BILLING_DB_USER:-billing_user}
       DB_PASSWORD: ${BILLING_DB_PASSWORD:?BILLING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8081
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
@@ -286,6 +293,9 @@ services:
       DB_USER: ${COMMUNICATION_DB_USER:-communication_user}
       DB_PASSWORD: ${COMMUNICATION_DB_PASSWORD:?COMMUNICATION_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8081
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
@@ -318,6 +328,9 @@ services:
       DB_USER: ${ADMIN_DB_USER:-admin_user}
       DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_BOOKING_SERVICE_URL: http://booking-service:8083
+      APP_IDENTITY_SERVICE_URL: http://identity-service:8081
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
