@@ -160,3 +160,4 @@ class GoogleAuthStaffAndIdentitiesTest {
         verify(auditLogRepository).save(any(IdentityAuditLog.class));
     }
 }
+

@@ -73,3 +73,4 @@ Do Google ap dung co che chan tu dong hoa (anti-bot / headless browser), cac buo
 | 5 | Huy lien ket Google khi tai khoan da co mat khau | Modal xac nhan xuat hien, huy lien ket thanh cong |
 | 6 | Huy lien ket Google khi tai khoan CHI co Google (chua co mat khau) | Nut huy bi chan, hien nut "Dat mat khau" |
 | 7 | Thu dang nhap Google bang email trung voi email ADMIN / MODERATOR | Bi tu choi HTTP 403 voi thong bao chan tai khoan nhan su |
+

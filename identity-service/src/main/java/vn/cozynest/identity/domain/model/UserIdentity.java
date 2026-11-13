@@ -73,3 +73,4 @@ public class UserIdentity {
     public Instant getLastLoginAt() { return lastLoginAt; }
     public Instant getCreatedAt() { return createdAt; }
 }
+

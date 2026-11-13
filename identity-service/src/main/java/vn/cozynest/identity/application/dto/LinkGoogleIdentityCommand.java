@@ -20,3 +20,4 @@ public class LinkGoogleIdentityCommand {
     private String ipAddress;
     private String userAgent;
 }
+

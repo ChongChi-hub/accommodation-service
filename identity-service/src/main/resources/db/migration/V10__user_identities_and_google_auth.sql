@@ -47,3 +47,4 @@ WHERE NOT EXISTS (
     SELECT 1 FROM user_identities ui
     WHERE ui.provider = oa.provider AND ui.provider_subject = oa.provider_user_id
 );
+

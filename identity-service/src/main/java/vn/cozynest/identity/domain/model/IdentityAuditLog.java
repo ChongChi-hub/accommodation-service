@@ -54,3 +54,4 @@ public class IdentityAuditLog {
     public String getDetails() { return details; }
     public Instant getCreatedAt() { return createdAt; }
 }
+

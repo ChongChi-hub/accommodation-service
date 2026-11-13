@@ -48,3 +48,4 @@ public class IdentityAuditLogRepositoryAdapter implements IdentityAuditLogReposi
                 .toList();
     }
 }
+

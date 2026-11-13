@@ -16,3 +16,4 @@ public interface SpringDataUserIdentityRepository extends JpaRepository<UserIden
     boolean existsByProviderAndProviderSubject(String provider, String providerSubject);
     int countByUserId(String userId);
 }
+

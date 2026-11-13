@@ -8,3 +8,4 @@ public interface IdentityAuditLogRepository {
     IdentityAuditLog save(IdentityAuditLog log);
     List<IdentityAuditLog> findByUserIdOrderByCreatedAtDesc(String userId);
 }
+

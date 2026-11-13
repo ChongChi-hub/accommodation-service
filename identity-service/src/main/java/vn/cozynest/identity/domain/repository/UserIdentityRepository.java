@@ -14,3 +14,4 @@ public interface UserIdentityRepository {
     boolean existsByProviderAndProviderSubject(String provider, String providerSubject);
     int countByUserId(String userId);
 }
+

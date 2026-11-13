@@ -10,3 +10,4 @@ import java.util.List;
 public interface SpringDataIdentityAuditLogRepository extends JpaRepository<IdentityAuditLogJpaEntity, String> {
     List<IdentityAuditLogJpaEntity> findByUserIdOrderByCreatedAtDesc(String userId);
 }
+
