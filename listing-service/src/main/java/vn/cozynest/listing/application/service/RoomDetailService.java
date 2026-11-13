@@ -28,9 +28,11 @@ public class RoomDetailService {
         if (slugOrId.matches("\\d+")) {
             Long id = Long.parseLong(slugOrId);
             room = roomRepository.findByIdAndDeletedAtIsNull(id)
-                    .orElseGet(() -> roomRepository.findBySlugAndDeletedAtIsNull(slugOrId).orElse(null));
+                    .orElseGet(() -> roomRepository.findBySlugAndDeletedAtIsNull(slugOrId)
+                            .orElseGet(() -> roomRepository.findByRoomUuidAndDeletedAtIsNull(slugOrId).orElse(null)));
         } else {
-            room = roomRepository.findBySlugAndDeletedAtIsNull(slugOrId).orElse(null);
+            room = roomRepository.findBySlugAndDeletedAtIsNull(slugOrId)
+                    .orElseGet(() -> roomRepository.findByRoomUuidAndDeletedAtIsNull(slugOrId).orElse(null));
         }
 
         if (room == null || room.isDeleted() || room.isHidden() || !room.isApproved()) {

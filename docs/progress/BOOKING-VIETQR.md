@@ -32,3 +32,4 @@
 5. `pha0-05-rental-modal.png`: Modal gửi yêu cầu thuê phòng mở thành công.
 6. `pha0-06-rental-submitted.png`: Gửi yêu cầu thuê phòng thất bại, lỗi 400 hiển thị: *"Vui long xac thuc so dien thoai truoc khi gui yeu cau thue phong"*.
 7. `pha0-07-tenant-appointments.png`: Danh sách cuộc hẹn của Tenant hiển thị lịch hẹn vừa tạo.
+

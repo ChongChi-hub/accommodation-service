@@ -74,7 +74,8 @@ public class TenantAppointmentService {
         if (!end.isAfter(req.scheduledStart())) {
             throw new IllegalArgumentException("Thoi gian ket thuc phai sau thoi gian bat dau");
         }
-        if (tenantId.equals(req.landlordId())) {
+        String targetLandlordId = normalizeLandlordId(req.landlordId());
+        if (tenantId.equals(targetLandlordId)) {
             throw new IllegalArgumentException("Chu tro khong the tu dat lich xem phong cua chinh minh");
         }
 
@@ -82,7 +83,7 @@ public class TenantAppointmentService {
         appointment.setId(UUID.randomUUID().toString());
         appointment.setRoomId(req.roomId().trim());
         appointment.setTenantId(tenantId);
-        appointment.setLandlordId(req.landlordId().trim());
+        appointment.setLandlordId(targetLandlordId);
         appointment.setScheduledStart(req.scheduledStart());
         appointment.setScheduledEnd(end);
         appointment.setTenantNote(req.tenantNote() != null ? req.tenantNote().trim() : null);
@@ -134,6 +135,17 @@ public class TenantAppointmentService {
                 "reasonCode", code.name()
         ));
         return ViewingAppointmentListItemDto.fromEntity(saved);
+    }
+
+    private String normalizeLandlordId(String landlordId) {
+        if (landlordId == null) return null;
+        if ("1".equals(landlordId)) return "u-landlord-01";
+        if ("2".equals(landlordId)) return "u-landlord-02";
+        if ("3".equals(landlordId)) return "u-landlord-03";
+        if ("4".equals(landlordId)) return "u-landlord-04";
+        if ("5".equals(landlordId)) return "u-landlord-05";
+        if ("6".equals(landlordId)) return "u-landlord-06";
+        return landlordId.trim();
     }
 
     private void recordOutbox(String eventType, String aggregateId, Object payload) {

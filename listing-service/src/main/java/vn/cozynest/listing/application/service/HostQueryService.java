@@ -10,6 +10,7 @@ import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.repository.LandlordSnapshotRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -66,6 +67,32 @@ public class HostQueryService {
                 .roomCount(roomDtos.size())
                 .rooms(roomDtos)
                 .build();
+    }
+
+    public List<HostPublicProfileDto> getTopHosts() {
+        List<LandlordSnapshot> snapshots = landlordSnapshotRepository.findAll().stream()
+                .sorted(Comparator.comparing(LandlordSnapshot::getRatingAvg, Comparator.reverseOrder()))
+                .toList();
+        return snapshots.stream().map(ls -> {
+            int roomCount = ls.getRoomCount() > 0 ? ls.getRoomCount() : 1;
+            String avatar = (ls.getAvatarUrl() != null && !ls.getAvatarUrl().isBlank())
+                    ? ls.getAvatarUrl()
+                    : "/uploads/avatars/default.png";
+            return HostPublicProfileDto.builder()
+                    .id(ls.getId() != null ? ls.getId() : ls.getLandlordId())
+                    .landlordId(ls.getLandlordId())
+                    .name(ls.getName())
+                    .avatarUrl(avatar)
+                    .verified(ls.isVerified())
+                    .ratingAvg(ls.getRatingAvg())
+                    .reviewCount(ls.getReviewCount())
+                    .responseRatePercent(ls.getResponseRatePercent())
+                    .responseTimeMinutes(ls.getResponseTimeMinutes())
+                    .roomCount(roomCount)
+                    .joinedAt(ls.getJoinedAt())
+                    .rooms(List.of())
+                    .build();
+        }).toList();
     }
 
     private boolean isPublicRoom(Room r) {

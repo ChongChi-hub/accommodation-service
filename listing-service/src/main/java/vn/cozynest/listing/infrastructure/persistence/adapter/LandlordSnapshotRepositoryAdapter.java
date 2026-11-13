@@ -29,6 +29,11 @@ public class LandlordSnapshotRepositoryAdapter implements LandlordSnapshotReposi
     }
 
     @Override
+    public List<LandlordSnapshot> findAll() {
+        return springRepo.findAll().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public LandlordSnapshot save(LandlordSnapshot snapshot) {
         return mapper.toDomain(springRepo.save(mapper.toEntity(snapshot)));
     }

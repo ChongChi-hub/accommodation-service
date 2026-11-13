@@ -103,6 +103,9 @@ public class UserProfileUseCase {
         );
 
         user.updateProfile(request.getFullName().trim(), profile.getAvatarKey(), request.getGender(), request.getDateOfBirth());
+        if (normalizedPhone != null && !normalizedPhone.isBlank()) {
+            user.updatePhoneNumber(normalizedPhone);
+        }
         userRepository.save(user);
 
         UserProfile savedProfile = userProfileRepository.save(profile);

@@ -36,8 +36,9 @@ public class SandboxVietQrGatewayAdapter implements PaymentGatewayPort {
             throw new IllegalStateException("Cong thanh toan dang tam khoa bao tri (kill-switch active)");
         }
         String encodedInfo = URLEncoder.encode(paymentCode, StandardCharsets.UTF_8);
+        String encodedName = URLEncoder.encode(accountName, StandardCharsets.UTF_8).replace("+", "%20");
         return String.format("%s/%s-%s-compact2.png?amount=%d&addInfo=%s&accountName=%s",
-                gatewayBaseUrl, bankBin, accountNumber, amountVnd, encodedInfo, accountName);
+                gatewayBaseUrl, bankBin, accountNumber, amountVnd, encodedInfo, encodedName);
     }
 
     @Override

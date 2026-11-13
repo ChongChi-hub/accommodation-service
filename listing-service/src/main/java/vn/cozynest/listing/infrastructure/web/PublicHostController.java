@@ -20,6 +20,12 @@ public class PublicHostController {
 
     private final HostQueryService hostQueryService;
 
+    @GetMapping
+    @Operation(summary = "Lấy danh sách các chủ trọ uy tín được xác minh")
+    public ResponseEntity<ApiResponse<java.util.List<HostPublicProfileDto>>> getTopHosts() {
+        return ResponseEntity.ok(ApiResponse.success(hostQueryService.getTopHosts()));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin công khai và danh sách phòng đang đăng của chủ trọ")
     public ResponseEntity<ApiResponse<HostPublicProfileDto>> getPublicHost(@PathVariable Long id) {
