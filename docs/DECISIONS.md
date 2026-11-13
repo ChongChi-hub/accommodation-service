@@ -362,6 +362,33 @@ Lịch hẹn xem phòng (`ViewingAppointment`) tuân thủ nghiêm ngặt máy t
 * **Quy tắc**: Endpoint `GET /api/v1/auth/google/status` trả về cờ `enabled: boolean` và `clientIdFingerprint: string` (8 ký tự đầu của chuỗi SHA-256 hash của Client ID).
 * **Lý do**: Cho phép Frontend phát hiện ngay lập tức tình trạng cấu hình lệch giữa `.env.local` của Frontend và cấu hình backend trên môi trường dev/staging mà tuyệt đối không để lộ toàn bộ Client ID qua API public.
 
+### 14.5 Bảng user_identities và Quản Lý Liên Kết Danh Tính Đa Phương Thức
+* **Mô hình**: Tách biệt danh tính liên kết sang bảng `user_identities` (provider, provider_subject, email_at_link, email_verified, display_name, picture_url, locale, linked_at, last_login_at) với ràng buộc `UNIQUE(provider, provider_subject)` và `UNIQUE(user_id, provider)`. Bảng `users` chỉ giữ `password_hash` (nullable) và suy ra `hasPassword`.
+* **Kiểm toán**: Mọi hành vi nhạy cảm (`GOOGLE_LINKED`, `GOOGLE_UNLINKED`, `GOOGLE_LOGIN`, `ACCOUNT_AUTO_LINKED`) đều được ghi nhận vào bảng `identity_audit_logs` kèm actor, IP và User-Agent (tuyệt đối không ghi token hay PII).
+
+### 14.6 Chính Sách Tự Động Liên Kết Tài Khoản (Auto-Linking) & Chống Chiếm Đoạt
+* **Email đã xác minh**: Nếu email trùng với tài khoản đã xác minh email (`email_verified_at != NULL`), hệ thống tự động liên kết tài khoản Google mới với tài khoản hiện có, không tạo user rác.
+* **Email chưa xác minh (Anti-Account Takeover)**: Nếu email trùng với tài khoản chưa xác minh email (có thể do kẻ tấn công tạo trước bằng email của nạn nhân), khi chủ sở hữu thực sự đăng nhập bằng Google (đã được Google xác minh email), hệ thống:
+  1. Thu hồi toàn bộ Refresh Token của phiên cũ.
+  2. Xóa `password_hash` của tài khoản cũ.
+  3. Đánh dấu `email_verified_at = NOW()`.
+  4. Liên kết Google Identity và đăng nhập cho người dùng thật. Muốn dùng lại mật khẩu, người dùng bắt buộc đi qua luồng Quên mật khẩu qua email chính chủ.
+
+### 14.7 Hạn Chế Tài Khoản Nhân Sự Quản Trị (ADMIN, MODERATOR)
+* **Quy tắc**: Tài khoản nhân sự (`ADMIN`, `MODERATOR`) mặc định KHÔNG được phép liên kết hoặc đăng nhập qua Google OAuth (trả về mã lỗi 403 `ERR_GOOGLE_NOT_ALLOWED_FOR_STAFF`).
+* **Cấu hình**: Có thể bật lại bằng cờ `auth.google.allow-staff=true` (mặc định là `false` để đảm bảo an ninh cấp cao).
+
+### 14.8 Bảo Vệ Phương Thức Đăng Nhập Cuối Cùng (Last Login Method Protection)
+* **Quy tắc**: Người dùng không thể hủy liên kết Google (`DELETE /api/v1/me/identities/google`) nếu đây là phương thức đăng nhập duy nhất (chưa có mật khẩu và không còn identity nào khác). Hệ thống trả về `409 Conflict` với mã `ERR_AUTH_LAST_LOGIN_METHOD`.
+* **Giao diện**: Nút hủy liên kết bị vô hiệu hóa kèm thông báo hướng dẫn người dùng "Đặt mật khẩu" trước.
+
+### 14.9 Chống Tấn Công SSRF Khi Xử Lý Avatar Google
+* **Quy tắc**: Tuyệt đối KHÔNG tải file ảnh từ `picture_url` của Google về server để lưu cục bộ (loại bỏ hoàn toàn nguy cơ Server-Side Request Forgery - SSRF).
+* **Hiển thị**: Frontend Next.js sử dụng `next/image` với cấu hình `images.remotePatterns` trỏ tới `lh3.googleusercontent.com` và fallback sang chữ cái đầu nếu lỗi.
+
+### 14.10 Ứng Xử Khi Thiếu Cấu Hình Ở Môi Trường Production
+* **Quy tắc**: Nếu thiếu `GOOGLE_CLIENT_ID` hoặc hệ thống bảo mật nonce Redis không khả dụng trên môi trường Production, hệ thống fail-fast hoặc tự động tắt cờ `enabled: false`. Frontend phát hiện trạng thái này sẽ ẩn hoàn toàn nút đăng nhập Google để tránh gây lỗi cho người dùng.
+
 
 
 
