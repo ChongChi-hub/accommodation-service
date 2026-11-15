@@ -115,6 +115,10 @@ public class KycModerationUseCase {
                 .version(v.getVersion())
                 .statusHistory(history)
                 .accessLogs(logs)
+                .frontImageUrl(v.getFrontImageUrl())
+                .backImageUrl(v.getBackImageUrl())
+                .hasFrontImage((v.getFrontImageKey() != null && !"PURGED".equals(v.getFrontImageKey())) || v.getFrontImageUrl() != null)
+                .hasBackImage((v.getBackImageKey() != null && !"PURGED".equals(v.getBackImageKey())) || v.getBackImageUrl() != null)
                 .build();
     }
 

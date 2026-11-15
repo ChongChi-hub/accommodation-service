@@ -49,6 +49,12 @@ public class UserVerificationJpaEntity {
     @Column(name = "back_image_key", length = 255)
     private String backImageKey;
 
+    @Column(name = "front_image_url", length = 500)
+    private String frontImageUrl;
+
+    @Column(name = "back_image_url", length = 500)
+    private String backImageUrl;
+
     @Column(name = "selfie_key", length = 255)
     private String selfieKey;
 

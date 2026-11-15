@@ -42,10 +42,8 @@ public class LandlordContextResolver {
         try {
             return Long.parseLong(principal);
         } catch (NumberFormatException ignored) {
-            if (principal.toLowerCase().contains("landlord")) {
-                return 1L;
-            }
-            return null;
+            long hash = Math.abs((long) principal.hashCode());
+            return hash > 100 ? hash : hash + 1000L;
         }
     }
 

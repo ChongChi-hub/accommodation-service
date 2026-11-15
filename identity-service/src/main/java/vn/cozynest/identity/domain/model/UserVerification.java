@@ -17,6 +17,8 @@ public class UserVerification {
     private String issuePlace;
     private String frontImageKey;
     private String backImageKey;
+    private String frontImageUrl;
+    private String backImageUrl;
     private String selfieKey;
     private KycStatus status;
     private Instant consentAt;
@@ -179,6 +181,10 @@ public class UserVerification {
     public String getIssuePlace() { return issuePlace; }
     public String getFrontImageKey() { return frontImageKey; }
     public String getBackImageKey() { return backImageKey; }
+    public String getFrontImageUrl() { return frontImageUrl; }
+    public String getBackImageUrl() { return backImageUrl; }
+    public void setFrontImageUrl(String frontImageUrl) { this.frontImageUrl = frontImageUrl; }
+    public void setBackImageUrl(String backImageUrl) { this.backImageUrl = backImageUrl; }
     public String getSelfieKey() { return selfieKey; }
     public KycStatus getStatus() { return status; }
     public Instant getConsentAt() { return consentAt; }

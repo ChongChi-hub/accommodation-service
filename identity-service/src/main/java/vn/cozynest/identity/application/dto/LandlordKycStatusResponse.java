@@ -24,6 +24,8 @@ public class LandlordKycStatusResponse {
     private int remainingAttempts;
     private boolean hasFrontImage;
     private boolean hasBackImage;
+    private String frontImageUrl;
+    private String backImageUrl;
     private boolean canResubmit;
 }
 
