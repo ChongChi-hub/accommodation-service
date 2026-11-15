@@ -39,12 +39,14 @@ class LoginUseCaseTest {
     private vn.cozynest.identity.application.port.LoginAttemptPort loginAttemptPort;
     @Mock
     private vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
+    @Mock
+    private vn.cozynest.identity.application.service.TwoFactorAuthService twoFactorAuthService;
 
     private LoginUseCase loginUseCase;
 
     @BeforeEach
     void setUp() {
-        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, landlordProfileRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter);
+        loginUseCase = new LoginUseCase(userRepository, refreshTokenRepository, landlordProfileRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter, twoFactorAuthService);
     }
 
     @Test
@@ -135,6 +137,62 @@ class LoginUseCaseTest {
 
         IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
         assertEquals("ERR_AUTH_INVALID_CREDENTIALS", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Should throw ERR_2FA_REQUIRED when Admin logs in without 2FA code")
+    void shouldThrowErr2FaRequiredWhenAdminLogsInWithout2FaCode() {
+        User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+
+        LoginCommand command = LoginCommand.builder()
+                .email("admin@cozynest.vn")
+                .password("pwd123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_2FA_REQUIRED", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Should throw ERR_2FA_INVALID when Admin logs in with wrong 2FA code")
+    void shouldThrowErr2FaInvalidWhenAdminLogsInWithWrong2FaCode() {
+        User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+        when(twoFactorAuthService.verifyChallenge(admin.getId(), "000000")).thenReturn(false);
+
+        LoginCommand command = LoginCommand.builder()
+                .email("admin@cozynest.vn")
+                .password("pwd123")
+                .twoFactorCode("000000")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_2FA_INVALID", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Should login successfully when Admin provides valid 2FA code")
+    void shouldSucceedWhenAdminProvidesValid2FaCode() {
+        User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+        when(twoFactorAuthService.verifyChallenge(admin.getId(), "123456")).thenReturn(true);
+        when(tokenProvider.generateAccessToken(admin)).thenReturn("admin_token");
+        when(tokenProvider.generateRefreshToken()).thenReturn("admin_refresh");
+        when(tokenProvider.hashToken("admin_refresh")).thenReturn("hash");
+
+        LoginCommand command = LoginCommand.builder()
+                .email("admin@cozynest.vn")
+                .password("pwd123")
+                .twoFactorCode("123456")
+                .build();
+
+        AuthResult result = loginUseCase.execute(command);
+        assertNotNull(result);
+        assertEquals("admin_token", result.getToken());
     }
 }
 

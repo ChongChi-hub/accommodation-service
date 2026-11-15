@@ -31,6 +31,7 @@ public class LoginUseCase {
     private final TokenProviderPort tokenProvider;
     private final LoginAttemptPort loginAttemptPort;
     private final vn.cozynest.identity.application.port.RateLimiterPort rateLimiter;
+    private final vn.cozynest.identity.application.service.TwoFactorAuthService twoFactorAuthService;
     private final String dummyBcryptHash;
 
     public LoginUseCase(UserRepository userRepository,
@@ -40,6 +41,17 @@ public class LoginUseCase {
                         TokenProviderPort tokenProvider,
                         LoginAttemptPort loginAttemptPort,
                         vn.cozynest.identity.application.port.RateLimiterPort rateLimiter) {
+        this(userRepository, refreshTokenRepository, landlordProfileRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter, null);
+    }
+
+    public LoginUseCase(UserRepository userRepository,
+                        RefreshTokenRepository refreshTokenRepository,
+                        LandlordProfileRepository landlordProfileRepository,
+                        PasswordEncoderPort passwordEncoder,
+                        TokenProviderPort tokenProvider,
+                        LoginAttemptPort loginAttemptPort,
+                        vn.cozynest.identity.application.port.RateLimiterPort rateLimiter,
+                        vn.cozynest.identity.application.service.TwoFactorAuthService twoFactorAuthService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.landlordProfileRepository = landlordProfileRepository;
@@ -47,6 +59,7 @@ public class LoginUseCase {
         this.tokenProvider = tokenProvider;
         this.loginAttemptPort = loginAttemptPort;
         this.rateLimiter = rateLimiter;
+        this.twoFactorAuthService = twoFactorAuthService;
         this.dummyBcryptHash = passwordEncoder.encode("cozynest_dummy_constant_timing_password_protection");
     }
 
@@ -106,6 +119,20 @@ public class LoginUseCase {
         }
         if (user.getStatus() == UserStatus.DELETED) {
             throw new IdentityDomainException("Tài khoản đã bị xóa khỏi hệ thống", "ERR_USER_DELETED");
+        }
+
+        boolean requires2fa = user.isTwoFactorEnabled()
+                || user.getRoles().contains(vn.cozynest.identity.domain.model.UserRoleType.ADMIN)
+                || user.getRoles().contains(vn.cozynest.identity.domain.model.UserRoleType.MODERATOR);
+
+        if (requires2fa) {
+            String code = command.getTwoFactorCode();
+            if (code == null || code.trim().isEmpty()) {
+                throw new IdentityDomainException("Tài khoản yêu cầu mã xác thực 2 lớp (TOTP).", "ERR_2FA_REQUIRED");
+            }
+            if (twoFactorAuthService == null || !twoFactorAuthService.verifyChallenge(user.getId(), code.trim())) {
+                throw new IdentityDomainException("Mã xác thực 2FA không chính xác hoặc đã hết hạn.", "ERR_2FA_INVALID");
+            }
         }
 
         loginAttemptPort.recordAttempt(command.getEmail(), command.getIpAddress(), true);

@@ -190,7 +190,7 @@ public class PayoutService {
     }
 
     private void verifyOtpCode(String userId, String otp) {
-        if (otp == null || !otp.matches("^[0-9]{6}$")) {
+        if (otp == null || !otp.matches("^[0-9]{6,8}$")) {
             throw new IllegalArgumentException("Ma OTP xac nhan rut tien phai gom 6 chu so hop le.");
         }
         if (identityVerificationPort != null && !identityVerificationPort.verifyOtp(userId, otp)) {

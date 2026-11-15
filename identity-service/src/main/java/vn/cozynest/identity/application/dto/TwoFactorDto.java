@@ -15,7 +15,7 @@ public class TwoFactorDto {
 
     public record VerifyRequest(
             @NotBlank(message = "Mã xác thực không được để trống")
-            @Pattern(regexp = "^[0-9]{6}$", message = "Mã xác thực phải gồm 6 chữ số")
+            @Pattern(regexp = "^[0-9]{6,8}$", message = "Mã xác thực phải gồm 6 chữ số TOTP hoặc 8 chữ số dự phòng")
             String code
     ) {}
 

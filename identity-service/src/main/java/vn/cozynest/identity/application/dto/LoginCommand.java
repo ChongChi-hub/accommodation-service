@@ -22,4 +22,5 @@ public class LoginCommand {
 
     private String deviceInfo;
     private String ipAddress;
+    private String twoFactorCode;
 }

@@ -6,9 +6,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.cozynest.listing.domain.model.ListingEventOutbox;
 import vn.cozynest.listing.domain.model.OwnershipDocAccessLog;
 import vn.cozynest.listing.domain.model.PropertyOwnershipDocument;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.repository.ListingEventOutboxRepository;
 import vn.cozynest.listing.domain.repository.OwnershipDocAccessLogRepository;
 import vn.cozynest.listing.domain.repository.PropertyOwnershipDocumentRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
@@ -27,23 +29,34 @@ public class PropertyOwnershipService {
     private final PropertyOwnershipDocumentRepository docRepository;
     private final RoomRepository roomRepository;
     private final Optional<OwnershipDocAccessLogRepository> accessLogRepository;
+    private final Optional<ListingEventOutboxRepository> outboxRepository;
 
     public PropertyOwnershipService(
             PropertyOwnershipDocumentRepository docRepository,
             RoomRepository roomRepository
     ) {
-        this(docRepository, roomRepository, Optional.empty());
+        this(docRepository, roomRepository, Optional.empty(), Optional.empty());
+    }
+
+    public PropertyOwnershipService(
+            PropertyOwnershipDocumentRepository docRepository,
+            RoomRepository roomRepository,
+            Optional<OwnershipDocAccessLogRepository> accessLogRepository
+    ) {
+        this(docRepository, roomRepository, accessLogRepository, Optional.empty());
     }
 
     @Autowired
     public PropertyOwnershipService(
             PropertyOwnershipDocumentRepository docRepository,
             RoomRepository roomRepository,
-            Optional<OwnershipDocAccessLogRepository> accessLogRepository
+            Optional<OwnershipDocAccessLogRepository> accessLogRepository,
+            Optional<ListingEventOutboxRepository> outboxRepository
     ) {
         this.docRepository = docRepository;
         this.roomRepository = roomRepository;
         this.accessLogRepository = accessLogRepository != null ? accessLogRepository : Optional.empty();
+        this.outboxRepository = outboxRepository != null ? outboxRepository : Optional.empty();
     }
 
     public PropertyOwnershipDocument uploadDocument(
@@ -130,7 +143,16 @@ public class PropertyOwnershipService {
             log.info("Moderator {} rejected ownership doc {}: {}", reviewerId, docId, doc.getRejectReason());
         }
 
-        return docRepository.save(doc);
+        PropertyOwnershipDocument saved = docRepository.save(doc);
+        outboxRepository.ifPresent(repo -> {
+            String payload = String.format(
+                    "{\"docId\":\"%s\",\"roomId\":%d,\"landlordId\":%d,\"status\":\"%s\",\"expiresAt\":\"%s\"}",
+                    saved.getId(), saved.getRoomId(), saved.getLandlordId(), saved.getStatus(),
+                    saved.getExpiresAt() != null ? saved.getExpiresAt().toString() : ""
+            );
+            repo.save(ListingEventOutbox.create("OWNERSHIP_DOC", String.valueOf(saved.getRoomId()), "OwnershipDocReviewedEvent", payload));
+        });
+        return saved;
     }
 
     @Scheduled(cron = "0 30 2 * * *", zone = "UTC")

@@ -24,3 +24,30 @@ jobs:
             exit 1
           fi
 
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'CozyNest Accommodation Service'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --enableRetired
+        continue-on-error: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Identity Docker Image for Scanning
+        run: |
+          docker compose build identity-service
+
+      - name: Run Trivy Vulnerability Scan on Docker Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'accommodation-service-identity-service:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+

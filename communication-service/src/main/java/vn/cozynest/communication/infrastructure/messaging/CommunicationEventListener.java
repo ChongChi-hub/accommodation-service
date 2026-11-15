@@ -62,6 +62,7 @@ public class CommunicationEventListener {
 
     private EventInboxProcessor.ProcessOutcome processWithBoundedRetry(DomainEventEnvelope envelope) {
         EventInboxProcessor.ProcessOutcome lastOutcome = EventInboxProcessor.ProcessOutcome.SENT_TO_DLQ;
+        long backoffMs = 500L;
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             lastOutcome = EventInboxProcessor.processIdempotently(inboxStore, envelope, () -> {
                 dispatchNotificationFromEnvelope(envelope);
@@ -69,6 +70,15 @@ public class CommunicationEventListener {
             });
             if (lastOutcome != EventInboxProcessor.ProcessOutcome.SENT_TO_DLQ) {
                 return lastOutcome;
+            }
+            if (attempt < MAX_RETRIES) {
+                try {
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                backoffMs *= 2;
             }
         }
         return lastOutcome;

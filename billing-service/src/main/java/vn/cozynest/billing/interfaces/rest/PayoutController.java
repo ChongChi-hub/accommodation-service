@@ -48,8 +48,15 @@ public class PayoutController {
             Authentication authentication) {
         String landlordId = (String) authentication.getPrincipal();
         String otp = body != null ? body.get("otp") : null;
-        return ResponseEntity.ok(ApiResponse.success("Da kich hoat khoa bao ve 24 gio khi doi tai khoan ngan hang",
-                payoutService.markBankChangedByOwner(landlordId, otp)));
+        if (otp == null || otp.trim().isEmpty()) {
+            throw new org.springframework.security.access.AccessDeniedException("Yêu cầu mã TOTP để đổi tài khoản ngân hàng");
+        }
+        try {
+            return ResponseEntity.ok(ApiResponse.success("Da kich hoat khoa bao ve 24 gio khi doi tai khoan ngan hang",
+                    payoutService.markBankChangedByOwner(landlordId, otp)));
+        } catch (IllegalArgumentException ex) {
+            throw new org.springframework.security.access.AccessDeniedException(ex.getMessage());
+        }
     }
 
     @GetMapping

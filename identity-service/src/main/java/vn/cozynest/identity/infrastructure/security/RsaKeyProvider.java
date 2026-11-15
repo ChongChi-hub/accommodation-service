@@ -27,44 +27,121 @@ public class RsaKeyProvider {
 
     private final RSAPrivateKey privateKey;
     private final RSAPublicKey publicKey;
+    private final String activeKid;
     private final Map<String, RSAPublicKey> publicKeys = new ConcurrentHashMap<>();
 
     public RsaKeyProvider() {
-        this(null, null, "dev");
+        this(null, null, KEY_ID, null, "dev");
+    }
+
+    public RsaKeyProvider(
+            String privateKeyPem,
+            String publicKeyPem,
+            String activeProfile) {
+        this(privateKeyPem, publicKeyPem, KEY_ID, null, activeProfile);
     }
 
     @Autowired
     public RsaKeyProvider(
             @Value("${jwt.private-key:}") String privateKeyPem,
             @Value("${jwt.public-key:}") String publicKeyPem,
+            @Value("${jwt.active-kid:" + KEY_ID + "}") String activeKid,
+            @Value("${jwt.rotated-keys:}") String rotatedKeysConfig,
             @Value("${spring.profiles.active:dev}") String activeProfile) {
+        this.activeKid = (activeKid != null && !activeKid.isBlank()) ? activeKid : KEY_ID;
         boolean isProd = activeProfile != null && (activeProfile.contains("prod") || activeProfile.contains("production"));
-        if (isProd && (privateKeyPem == null || privateKeyPem.isBlank())) {
-            throw new IllegalStateException("Production environment requires explicit jwt.private-key. Using fallback default RSA key is forbidden!");
+
+        String resolvedPriv = resolveKeyContent(privateKeyPem, "JWT_PRIVATE_KEY");
+        String resolvedPub = resolveKeyContent(publicKeyPem, "JWT_PUBLIC_KEY");
+
+        if (isProd && (resolvedPriv == null || resolvedPriv.isBlank() || resolvedPriv.equals(DEFAULT_PRIVATE_KEY))) {
+            throw new IllegalStateException("Production environment requires explicit jwt.private-key loaded from Vault/Secrets Manager. Fallback default key is forbidden!");
         }
 
         try {
             KeyFactory kf = KeyFactory.getInstance("RSA");
 
-            String privBase64 = (privateKeyPem != null && !privateKeyPem.isBlank()) ? privateKeyPem : DEFAULT_PRIVATE_KEY;
-            String pubBase64 = (publicKeyPem != null && !publicKeyPem.isBlank()) ? publicKeyPem : DEFAULT_PUBLIC_KEY;
-
-            privBase64 = privBase64.replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s+", "");
-
-            pubBase64 = pubBase64.replace("-----BEGIN PUBLIC KEY-----", "")
-                    .replace("-----END PUBLIC KEY-----", "")
-                    .replaceAll("\\s+", "");
+            String privBase64 = cleanBase64(resolvedPriv != null && !resolvedPriv.isBlank() ? resolvedPriv : DEFAULT_PRIVATE_KEY);
+            String pubBase64 = cleanBase64(resolvedPub != null && !resolvedPub.isBlank() ? resolvedPub : DEFAULT_PUBLIC_KEY);
 
             byte[] privBytes = Base64.getDecoder().decode(privBase64);
             byte[] pubBytes = Base64.getDecoder().decode(pubBase64);
 
             this.privateKey = (RSAPrivateKey) kf.generatePrivate(new PKCS8EncodedKeySpec(privBytes));
             this.publicKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
-            this.publicKeys.put(KEY_ID, this.publicKey);
+            this.publicKeys.put(this.activeKid, this.publicKey);
+
+            // Register any rotated keys for zero-downtime key rotation
+            if (rotatedKeysConfig != null && !rotatedKeysConfig.isBlank()) {
+                parseAndRegisterRotatedKeys(rotatedKeysConfig, kf);
+            }
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize RSA keys for JWT", e);
+            throw new IllegalStateException("Failed to initialize RSA keys for JWT from Vault/Secrets Manager", e);
+        }
+    }
+
+    private static String resolveKeyContent(String rawInput, String envName) {
+        String val = rawInput;
+        if (val == null || val.isBlank()) {
+            val = System.getenv(envName);
+        }
+        if (val == null || val.isBlank()) {
+            String path = System.getenv(envName + "_PATH");
+            if (path != null && !path.isBlank()) {
+                val = "file:" + path;
+            }
+        }
+        if (val == null || val.isBlank()) {
+            return null;
+        }
+        if (val.startsWith("file:")) {
+            try {
+                return java.nio.file.Files.readString(java.nio.file.Path.of(val.substring(5).trim()));
+            } catch (Exception ex) {
+                throw new IllegalStateException("Cannot read RSA key from Vault file: " + val, ex);
+            }
+        }
+        if (!val.contains("-----BEGIN") && (val.startsWith("/") || val.contains(":\\") || val.contains(":/"))) {
+            java.nio.file.Path p = java.nio.file.Path.of(val.trim());
+            if (java.nio.file.Files.exists(p)) {
+                try {
+                    return java.nio.file.Files.readString(p);
+                } catch (Exception ex) {
+                    throw new IllegalStateException("Cannot read RSA key from Vault path: " + p, ex);
+                }
+            }
+        }
+        return val;
+    }
+
+    private static String cleanBase64(String pem) {
+        return pem.replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                .replace("-----END RSA PRIVATE KEY-----", "")
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----BEGIN RSA PUBLIC KEY-----", "")
+                .replace("-----END RSA PUBLIC KEY-----", "")
+                .replaceAll("\\s+", "");
+    }
+
+    private void parseAndRegisterRotatedKeys(String config, KeyFactory kf) {
+        String[] pairs = config.split("[;,]");
+        for (String pair : pairs) {
+            String trimmed = pair.trim();
+            if (trimmed.isEmpty() || !trimmed.contains("=")) continue;
+            String[] kv = trimmed.split("=", 2);
+            String rKid = kv[0].trim();
+            String rContent = resolveKeyContent(kv[1].trim(), "JWT_ROTATED_" + rKid.toUpperCase().replace('-', '_'));
+            if (rContent != null && !rContent.isBlank()) {
+                try {
+                    byte[] pubBytes = Base64.getDecoder().decode(cleanBase64(rContent));
+                    RSAPublicKey rotPub = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
+                    registerRotatedKey(rKid, rotPub);
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
@@ -86,5 +163,5 @@ public class RsaKeyProvider {
         return Collections.unmodifiableMap(publicKeys);
     }
 
-    public String getKeyId() { return KEY_ID; }
+    public String getKeyId() { return activeKid; }
 }

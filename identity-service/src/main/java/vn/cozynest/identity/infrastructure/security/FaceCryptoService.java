@@ -38,19 +38,34 @@ public class FaceCryptoService {
         boolean isProd = env != null && (env.matchesProfiles("prod", "production")
                 || "production".equalsIgnoreCase(System.getenv("APP_ENV")));
 
+        String envKey = System.getenv("FACE_ENCRYPTION_KEY");
+        String envKeyPath = System.getenv("FACE_ENCRYPTION_KEY_PATH");
+        String activeKey = (configuredKeyBase64 != null && !configuredKeyBase64.isBlank()) ? configuredKeyBase64 : envKey;
+        if (activeKey == null || activeKey.isBlank()) {
+            if (envKeyPath != null && !envKeyPath.isBlank()) {
+                activeKey = "file:" + envKeyPath;
+            }
+        }
+
         if (isProd) {
-            String envKey = System.getenv("FACE_ENCRYPTION_KEY");
-            String activeKey = (envKey != null && !envKey.isBlank()) ? envKey : configuredKeyBase64;
             if (activeKey == null || activeKey.isBlank() || activeKey.contains("REPLACE_WITH")) {
                 throw new IllegalStateException("Production environment FATAL: FACE_ENCRYPTION_KEY is required and must not be placeholder!");
             }
         }
 
-        String rawKey = (configuredKeyBase64 != null && !configuredKeyBase64.isBlank() && !configuredKeyBase64.contains("REPLACE_WITH"))
-                ? configuredKeyBase64
+        String rawKey = (activeKey != null && !activeKey.isBlank() && !activeKey.contains("REPLACE_WITH"))
+                ? activeKey
                 : DEV_FALLBACK_KEY_BASE64;
 
-        byte[] decodedKey = Base64.getDecoder().decode(rawKey);
+        if (rawKey.startsWith("file:")) {
+            try {
+                rawKey = java.nio.file.Files.readString(java.nio.file.Path.of(rawKey.substring(5).trim())).trim();
+            } catch (Exception ex) {
+                throw new IllegalStateException("Cannot read FACE_ENCRYPTION_KEY from Vault file: " + rawKey, ex);
+            }
+        }
+
+        byte[] decodedKey = Base64.getDecoder().decode(rawKey.trim());
         if (decodedKey.length != 32) {
             throw new IllegalArgumentException("FACE_ENCRYPTION_KEY must be exactly 32 bytes (256-bit AES key) when base64-decoded");
         }
