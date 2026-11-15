@@ -33,6 +33,10 @@ public class KycModerationDetailDto {
     private Long version;
     private List<StatusHistoryItem> statusHistory;
     private List<AccessLogItem> accessLogs;
+    private String frontImageUrl;
+    private String backImageUrl;
+    private boolean hasFrontImage;
+    private boolean hasBackImage;
 
     @Getter
     @Builder

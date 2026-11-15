@@ -71,7 +71,7 @@ public class UserVerificationRepositoryAdapter implements UserVerificationReposi
     }
 
     private UserVerification toDomain(UserVerificationJpaEntity entity) {
-        return new UserVerification(
+        UserVerification uv = new UserVerification(
                 entity.getId(),
                 entity.getUserId(),
                 entity.getFullNameOnId(),
@@ -97,6 +97,9 @@ public class UserVerificationRepositoryAdapter implements UserVerificationReposi
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
+        uv.setFrontImageUrl(entity.getFrontImageUrl());
+        uv.setBackImageUrl(entity.getBackImageUrl());
+        return uv;
     }
 
     private UserVerificationJpaEntity toEntity(UserVerification domain) {
@@ -112,6 +115,8 @@ public class UserVerificationRepositoryAdapter implements UserVerificationReposi
         entity.setIssuePlace(domain.getIssuePlace());
         entity.setFrontImageKey(domain.getFrontImageKey());
         entity.setBackImageKey(domain.getBackImageKey());
+        entity.setFrontImageUrl(domain.getFrontImageUrl());
+        entity.setBackImageUrl(domain.getBackImageUrl());
         entity.setSelfieKey(domain.getSelfieKey());
         entity.setStatus(domain.getStatus());
         entity.setConsentAt(domain.getConsentAt());

@@ -36,17 +36,27 @@ public class LandlordKycController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<LandlordKycStatusResponse>> submitKyc(
             Authentication authentication,
-            @RequestParam("front") MultipartFile front,
-            @RequestParam("back") MultipartFile back,
+            @RequestParam(value = "front", required = false) MultipartFile front,
+            @RequestParam(value = "frontImage", required = false) MultipartFile frontImage,
+            @RequestParam(value = "back", required = false) MultipartFile back,
+            @RequestParam(value = "backImage", required = false) MultipartFile backImage,
+            @RequestParam(value = "frontImageUrl", required = false) String frontImageUrl,
+            @RequestParam(value = "backImageUrl", required = false) String backImageUrl,
             @RequestParam("fullNameOnId") String fullNameOnId,
             @RequestParam("idNumber") String idNumber,
+            @RequestParam(value = "phone", required = false) String phone,
             @RequestParam("dateOfBirth") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateOfBirth,
             @RequestParam("issueDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate issueDate,
             @RequestParam("issuePlace") String issuePlace,
             @RequestParam("consent") boolean consent) {
+        MultipartFile actualFront = front != null ? front : frontImage;
+        MultipartFile actualBack = back != null ? back : backImage;
+        if (actualFront == null || actualBack == null) {
+            throw new IllegalArgumentException("Vui long tai len ca 2 mat CCCD (front va back)");
+        }
         String landlordId = (String) authentication.getPrincipal();
         LandlordKycStatusResponse response = landlordKycUseCase.submitKyc(
-                landlordId, front, back, fullNameOnId, idNumber, dateOfBirth, issueDate, issuePlace, consent
+                landlordId, actualFront, actualBack, fullNameOnId, idNumber, dateOfBirth, issueDate, issuePlace, consent, frontImageUrl, backImageUrl, phone
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Nop ho so xac minh danh tinh thanh cong", response));

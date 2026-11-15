@@ -91,6 +91,7 @@ for ENTRY in "${SERVICES[@]}"; do
                    -Dspring.datasource.username=root \
                    -Dspring.datasource.password=rootpassword123 \
                    -Dspring.flyway.enabled=false \
+                   -Dspring.jpa.hibernate.ddl-auto=update \
                    -jar "$JAR_FILE" > "logs/$NAME.log" 2>&1 &
       fi
       PID=$!

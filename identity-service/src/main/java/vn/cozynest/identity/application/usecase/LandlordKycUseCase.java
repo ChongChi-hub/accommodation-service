@@ -13,6 +13,7 @@ import vn.cozynest.identity.domain.port.KycPrivateStoragePort;
 import vn.cozynest.identity.domain.repository.LandlordProfileRepository;
 import vn.cozynest.identity.domain.repository.KycEventOutboxRepository;
 import vn.cozynest.identity.domain.repository.KycStatusHistoryRepository;
+import vn.cozynest.identity.domain.repository.UserRepository;
 import vn.cozynest.identity.domain.repository.UserVerificationRepository;
 import vn.cozynest.identity.infrastructure.security.KycCryptoService;
 
@@ -34,6 +35,7 @@ public class LandlordKycUseCase {
     private final LandlordProfileRepository landlordProfileRepository;
     private final KycPrivateStoragePort kycStorage;
     private final KycCryptoService cryptoService;
+    private final UserRepository userRepository;
 
     public LandlordKycUseCase(
             UserVerificationRepository verificationRepository,
@@ -42,12 +44,25 @@ public class LandlordKycUseCase {
             LandlordProfileRepository landlordProfileRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService) {
+        this(verificationRepository, historyRepository, outboxRepository, landlordProfileRepository, kycStorage, cryptoService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LandlordKycUseCase(
+            UserVerificationRepository verificationRepository,
+            KycStatusHistoryRepository historyRepository,
+            KycEventOutboxRepository outboxRepository,
+            LandlordProfileRepository landlordProfileRepository,
+            KycPrivateStoragePort kycStorage,
+            KycCryptoService cryptoService,
+            UserRepository userRepository) {
         this.verificationRepository = verificationRepository;
         this.historyRepository = historyRepository;
         this.outboxRepository = outboxRepository;
         this.landlordProfileRepository = landlordProfileRepository;
         this.kycStorage = kycStorage;
         this.cryptoService = cryptoService;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -83,8 +98,10 @@ public class LandlordKycUseCase {
                 .rejectReasonNote(v.getRejectReasonNote())
                 .attemptCount(v.getAttemptCount())
                 .remainingAttempts(remaining)
-                .hasFrontImage(v.getFrontImageKey() != null && !"PURGED".equals(v.getFrontImageKey()))
-                .hasBackImage(v.getBackImageKey() != null && !"PURGED".equals(v.getBackImageKey()))
+                .hasFrontImage((v.getFrontImageKey() != null && !"PURGED".equals(v.getFrontImageKey())) || v.getFrontImageUrl() != null)
+                .hasBackImage((v.getBackImageKey() != null && !"PURGED".equals(v.getBackImageKey())) || v.getBackImageUrl() != null)
+                .frontImageUrl(v.getFrontImageUrl())
+                .backImageUrl(v.getBackImageUrl())
                 .canResubmit(canResubmit)
                 .build();
     }
@@ -93,6 +110,22 @@ public class LandlordKycUseCase {
             String landlordId, MultipartFile frontFile, MultipartFile backFile,
             String fullNameOnId, String idNumber, LocalDate dateOfBirth,
             LocalDate issueDate, String issuePlace, boolean consent) {
+        return submitKyc(landlordId, frontFile, backFile, fullNameOnId, idNumber, dateOfBirth, issueDate, issuePlace, consent, null, null);
+    }
+
+    public LandlordKycStatusResponse submitKyc(
+            String landlordId, MultipartFile frontFile, MultipartFile backFile,
+            String fullNameOnId, String idNumber, LocalDate dateOfBirth,
+            LocalDate issueDate, String issuePlace, boolean consent,
+            String frontImageUrl, String backImageUrl) {
+        return submitKyc(landlordId, frontFile, backFile, fullNameOnId, idNumber, dateOfBirth, issueDate, issuePlace, consent, frontImageUrl, backImageUrl, null);
+    }
+
+    public LandlordKycStatusResponse submitKyc(
+            String landlordId, MultipartFile frontFile, MultipartFile backFile,
+            String fullNameOnId, String idNumber, LocalDate dateOfBirth,
+            LocalDate issueDate, String issuePlace, boolean consent,
+            String frontImageUrl, String backImageUrl, String phone) {
 
         if (!consent) {
             throw new IdentityDomainException("Ban phai dong y voi dieu khoan xu ly du lieu ca nhan", "ERR_KYC_CONSENT_REQUIRED");
@@ -145,7 +178,22 @@ public class LandlordKycUseCase {
             fromStatus = KycStatus.NONE.name();
         }
 
+        if (frontImageUrl != null && !frontImageUrl.isBlank()) {
+            verification.setFrontImageUrl(frontImageUrl);
+        }
+        if (backImageUrl != null && !backImageUrl.isBlank()) {
+            verification.setBackImageUrl(backImageUrl);
+        }
+
         UserVerification saved = verificationRepository.save(verification);
+
+        // Update phone number on User if supplied
+        if (userRepository != null && phone != null && !phone.isBlank()) {
+            userRepository.findById(landlordId).ifPresent(u -> {
+                u.updatePhoneNumber(phone.trim());
+                userRepository.save(u);
+            });
+        }
 
         // Transition LandlordProfile to PENDING_REVIEW
         LandlordProfile profile = landlordProfileRepository.findByUserId(landlordId)
