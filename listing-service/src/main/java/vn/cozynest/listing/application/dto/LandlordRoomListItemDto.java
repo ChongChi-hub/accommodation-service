@@ -24,6 +24,8 @@ public class LandlordRoomListItemDto {
     private BigDecimal deposit;
     private Double area;
     private String status;
+    private String riskLevel;
+    private String riskReasons;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private Integer viewCount;

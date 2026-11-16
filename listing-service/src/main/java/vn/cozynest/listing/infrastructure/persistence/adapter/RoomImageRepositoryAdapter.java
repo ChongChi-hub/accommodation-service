@@ -43,6 +43,11 @@ public class RoomImageRepositoryAdapter implements RoomImageRepository {
     }
 
     @Override
+    public List<RoomImage> findOtherRoomImagesWithPhash(Long roomId) {
+        return springRepo.findOtherRoomImagesWithPhash(roomId).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public void resetCoverForRoom(Long roomId) {
         springRepo.resetCoverForRoom(roomId);
     }

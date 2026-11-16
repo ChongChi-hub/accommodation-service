@@ -37,6 +37,9 @@ public class LandlordSnapshot {
     private Integer roomCount = 6;
 
     @Builder.Default
+    private Integer trustScore = 85;
+
+    @Builder.Default
     private LocalDateTime joinedAt = LocalDateTime.now();
 
     private LocalDateTime updatedAt;

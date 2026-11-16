@@ -9,19 +9,23 @@ import vn.cozynest.listing.application.dto.CreateRoomRequest;
 import vn.cozynest.listing.application.dto.UpdateRoomRequest;
 import vn.cozynest.listing.domain.exception.*;
 import vn.cozynest.listing.domain.model.Room;
+import vn.cozynest.listing.domain.model.RoomImage;
 import vn.cozynest.listing.domain.model.RoomStatusHistory;
 import vn.cozynest.listing.domain.port.KycVerificationPort;
 import vn.cozynest.listing.domain.port.RoomUsagePort;
 import vn.cozynest.listing.domain.repository.RoomImageRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 import vn.cozynest.listing.domain.repository.RoomStatusHistoryRepository;
+import vn.cozynest.listing.domain.service.AntiFraudRuleEngine;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class LandlordRoomManagementService {
 
@@ -30,9 +34,41 @@ public class LandlordRoomManagementService {
     private final RoomUsagePort roomUsagePort;
     private final RoomImageRepository roomImageRepository;
     private final KycVerificationPort kycVerificationPort;
+    private final Optional<AntiFraudService> antiFraudService;
+    private final Optional<TrustScoreCalculatorService> trustScoreCalculatorService;
 
     @Value("${toam.listing.min-images-for-review:3}")
     private int minImagesForReview = 3;
+
+    public LandlordRoomManagementService(
+            RoomRepository roomRepository,
+            RoomStatusHistoryRepository roomStatusHistoryRepository,
+            RoomUsagePort roomUsagePort,
+            RoomImageRepository roomImageRepository,
+            KycVerificationPort kycVerificationPort
+    ) {
+        this(roomRepository, roomStatusHistoryRepository, roomUsagePort, roomImageRepository, kycVerificationPort,
+                Optional.empty(), Optional.empty());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LandlordRoomManagementService(
+            RoomRepository roomRepository,
+            RoomStatusHistoryRepository roomStatusHistoryRepository,
+            RoomUsagePort roomUsagePort,
+            RoomImageRepository roomImageRepository,
+            KycVerificationPort kycVerificationPort,
+            Optional<AntiFraudService> antiFraudService,
+            Optional<TrustScoreCalculatorService> trustScoreCalculatorService
+    ) {
+        this.roomRepository = roomRepository;
+        this.roomStatusHistoryRepository = roomStatusHistoryRepository;
+        this.roomUsagePort = roomUsagePort;
+        this.roomImageRepository = roomImageRepository;
+        this.kycVerificationPort = kycVerificationPort;
+        this.antiFraudService = antiFraudService != null ? antiFraudService : Optional.empty();
+        this.trustScoreCalculatorService = trustScoreCalculatorService != null ? trustScoreCalculatorService : Optional.empty();
+    }
 
     public Room toggleVisibility(Long landlordId, Long roomId, boolean visible, String actorId) {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
@@ -239,12 +275,45 @@ public class LandlordRoomManagementService {
         }
 
         String fromStatus = room.getStatus();
-        room.setStatus("PENDING_REVIEW");
-        room.setUpdatedAt(LocalDateTime.now());
 
-        recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId, "Chủ trọ gửi duyệt bài đăng", LocalDateTime.now());
-        log.info("Landlord {} submitted room {} for review (images: {}, hasCover: true)", landlordId, roomId, imageCount);
-        return roomRepository.save(room);
+        // Anti-Fraud & Anomaly Check
+        boolean isHighRisk = false;
+        String highRiskReasons = null;
+        if (antiFraudService.isPresent()) {
+            List<RoomImage> images = roomImageRepository.findByRoomIdOrderBySortOrderAsc(roomId);
+            List<String> phashes = images.stream().map(RoomImage::getPhash).filter(Objects::nonNull).toList();
+            AntiFraudRuleEngine.AntiFraudResult result = antiFraudService.get().evaluateRoom(room, phashes);
+            if (result.highRisk()) {
+                isHighRisk = true;
+                highRiskReasons = String.join("; ", result.reasons());
+            }
+        }
+
+        if (isHighRisk) {
+            room.setRiskLevel("HIGH_RISK");
+            room.setRiskReasons(highRiskReasons);
+            room.setStatus("PENDING_REVIEW");
+            room.setApproved(false);
+            room.setPublicationStatus("PENDING_REVIEW");
+            recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId,
+                    "Hệ thống phát hiện rủi ro cao: " + highRiskReasons + ". Chuyển vào hàng đợi kiểm duyệt HIGH_RISK.", LocalDateTime.now());
+            log.warn("Landlord {} submitted room {} flagged HIGH_RISK: {}", landlordId, roomId, highRiskReasons);
+        } else {
+            room.setRiskLevel("NORMAL");
+            room.setRiskReasons(null);
+            room.setStatus("PENDING_REVIEW");
+            recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId, "Chủ trọ gửi duyệt bài đăng", LocalDateTime.now());
+            log.info("Landlord {} submitted room {} for review (images: {}, hasCover: true)", landlordId, roomId, imageCount);
+        }
+
+        room.setUpdatedAt(LocalDateTime.now());
+        Room saved = roomRepository.save(room);
+
+        if (trustScoreCalculatorService.isPresent()) {
+            trustScoreCalculatorService.get().calculateAndUpdateTrustScore(landlordId);
+        }
+
+        return saved;
     }
 
     private void recordHistory(Long roomId, String from, String to, String actorId, String reason, LocalDateTime time) {

@@ -28,7 +28,9 @@ public class AdminListingController {
             double area,
             String address,
             String submittedAt,
-            String status
+            String status,
+            String riskLevel,
+            String riskReasons
     ) {}
 
     public record AdminReviewDto(
@@ -58,7 +60,9 @@ public class AdminListingController {
                     r.getArea(),
                     r.getAddress(),
                     submitted,
-                    st
+                    st,
+                    r.getRiskLevel() != null ? r.getRiskLevel() : "NORMAL",
+                    r.getRiskReasons()
             );
         }).toList();
         return ResponseEntity.ok(ApiResponse.success(list));
@@ -73,6 +77,7 @@ public class AdminListingController {
         room.setStatus("AVAILABLE");
         room.setPublicationStatus("PUBLISHED");
         room.setOccupancyStatus("AVAILABLE");
+        room.setRiskLevel("NORMAL");
         roomRepository.save(room);
         return ResponseEntity.ok(ApiResponse.message("Phe duyet phong thanh cong"));
     }

@@ -19,6 +19,7 @@ public class RoomImage {
     private String mediumKey;
     private String largeKey;
     private String originalFilename;
+    private String phash;
 
     @Builder.Default
     private String contentType = "image/webp";

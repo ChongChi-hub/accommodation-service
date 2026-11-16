@@ -48,6 +48,7 @@ public class HostQueryService {
                     .responseRatePercent(ls.getResponseRatePercent())
                     .responseTimeMinutes(ls.getResponseTimeMinutes())
                     .roomCount(roomDtos.size())
+                    .trustScore(ls.getTrustScore() != null ? ls.getTrustScore() : 85)
                     .joinedAt(ls.getJoinedAt())
                     .rooms(roomDtos)
                     .build();
@@ -65,6 +66,7 @@ public class HostQueryService {
                 .responseRatePercent(95)
                 .responseTimeMinutes(30)
                 .roomCount(roomDtos.size())
+                .trustScore(85)
                 .rooms(roomDtos)
                 .build();
     }
@@ -89,6 +91,7 @@ public class HostQueryService {
                     .responseRatePercent(ls.getResponseRatePercent())
                     .responseTimeMinutes(ls.getResponseTimeMinutes())
                     .roomCount(roomCount)
+                    .trustScore(ls.getTrustScore() != null ? ls.getTrustScore() : 85)
                     .joinedAt(ls.getJoinedAt())
                     .rooms(List.of())
                     .build();

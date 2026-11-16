@@ -57,6 +57,10 @@ public class LandlordSnapshotJpaEntity {
     @Builder.Default
     private Integer roomCount = 6;
 
+    @Column(name = "trust_score")
+    @Builder.Default
+    private Integer trustScore = 85;
+
     @Column(name = "joined_at")
     @Builder.Default
     private LocalDateTime joinedAt = LocalDateTime.now();

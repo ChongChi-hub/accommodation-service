@@ -44,6 +44,8 @@ public class LandlordRoomDetailDto {
     private BigDecimal initialElectricityReading;
     private BigDecimal initialWaterReading;
     private String status;
+    private String riskLevel;
+    private String riskReasons;
     private boolean approved;
     private boolean allowPets;
     private boolean allowCooking;

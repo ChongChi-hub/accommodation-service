@@ -15,6 +15,9 @@ public interface SpringDataRoomImageRepository extends JpaRepository<RoomImageJp
     Optional<RoomImageJpaEntity> findByIdAndRoomId(Long id, Long roomId);
     long countByRoomId(Long roomId);
 
+    @Query("SELECT ri FROM RoomImageJpaEntity ri WHERE ri.phash IS NOT NULL AND (:roomId IS NULL OR ri.roomId != :roomId)")
+    List<RoomImageJpaEntity> findOtherRoomImagesWithPhash(@Param("roomId") Long roomId);
+
     @Modifying
     @Query("UPDATE RoomImageJpaEntity ri SET ri.cover = false, ri.primary = false WHERE ri.roomId = :roomId")
     void resetCoverForRoom(@Param("roomId") Long roomId);
