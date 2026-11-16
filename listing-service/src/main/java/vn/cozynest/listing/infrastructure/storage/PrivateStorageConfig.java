@@ -15,6 +15,7 @@ import java.util.Arrays;
 public class PrivateStorageConfig {
 
     @Bean
+    @org.springframework.context.annotation.Primary
     public S3CompatibleStorageAdapter s3CompatibleStorageAdapter(
             @Value("${storage.provider:${STORAGE_PROVIDER:local}}") String provider,
             @Value("${storage.s3.endpoint:${S3_ENDPOINT:http://localhost:9000}}") String endpoint,
@@ -31,16 +32,6 @@ public class PrivateStorageConfig {
                 provider, endpoint, region, accessKey, secretKey,
                 publicBucket, privateBucket, publicCdnUrl, baseDir, aesKeyBase64
         );
-    }
-
-    @Bean
-    public ObjectStoragePort objectStoragePort(S3CompatibleStorageAdapter adapter) {
-        return adapter;
-    }
-
-    @Bean
-    public PrivateObjectStoragePort privateObjectStoragePort(S3CompatibleStorageAdapter adapter) {
-        return adapter;
     }
 
     @Bean

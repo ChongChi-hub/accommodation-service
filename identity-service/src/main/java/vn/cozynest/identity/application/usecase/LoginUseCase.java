@@ -44,6 +44,7 @@ public class LoginUseCase {
         this(userRepository, refreshTokenRepository, landlordProfileRepository, passwordEncoder, tokenProvider, loginAttemptPort, rateLimiter, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public LoginUseCase(UserRepository userRepository,
                         RefreshTokenRepository refreshTokenRepository,
                         LandlordProfileRepository landlordProfileRepository,
