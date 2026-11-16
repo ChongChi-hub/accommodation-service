@@ -73,7 +73,7 @@ class RegisterUseCaseTest {
     }
 
     @Test
-    @DisplayName("R2: Register as LANDLORD -> Receives TENANT role only and creates AWAITING_KYC LandlordProfile")
+    @DisplayName("R2: Register as LANDLORD -> Receives LANDLORD and TENANT roles and creates AWAITING_KYC LandlordProfile")
     void testRegisterAsLandlordCreatesAwaitingKyc() {
         RegisterCommand cmd = RegisterCommand.builder()
                 .email("landlord.new@example.com")
@@ -88,9 +88,8 @@ class RegisterUseCaseTest {
 
         AuthResult result = registerUseCase.execute(cmd);
 
-        // Crucial: Role must be TENANT, NOT LANDLORD!
-        assertThat(result.getUser().getRoles()).containsExactly("TENANT");
-        assertThat(result.getRoles()).containsExactly("TENANT");
+        assertThat(result.getUser().getRoles()).contains("LANDLORD", "TENANT");
+        assertThat(result.getRoles()).contains("LANDLORD", "TENANT");
         assertThat(result.getLandlordApplication()).isNotNull();
         assertThat(result.getLandlordApplication().getStatus()).isEqualTo(LandlordApprovalStatus.AWAITING_KYC.name());
 

@@ -20,7 +20,8 @@ for ENTRY in "${SERVICES[@]}"; do
   PID=$(lsof -ti :$PORT 2>/dev/null | head -n1 || true)
   if [ -n "$PID" ]; then
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "http://localhost:$PORT/actuator/health" 2>/dev/null || echo "DOWN")
-    if [ "$HTTP_CODE" = "200" ]; then
+    READINESS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "http://localhost:$PORT/actuator/health/readiness" 2>/dev/null || echo "DOWN")
+    if [ "$HTTP_CODE" = "200" ] || [ "$READINESS_CODE" = "200" ]; then
       printf "  🟢 %-24s (Port %-4s): HEALTHY  (PID: %s)\n" "$NAME" "$PORT" "$PID"
     else
       printf "  🟡 %-24s (Port %-4s): STARTING (PID: %s, HTTP: %s)\n" "$NAME" "$PORT" "$PID" "$HTTP_CODE"
@@ -33,7 +34,7 @@ done
 
 echo "----------------------------------------------------------"
 # Kiểm tra Docker infra
-for CONTAINER in cozynest_mysql cozynest_redis cozynest_mailpit; do
+for CONTAINER in cozynest_mysql cozynest_redis cozynest_mailpit cozynest_rabbitmq; do
   STATUS=$(docker inspect --format='{{.State.Status}}' $CONTAINER 2>/dev/null || echo "not running")
   if [ "$STATUS" = "running" ]; then
     printf "  🟢 Docker Infra %-14s: RUNNING\n" "[$CONTAINER]"
