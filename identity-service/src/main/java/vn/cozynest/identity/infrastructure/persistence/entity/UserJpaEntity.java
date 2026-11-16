@@ -75,6 +75,9 @@ public class UserJpaEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "anonymized_at")
+    private Instant anonymizedAt;
+
     @Version
     @Column(nullable = false)
     @Builder.Default

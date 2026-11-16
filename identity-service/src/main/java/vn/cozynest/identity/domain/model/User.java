@@ -20,6 +20,7 @@ public class User {
     private Instant phoneVerifiedAt;
     private boolean twoFactorEnabled;
     private Instant lastLoginAt;
+    private Instant anonymizedAt;
     private final Set<UserRoleType> roles;
     private final Instant createdAt;
     private Instant updatedAt;
@@ -29,13 +30,22 @@ public class User {
                 Instant emailVerifiedAt, Instant lastLoginAt, Set<UserRoleType> roles,
                 Instant createdAt, Instant updatedAt) {
         this(id, email, phone, passwordHash, fullName, avatarUrl, gender, dateOfBirth, status,
-                emailVerifiedAt, null, false, lastLoginAt, roles, createdAt, updatedAt);
+                emailVerifiedAt, null, false, lastLoginAt, null, roles, createdAt, updatedAt);
     }
 
     public User(String id, String email, String phone, String passwordHash, String fullName,
                 String avatarUrl, String gender, LocalDate dateOfBirth, UserStatus status,
                 Instant emailVerifiedAt, Instant phoneVerifiedAt, boolean twoFactorEnabled,
                 Instant lastLoginAt, Set<UserRoleType> roles,
+                Instant createdAt, Instant updatedAt) {
+        this(id, email, phone, passwordHash, fullName, avatarUrl, gender, dateOfBirth, status,
+                emailVerifiedAt, phoneVerifiedAt, twoFactorEnabled, lastLoginAt, null, roles, createdAt, updatedAt);
+    }
+
+    public User(String id, String email, String phone, String passwordHash, String fullName,
+                String avatarUrl, String gender, LocalDate dateOfBirth, UserStatus status,
+                Instant emailVerifiedAt, Instant phoneVerifiedAt, boolean twoFactorEnabled,
+                Instant lastLoginAt, Instant anonymizedAt, Set<UserRoleType> roles,
                 Instant createdAt, Instant updatedAt) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.email = email;
@@ -50,6 +60,7 @@ public class User {
         this.phoneVerifiedAt = phoneVerifiedAt;
         this.twoFactorEnabled = twoFactorEnabled;
         this.lastLoginAt = lastLoginAt;
+        this.anonymizedAt = anonymizedAt;
         this.roles = roles != null ? new HashSet<>(roles) : new HashSet<>();
         this.createdAt = createdAt != null ? createdAt : Instant.now();
         this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
@@ -165,6 +176,18 @@ public class User {
         return passwordHash != null && !passwordHash.isBlank();
     }
 
+    public void anonymize() {
+        this.status = UserStatus.DELETED;
+        this.anonymizedAt = Instant.now();
+        this.fullName = "Người dùng đã xóa #" + this.id.substring(0, Math.min(8, this.id.length()));
+        this.email = "anonymized_" + this.id + "@cozynest.local";
+        this.phone = null;
+        this.avatarUrl = null;
+        this.passwordHash = null;
+        this.twoFactorEnabled = false;
+        this.updatedAt = Instant.now();
+    }
+
     // Getters
     public String getId() { return id; }
     public String getEmail() { return email; }
@@ -180,6 +203,8 @@ public class User {
     public boolean isPhoneVerified() { return phoneVerifiedAt != null; }
     public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
     public Instant getLastLoginAt() { return lastLoginAt; }
+    public Instant getAnonymizedAt() { return anonymizedAt; }
+    public boolean isAnonymized() { return anonymizedAt != null || status == UserStatus.DELETED; }
     public Set<UserRoleType> getRoles() { return Set.copyOf(roles); }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

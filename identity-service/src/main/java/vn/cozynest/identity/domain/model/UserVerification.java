@@ -200,5 +200,20 @@ public class UserVerification {
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setVersion(Long version) { this.version = version; }
+
+    public void anonymize() {
+        this.fullNameOnId = "ANONYMIZED";
+        this.idNumberEnc = null;
+        this.idNumberHash = null;
+        this.idNumberLast4 = "****";
+        this.frontImageKey = "purged";
+        this.backImageKey = "purged";
+        this.frontImageUrl = null;
+        this.backImageUrl = null;
+        this.selfieKey = null;
+        this.status = KycStatus.REJECTED;
+        this.rejectReasonNote = "Hồ sơ đã được ẩn danh theo Nghị định 13/2023/NĐ-CP";
+        this.updatedAt = Instant.now();
+    }
 }
 
