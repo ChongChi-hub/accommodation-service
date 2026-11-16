@@ -11,6 +11,15 @@ spring:
     enabled: true
     baseline-on-migrate: false
     locations: classpath:db/migration
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:${RABBITMQ_HOST:rabbitmq}}
+    port: ${SPRING_RABBITMQ_PORT:${RABBITMQ_PORT:5672}}
+    username: ${SPRING_RABBITMQ_USERNAME:${RABBITMQ_USER:cozynest}}
+    password: ${SPRING_RABBITMQ_PASSWORD:${RABBITMQ_PASSWORD}}
+
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:true}
 
 app:
   internal:

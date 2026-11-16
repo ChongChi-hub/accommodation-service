@@ -26,23 +26,34 @@ public class IdentityOutboxPublisherScheduler {
 
     private final KycEventOutboxRepository kycOutboxRepository;
     private final FaceEventOutboxRepository faceOutboxRepository;
+    private final Optional<vn.cozynest.identity.infrastructure.persistence.repository.SpringDataUserEventOutboxRepository> userEventOutboxRepository;
     private final Optional<RabbitTemplate> rabbitTemplate;
     private final boolean brokerEnabled;
 
     public IdentityOutboxPublisherScheduler(
             KycEventOutboxRepository kycOutboxRepository,
             FaceEventOutboxRepository faceOutboxRepository) {
-        this(kycOutboxRepository, faceOutboxRepository, Optional.empty(), false);
+        this(kycOutboxRepository, faceOutboxRepository, Optional.empty(), Optional.empty(), false);
+    }
+
+    public IdentityOutboxPublisherScheduler(
+            KycEventOutboxRepository kycOutboxRepository,
+            FaceEventOutboxRepository faceOutboxRepository,
+            Optional<RabbitTemplate> rabbitTemplate,
+            boolean brokerEnabled) {
+        this(kycOutboxRepository, faceOutboxRepository, Optional.empty(), rabbitTemplate, brokerEnabled);
     }
 
     @Autowired
     public IdentityOutboxPublisherScheduler(
             KycEventOutboxRepository kycOutboxRepository,
             FaceEventOutboxRepository faceOutboxRepository,
+            Optional<vn.cozynest.identity.infrastructure.persistence.repository.SpringDataUserEventOutboxRepository> userEventOutboxRepository,
             Optional<RabbitTemplate> rabbitTemplate,
             @Value("${cozynest.broker.enabled:false}") boolean brokerEnabled) {
         this.kycOutboxRepository = kycOutboxRepository;
         this.faceOutboxRepository = faceOutboxRepository;
+        this.userEventOutboxRepository = userEventOutboxRepository != null ? userEventOutboxRepository : Optional.empty();
         this.rabbitTemplate = rabbitTemplate != null ? rabbitTemplate : Optional.empty();
         this.brokerEnabled = brokerEnabled;
     }
@@ -57,6 +68,7 @@ public class IdentityOutboxPublisherScheduler {
         int publishedCount = 0;
         publishedCount += publishKycEvents();
         publishedCount += publishFaceEvents();
+        publishedCount += publishUserEvents();
         return publishedCount;
     }
 
@@ -117,6 +129,41 @@ public class IdentityOutboxPublisherScheduler {
                 count++;
             } catch (Exception ex) {
                 log.warn("Failed publishing identity face outbox id={}: {}", event.getId(), ex.getMessage());
+            }
+        }
+        return count;
+    }
+
+    private int publishUserEvents() {
+        if (userEventOutboxRepository.isEmpty()) {
+            return 0;
+        }
+        List<vn.cozynest.identity.infrastructure.persistence.entity.UserEventOutboxJpaEntity> pendingUser =
+                userEventOutboxRepository.get().findTop50ByPublishedFalseOrderByCreatedAtAsc();
+        int count = 0;
+        for (var event : pendingUser) {
+            try {
+                DomainEventEnvelope envelope = new DomainEventEnvelope(
+                        event.getId(),
+                        event.getEventType(),
+                        1,
+                        "USER",
+                        event.getAggregateId(),
+                        event.getId(),
+                        event.getCreatedAt(),
+                        event.getPayload()
+                );
+                String routingKey = "identity." + event.getEventType().toLowerCase().replace('_', '.');
+                rabbitTemplate.get().convertAndSend(
+                        EventTopology.EVENTS_EXCHANGE,
+                        routingKey,
+                        EventEnvelopeCodec.encode(envelope)
+                );
+                event.setPublished(true);
+                userEventOutboxRepository.get().save(event);
+                count++;
+            } catch (Exception ex) {
+                log.warn("Failed publishing identity user outbox id={}: {}", event.getId(), ex.getMessage());
             }
         }
         return count;

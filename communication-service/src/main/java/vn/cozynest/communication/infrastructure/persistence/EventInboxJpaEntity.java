@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 @Entity
-@Table(name = "event_inbox")
+@Table(name = "inbox_messages")
 public class EventInboxJpaEntity {
 
     @Id

@@ -52,6 +52,11 @@ public class CommunicationRabbitConfig {
     }
 
     @Bean
+    public Binding identityEventsBinding(Queue communicationEventsQueue, TopicExchange eventsExchange) {
+        return BindingBuilder.bind(communicationEventsQueue).to(eventsExchange).with("identity.#");
+    }
+
+    @Bean
     public Binding dlqBinding(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
         return BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(EventTopology.DLQ_ROUTING_KEY);
     }

@@ -86,22 +86,37 @@ public class CommunicationEventListener {
 
     private void dispatchNotificationFromEnvelope(DomainEventEnvelope envelope) {
         JsonNode payload = MAPPER.readTree(envelope.payloadJson() != null ? envelope.payloadJson() : "{}");
-        String userId = firstNonBlank(
-                payload.path("recipientId").asString(""),
-                payload.path("tenantId").asString(""),
-                payload.path("landlordId").asString(""),
-                payload.path("userId").asString("")
-        );
-        if (userId.isBlank()) {
+        String recipientId = payload.path("recipientId").asString("");
+        String userId = payload.path("userId").asString("");
+        String tenantId = payload.path("tenantId").asString("");
+        String landlordId = payload.path("landlordId").asString("");
+
+        String title = resolveTitle(envelope.eventType());
+        String content = resolveContent(envelope, payload);
+        String linkUrl = resolveLinkUrl(envelope, payload);
+
+        if (!recipientId.isBlank()) {
+            notificationService.createInternalNotification(recipientId, envelope.aggregateType(), title, content, linkUrl);
+            return;
+        }
+        if (!userId.isBlank()) {
+            notificationService.createInternalNotification(userId, envelope.aggregateType(), title, content, linkUrl);
+            return;
+        }
+
+        boolean notified = false;
+        if (!tenantId.isBlank()) {
+            notificationService.createInternalNotification(tenantId, envelope.aggregateType(), title, content, linkUrl);
+            notified = true;
+        }
+        if (!landlordId.isBlank() && !landlordId.equals(tenantId)) {
+            notificationService.createInternalNotification(landlordId, envelope.aggregateType(), title, content, linkUrl);
+            notified = true;
+        }
+
+        if (!notified) {
             throw new IllegalArgumentException("Missing notification recipient userId in event " + envelope.eventType());
         }
-        String title = resolveTitle(envelope.eventType());
-        String content = firstNonBlank(
-                payload.path("message").asString(""),
-                "Cập nhật " + envelope.aggregateType() + " #" + envelope.aggregateId()
-        );
-        String linkUrl = firstNonBlank(payload.path("linkUrl").asString(""), "/dashboard");
-        notificationService.createInternalNotification(userId, envelope.aggregateType(), title, content, linkUrl);
     }
 
     private void publishPoisonToDlq(String rawPayload, String reason) {
@@ -130,12 +145,65 @@ public class CommunicationEventListener {
         if (eventType == null) return "Thông báo hệ thống Tổ Ấm";
         return switch (eventType) {
             case "APPOINTMENT_CONFIRMED" -> "Lịch hẹn xem phòng đã được xác nhận";
+            case "APPOINTMENT_CANCELLED" -> "Lịch hẹn xem phòng đã bị hủy";
+            case "APPOINTMENT_EXPIRED" -> "Lịch hẹn xem phòng đã hết hạn";
+            case "RENTAL_REQUEST_CREATED" -> "Yêu cầu thuê phòng mới";
             case "RENTAL_REQUEST_APPROVED" -> "Yêu cầu thuê phòng đã được chấp nhận";
+            case "RENTAL_REQUEST_REJECTED" -> "Yêu cầu thuê phòng bị từ chối";
+            case "CONTRACT_CREATED" -> "Hợp đồng thuê phòng mới đã được tạo";
+            case "CONTRACT_SIGNED" -> "Hợp đồng thuê phòng đã được ký kết";
             case "CONTRACT_ACTIVATED" -> "Hợp đồng thuê phòng đã có hiệu lực";
+            case "CONTRACT_DRAFT_UPDATED" -> "Dự thảo hợp đồng thuê phòng đã được cập nhật";
+            case "CONTRACT_EXPIRY_REMINDER" -> "Nhắc nhở hợp đồng thuê phòng sắp hết hạn";
+            case "CONTRACT_PHYSICAL_SCAN_UPLOADED" -> "Bản quét hợp đồng thuê phòng đã được tải lên";
+            case "CONTRACT_PHYSICAL_SCAN_REJECTED" -> "Bản quét hợp đồng thuê phòng bị từ chối";
+            case "CONTRACT_AMENDMENT_APPLIED" -> "Phụ lục hợp đồng thuê phòng đã được áp dụng";
             case "PAYMENT_CONFIRMED" -> "Xác nhận thanh toán thành công";
             case "ESCROW_RELEASED" -> "Tiền đặt cọc đã được giải ngân";
-            case "INVOICE_ISSUED" -> "Hóa đơn thuê phòng kỳ mới đã phát hành";
+            case "INVOICE_GENERATED", "INVOICE_ISSUED" -> "Hóa đơn thuê phòng kỳ mới đã phát hành";
+            case "INVOICE_PAYMENT_RECORDED" -> "Thanh toán hóa đơn phòng đã được ghi nhận";
+            case "INVOICE_LATE_FEE_APPLIED" -> "Áp dụng phí phạt chậm thanh toán hóa đơn";
+            case "INVOICE_OVERDUE_REMINDER" -> "Nhắc nhở thanh toán hóa đơn quá hạn";
+            case "KYC_SUBMITTED" -> "Hồ sơ xác thực eKYC đã được gửi";
+            case "KYC_APPROVED" -> "Hồ sơ xác thực eKYC đã được phê duyệt";
+            case "KYC_REJECTED" -> "Hồ sơ xác thực eKYC cần bổ sung hoặc bị từ chối";
+            case "FACE_VERIFIED" -> "Xác thực sinh trắc học khuôn mặt thành công";
+            case "FACE_FAILED" -> "Xác thực sinh trắc học khuôn mặt thất bại";
+            case "LISTING_PUBLISHED" -> "Tin đăng phòng trọ đã được phát hành";
+            case "LISTING_UPDATED" -> "Tin đăng phòng trọ đã được cập nhật";
+            case "LISTING_CLOSED" -> "Tin đăng phòng trọ đã được đóng";
             default -> "Cập nhật nghiệp vụ: " + eventType;
+        };
+    }
+
+    private String resolveContent(DomainEventEnvelope envelope, JsonNode payload) {
+        String msg = payload.path("message").asString("");
+        if (!msg.isBlank()) {
+            return msg;
+        }
+        String contractCode = payload.path("contractCode").asString("");
+        if (!contractCode.isBlank()) {
+            return "Mã hợp đồng: " + contractCode;
+        }
+        String invoiceCode = payload.path("invoiceCode").asString("");
+        if (!invoiceCode.isBlank()) {
+            return "Mã hóa đơn: " + invoiceCode;
+        }
+        return "Cập nhật " + envelope.aggregateType() + " #" + envelope.aggregateId();
+    }
+
+    private String resolveLinkUrl(DomainEventEnvelope envelope, JsonNode payload) {
+        String link = payload.path("linkUrl").asString("");
+        if (!link.isBlank()) {
+            return link;
+        }
+        String agg = envelope.aggregateType() != null ? envelope.aggregateType().toUpperCase() : "";
+        return switch (agg) {
+            case "CONTRACT" -> "/dashboard/contracts";
+            case "INVOICE" -> "/dashboard/invoices";
+            case "APPOINTMENT" -> "/dashboard/appointments";
+            case "RENTAL_REQUEST" -> "/dashboard/rental-requests";
+            default -> "/dashboard";
         };
     }
 
