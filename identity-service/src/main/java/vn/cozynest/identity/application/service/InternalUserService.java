@@ -61,6 +61,20 @@ public class InternalUserService {
         this.faceRequired = faceRequired;
     }
 
+    public record InternalUserSummaryDto(String id, String email, String fullName, String phone) {}
+
+    public Optional<InternalUserSummaryDto> getUserById(String userId) {
+        if (userRepository == null) {
+            return Optional.empty();
+        }
+        return userRepository.findById(userId).map(u -> new InternalUserSummaryDto(
+                u.getId(),
+                u.getEmail(),
+                u.getFullName(),
+                u.getPhone()
+        ));
+    }
+
     public InternalPhoneStatusResponse getPhoneStatus(String userId) {
         if (userRepository == null) {
             return new InternalPhoneStatusResponse(userId, false, "");

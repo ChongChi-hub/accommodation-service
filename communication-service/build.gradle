@@ -12,6 +12,7 @@ dependencies {
     implementation libs.spring.boot.starter.validation
     implementation libs.spring.boot.starter.actuator
     implementation libs.spring.boot.starter.amqp
+    implementation libs.spring.boot.starter.mail
 
     // Database & Flyway
     implementation libs.spring.boot.starter.flyway

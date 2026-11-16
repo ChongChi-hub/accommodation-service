@@ -133,13 +133,22 @@ public class LandlordAppointmentService {
         appointmentRepository.save(appointment);
 
         recordAudit(appointment.getId(), "PENDING", "CONFIRMED", landlordId, "LANDLORD", note);
-        recordOutbox("APPOINTMENT_CONFIRMED", appointment.getId(), Map.of(
-                "appointmentId", appointment.getId(),
-                "landlordId", landlordId,
-                "tenantId", appointment.getTenantId(),
-                "roomId", appointment.getRoomId(),
-                "forced", force
-        ));
+        Map<String, Object> confirmPayload = new java.util.HashMap<>();
+        confirmPayload.put("appointmentId", appointment.getId());
+        confirmPayload.put("landlordId", landlordId);
+        confirmPayload.put("tenantId", appointment.getTenantId());
+        confirmPayload.put("roomId", appointment.getRoomId());
+        confirmPayload.put("forced", force);
+        if (appointment.getRoomTitle() != null) confirmPayload.put("roomTitle", appointment.getRoomTitle());
+        if (appointment.getRoomAddress() != null) confirmPayload.put("roomAddress", appointment.getRoomAddress());
+        if (appointment.getScheduledStart() != null) confirmPayload.put("scheduledStart", appointment.getScheduledStart().toString());
+        if (appointment.getScheduledEnd() != null) confirmPayload.put("scheduledEnd", appointment.getScheduledEnd().toString());
+        if (appointment.getContactName() != null) confirmPayload.put("contactName", appointment.getContactName());
+        if (appointment.getContactEmail() != null) confirmPayload.put("contactEmail", appointment.getContactEmail());
+        if (appointment.getContactPhone() != null) confirmPayload.put("contactPhone", appointment.getContactPhone());
+        if (appointment.getTenantNote() != null) confirmPayload.put("tenantNote", appointment.getTenantNote());
+        if (note != null) confirmPayload.put("landlordNote", note);
+        recordOutbox("APPOINTMENT_CONFIRMED", appointment.getId(), confirmPayload);
 
         return getDetail(landlordId, appointmentId);
     }
@@ -163,11 +172,19 @@ public class LandlordAppointmentService {
 
         appointmentRepository.save(appointment);
         recordAudit(appointment.getId(), initialStatus, targetStatus, landlordId, "LANDLORD", req.reasonNote());
-        recordOutbox("APPOINTMENT_" + targetStatus, appointment.getId(), Map.of(
-                "appointmentId", appointment.getId(),
-                "reasonCode", req.reasonCode().name(),
-                "reasonNote", req.reasonNote() != null ? req.reasonNote() : ""
-        ));
+        Map<String, Object> declinePayload = new java.util.HashMap<>();
+        declinePayload.put("appointmentId", appointment.getId());
+        declinePayload.put("landlordId", landlordId);
+        declinePayload.put("tenantId", appointment.getTenantId());
+        declinePayload.put("roomId", appointment.getRoomId());
+        declinePayload.put("reasonCode", req.reasonCode().name());
+        declinePayload.put("reasonNote", req.reasonNote() != null ? req.reasonNote() : "");
+        if (appointment.getRoomTitle() != null) declinePayload.put("roomTitle", appointment.getRoomTitle());
+        if (appointment.getRoomAddress() != null) declinePayload.put("roomAddress", appointment.getRoomAddress());
+        if (appointment.getScheduledStart() != null) declinePayload.put("scheduledStart", appointment.getScheduledStart().toString());
+        if (appointment.getContactName() != null) declinePayload.put("contactName", appointment.getContactName());
+        if (appointment.getContactEmail() != null) declinePayload.put("contactEmail", appointment.getContactEmail());
+        recordOutbox("APPOINTMENT_" + targetStatus, appointment.getId(), declinePayload);
 
         return getDetail(landlordId, appointmentId);
     }

@@ -175,8 +175,8 @@ services:
       REDIS_HOST: redis
       IDENTITY_SERVICE_URL: http://identity-service:8081
       REDIS_PORT: 6379
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
+      SMTP_HOST: ${SMTP_HOST:-${MAIL_HOST:-mailpit}}
+      SMTP_PORT: ${SMTP_PORT:-${MAIL_PORT:-1025}}
       MAIL_HOST: ${MAIL_HOST:-mailpit}
       MAIL_PORT: ${MAIL_PORT:-1025}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -316,6 +316,17 @@ services:
       DB_USER: ${BILLING_DB_USER:-billing_user}
       DB_PASSWORD: ${BILLING_DB_PASSWORD:?BILLING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SMTP_HOST: ${SMTP_HOST:-${MAIL_HOST:-mailpit}}
+      SMTP_PORT: ${SMTP_PORT:-${MAIL_PORT:-1025}}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@cozynest.vn}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Tổ Ấm}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
@@ -356,6 +367,17 @@ services:
       DB_USER: ${COMMUNICATION_DB_USER:-communication_user}
       DB_PASSWORD: ${COMMUNICATION_DB_PASSWORD:?COMMUNICATION_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SMTP_HOST: ${SMTP_HOST:-${MAIL_HOST:-mailpit}}
+      SMTP_PORT: ${SMTP_PORT:-${MAIL_PORT:-1025}}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@cozynest.vn}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Tổ Ấm}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}
@@ -396,6 +418,17 @@ services:
       DB_USER: ${ADMIN_DB_USER:-admin_user}
       DB_PASSWORD: ${ADMIN_DB_PASSWORD:?ADMIN_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      SMTP_HOST: ${SMTP_HOST:-${MAIL_HOST:-mailpit}}
+      SMTP_PORT: ${SMTP_PORT:-${MAIL_PORT:-1025}}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@cozynest.vn}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Tổ Ấm}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_ENABLED: ${MAIL_ENABLED:-true}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:?RABBITMQ_USER must be set in .env}

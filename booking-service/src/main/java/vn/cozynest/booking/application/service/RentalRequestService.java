@@ -267,10 +267,34 @@ public class RentalRequestService {
     }
 
     private void publishOutbox(String eventType, RentalRequest req) {
-        String payload = String.format(
-                "{\"requestId\":\"%s\",\"roomId\":\"%s\",\"tenantId\":\"%s\",\"landlordId\":\"%s\",\"status\":\"%s\"}",
-                req.getId(), req.getRoomId(), req.getTenantId(), req.getLandlordId(), req.getStatus()
-        );
-        outboxRepository.save(new AppointmentEventOutbox(eventType, req.getId(), payload));
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"requestId\":\"").append(escapeJson(req.getId())).append("\"");
+        sb.append(",\"roomId\":\"").append(escapeJson(req.getRoomId())).append("\"");
+        sb.append(",\"tenantId\":\"").append(escapeJson(req.getTenantId())).append("\"");
+        sb.append(",\"landlordId\":\"").append(escapeJson(req.getLandlordId())).append("\"");
+        sb.append(",\"status\":\"").append(req.getStatus() != null ? escapeJson(req.getStatus()) : "").append("\"");
+        if (req.getProposedMoveInDate() != null) {
+            sb.append(",\"proposedMoveInDate\":\"").append(req.getProposedMoveInDate().toString()).append("\"");
+        }
+        sb.append(",\"numOccupants\":").append(req.getNumOccupants());
+        if (req.getMessage() != null) {
+            sb.append(",\"message\":\"").append(escapeJson(req.getMessage())).append("\"");
+        }
+        if (req.getContractId() != null) {
+            sb.append(",\"contractId\":\"").append(escapeJson(req.getContractId())).append("\"");
+        }
+        sb.append("}");
+        outboxRepository.save(new AppointmentEventOutbox(eventType, req.getId(), sb.toString()));
+    }
+
+    private String escapeJson(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 }

@@ -101,13 +101,20 @@ public class TenantAppointmentService {
             ViewingAppointment saved = appointmentRepository.save(appointment);
             historyRepository.ifPresent(repo -> repo.save(new AppointmentStatusHistory(
                     saved.getId(), null, "PENDING", tenantId, "TENANT", saved.getTenantNote())));
-            recordOutbox("APPOINTMENT_CREATED", saved.getId(), Map.of(
-                    "appointmentId", saved.getId(),
-                    "roomId", saved.getRoomId(),
-                    "tenantId", tenantId,
-                    "landlordId", saved.getLandlordId(),
-                    "scheduledStart", saved.getScheduledStart().toString()
-            ));
+            Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("appointmentId", saved.getId());
+            payload.put("roomId", saved.getRoomId());
+            payload.put("tenantId", tenantId);
+            payload.put("landlordId", saved.getLandlordId());
+            payload.put("scheduledStart", saved.getScheduledStart().toString());
+            if (saved.getScheduledEnd() != null) payload.put("scheduledEnd", saved.getScheduledEnd().toString());
+            if (saved.getRoomTitle() != null) payload.put("roomTitle", saved.getRoomTitle());
+            if (saved.getRoomAddress() != null) payload.put("roomAddress", saved.getRoomAddress());
+            if (saved.getContactName() != null) payload.put("contactName", saved.getContactName());
+            if (saved.getContactPhone() != null) payload.put("contactPhone", saved.getContactPhone());
+            if (saved.getContactEmail() != null) payload.put("contactEmail", saved.getContactEmail());
+            if (saved.getTenantNote() != null) payload.put("tenantNote", saved.getTenantNote());
+            recordOutbox("APPOINTMENT_CREATED", saved.getId(), payload);
             return ViewingAppointmentListItemDto.fromEntity(saved);
         } catch (DataIntegrityViolationException ex) {
             throw new IllegalStateException("Ban da co lich hen xem phong nay o khung gio tuong tu", ex);

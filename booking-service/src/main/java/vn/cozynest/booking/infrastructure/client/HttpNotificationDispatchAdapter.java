@@ -60,18 +60,30 @@ public class HttpNotificationDispatchAdapter implements NotificationDispatchPort
     public boolean dispatch(AppointmentEventOutbox event) {
         try {
             JsonNode payload = objectMapper.readTree(event.getPayload() != null ? event.getPayload() : "{}");
-            String recipientId = payload.path("tenantId").asText("");
-            if (recipientId.isBlank()) {
+            String eventType = event.getEventType();
+
+            String recipientId;
+            if ("APPOINTMENT_CREATED".equals(eventType) || "RENTAL_REQUEST_CREATED".equals(eventType)) {
                 recipientId = payload.path("landlordId").asText("");
+                if (recipientId.isBlank()) {
+                    recipientId = payload.path("tenantId").asText("");
+                }
+            } else {
+                recipientId = payload.path("tenantId").asText("");
+                if (recipientId.isBlank()) {
+                    recipientId = payload.path("landlordId").asText("");
+                }
             }
+
             if (recipientId.isBlank()) {
                 log.warn("Outbox event {} missing recipient userId; skipping external dispatch", event.getId());
                 return true;
             }
 
-            String title = resolveTitle(event.getEventType());
-            String content = "Lịch hẹn " + event.getAggregateId() + " đã chuyển sang trạng thái mới.";
-            String linkUrl = "/dashboard/tenant/appointments";
+            String title = resolveTitle(eventType);
+            String content = resolveContent(eventType, payload, event.getAggregateId());
+            String linkUrl = resolveLinkUrl(eventType);
+            String type = (eventType != null && eventType.startsWith("RENTAL_REQUEST")) ? "RENTAL_REQUEST" : "APPOINTMENT";
 
             restClient.post()
                     .uri("/internal/notifications")
@@ -79,7 +91,7 @@ public class HttpNotificationDispatchAdapter implements NotificationDispatchPort
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
                             "userId", recipientId,
-                            "type", "APPOINTMENT",
+                            "type", type,
                             "title", title,
                             "content", content,
                             "linkUrl", linkUrl
@@ -96,10 +108,50 @@ public class HttpNotificationDispatchAdapter implements NotificationDispatchPort
     private String resolveTitle(String eventType) {
         if (eventType == null) return "Cập nhật lịch hẹn xem phòng";
         return switch (eventType) {
+            case "APPOINTMENT_CREATED" -> "Có khách hẹn xem phòng mới";
             case "APPOINTMENT_CONFIRMED" -> "Lịch hẹn xem phòng đã được xác nhận";
             case "APPOINTMENT_CANCELLED" -> "Lịch hẹn xem phòng đã bị hủy";
             case "APPOINTMENT_DECLINED" -> "Lịch hẹn xem phòng bị từ chối";
+            case "RENTAL_REQUEST_CREATED" -> "Yêu cầu thuê phòng mới";
+            case "RENTAL_REQUEST_APPROVED" -> "Yêu cầu thuê phòng đã được chấp thuận";
+            case "RENTAL_REQUEST_REJECTED" -> "Yêu cầu thuê phòng bị từ chối";
             default -> "Cập nhật trạng thái lịch hẹn xem phòng";
+        };
+    }
+
+    private String resolveContent(String eventType, JsonNode payload, String aggregateId) {
+        if ("APPOINTMENT_CREATED".equals(eventType)) {
+            String contactName = payload.path("contactName").asText("Khách");
+            String roomTitle = payload.path("roomTitle").asText("phòng");
+            return contactName + " đã đặt lịch hẹn xem " + roomTitle + ".";
+        }
+        if ("APPOINTMENT_CONFIRMED".equals(eventType)) {
+            String roomTitle = payload.path("roomTitle").asText("phòng");
+            return "Chủ trọ đã đồng ý lịch hẹn xem " + roomTitle + ".";
+        }
+        if ("APPOINTMENT_DECLINED".equals(eventType)) {
+            String reason = payload.path("reasonNote").asText("");
+            return "Lịch hẹn xem phòng đã bị từ chối." + (!reason.isBlank() ? " Lý do: " + reason : "");
+        }
+        if ("RENTAL_REQUEST_CREATED".equals(eventType)) {
+            return "Bạn có yêu cầu thuê phòng mới cho phòng #" + payload.path("roomId").asText("") + ".";
+        }
+        if ("RENTAL_REQUEST_APPROVED".equals(eventType)) {
+            return "Yêu cầu thuê phòng #" + payload.path("roomId").asText("") + " đã được chủ nhà đồng ý!";
+        }
+        if ("RENTAL_REQUEST_REJECTED".equals(eventType)) {
+            return "Yêu cầu thuê phòng #" + payload.path("roomId").asText("") + " đã bị từ chối.";
+        }
+        return "Lịch hẹn " + aggregateId + " đã chuyển sang trạng thái mới.";
+    }
+
+    private String resolveLinkUrl(String eventType) {
+        if (eventType == null) return "/dashboard";
+        return switch (eventType) {
+            case "APPOINTMENT_CREATED" -> "/dashboard/landlord/appointments";
+            case "RENTAL_REQUEST_CREATED" -> "/dashboard/landlord/rental-requests";
+            case "RENTAL_REQUEST_APPROVED", "RENTAL_REQUEST_REJECTED" -> "/dashboard/contracts";
+            default -> "/dashboard/tenant/appointments";
         };
     }
 }

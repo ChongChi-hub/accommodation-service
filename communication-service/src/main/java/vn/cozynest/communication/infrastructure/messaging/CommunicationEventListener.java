@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -13,6 +14,7 @@ import vn.cozynest.common.events.DomainEventEnvelope;
 import vn.cozynest.common.events.EventEnvelopeCodec;
 import vn.cozynest.common.events.EventInboxProcessor;
 import vn.cozynest.common.events.EventTopology;
+import vn.cozynest.communication.application.service.CommunicationEmailService;
 import vn.cozynest.communication.application.service.NotificationApplicationService;
 
 import java.time.Instant;
@@ -29,18 +31,35 @@ public class CommunicationEventListener {
     private final CommunicationInboxStore inboxStore;
     private final NotificationApplicationService notificationService;
     private final Optional<RabbitTemplate> rabbitTemplate;
+    private final Optional<CommunicationEmailService> emailService;
 
     public CommunicationEventListener(
             CommunicationInboxStore inboxStore,
             NotificationApplicationService notificationService,
             Optional<RabbitTemplate> rabbitTemplate
     ) {
+        this(inboxStore, notificationService, rabbitTemplate, Optional.empty());
+    }
+
+    @Autowired
+    public CommunicationEventListener(
+            CommunicationInboxStore inboxStore,
+            NotificationApplicationService notificationService,
+            Optional<RabbitTemplate> rabbitTemplate,
+            Optional<CommunicationEmailService> emailService
+    ) {
         this.inboxStore = inboxStore;
         this.notificationService = notificationService;
         this.rabbitTemplate = rabbitTemplate != null ? rabbitTemplate : Optional.empty();
+        this.emailService = emailService != null ? emailService : Optional.empty();
     }
 
     @RabbitListener(queues = EventTopology.COMMUNICATION_QUEUE)
+    @Transactional
+    public void onMessage(String rawJson) {
+        handleRawMessage(rawJson);
+    }
+
     @Transactional
     public EventInboxProcessor.ProcessOutcome handleRawMessage(String rawJson) {
         DomainEventEnvelope envelope;
@@ -116,6 +135,121 @@ public class CommunicationEventListener {
 
         if (!notified) {
             throw new IllegalArgumentException("Missing notification recipient userId in event " + envelope.eventType());
+        }
+
+        triggerEmailNotificationIfApplicable(envelope, payload);
+    }
+
+    private void triggerEmailNotificationIfApplicable(DomainEventEnvelope envelope, JsonNode payload) {
+        if (emailService.isEmpty()) {
+            return;
+        }
+        CommunicationEmailService svc = emailService.get();
+        String evt = envelope.eventType();
+        if (evt == null) return;
+
+        try {
+            switch (evt) {
+                case "APPOINTMENT_CREATED" -> {
+                    CommunicationEmailService.AppointmentEmailPayload apptPayload = new CommunicationEmailService.AppointmentEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("roomTitle").asString(""),
+                            payload.path("roomAddress").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("contactName").asString(""),
+                            payload.path("contactPhone").asString(""),
+                            payload.path("contactEmail").asString(""),
+                            payload.path("tenantNote").asString(""),
+                            null,
+                            payload.path("scheduledStart").asString(""),
+                            payload.path("scheduledEnd").asString(""),
+                            null
+                    );
+                    svc.sendAppointmentCreatedNotification(apptPayload);
+                }
+                case "APPOINTMENT_CONFIRMED" -> {
+                    CommunicationEmailService.AppointmentEmailPayload apptPayload = new CommunicationEmailService.AppointmentEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("roomTitle").asString(""),
+                            payload.path("roomAddress").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("contactName").asString(""),
+                            payload.path("contactPhone").asString(""),
+                            payload.path("contactEmail").asString(""),
+                            payload.path("tenantNote").asString(""),
+                            payload.path("landlordNote").asString(""),
+                            payload.path("scheduledStart").asString(""),
+                            payload.path("scheduledEnd").asString(""),
+                            null
+                    );
+                    svc.sendAppointmentConfirmedNotification(apptPayload);
+                }
+                case "APPOINTMENT_DECLINED" -> {
+                    CommunicationEmailService.AppointmentEmailPayload apptPayload = new CommunicationEmailService.AppointmentEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("roomTitle").asString(""),
+                            payload.path("roomAddress").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("contactName").asString(""),
+                            payload.path("contactPhone").asString(""),
+                            payload.path("contactEmail").asString(""),
+                            null,
+                            null,
+                            payload.path("scheduledStart").asString(""),
+                            null,
+                            payload.path("reasonNote").asString(payload.path("reasonCode").asString(""))
+                    );
+                    svc.sendAppointmentDeclinedNotification(apptPayload);
+                }
+                case "RENTAL_REQUEST_CREATED" -> {
+                    CommunicationEmailService.RentalRequestEmailPayload rentalPayload = new CommunicationEmailService.RentalRequestEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("proposedMoveInDate").asString(""),
+                            payload.path("numOccupants").asInt(1),
+                            payload.path("message").asString(""),
+                            null
+                    );
+                    svc.sendRentalRequestCreatedNotification(rentalPayload);
+                }
+                case "RENTAL_REQUEST_APPROVED" -> {
+                    CommunicationEmailService.RentalRequestEmailPayload rentalPayload = new CommunicationEmailService.RentalRequestEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("proposedMoveInDate").asString(""),
+                            payload.path("numOccupants").asInt(1),
+                            payload.path("message").asString(""),
+                            payload.path("contractId").asString("")
+                    );
+                    svc.sendRentalRequestApprovedNotification(rentalPayload);
+                }
+                case "RENTAL_REQUEST_REJECTED" -> {
+                    CommunicationEmailService.RentalRequestEmailPayload rentalPayload = new CommunicationEmailService.RentalRequestEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("proposedMoveInDate").asString(""),
+                            payload.path("numOccupants").asInt(1),
+                            payload.path("message").asString(""),
+                            null
+                    );
+                    svc.sendRentalRequestRejectedNotification(rentalPayload);
+                }
+                default -> {}
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch email for event {}: {}", evt, ex.getMessage());
         }
     }
 

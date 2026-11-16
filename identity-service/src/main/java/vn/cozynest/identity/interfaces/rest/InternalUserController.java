@@ -53,6 +53,20 @@ public class InternalUserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<InternalUserService.InternalUserSummaryDto>> getUserProfile(
+            @PathVariable("id") String userId,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        return internalUserService.getUserById(userId)
+                .map(u -> ResponseEntity.ok(ApiResponse.success(u)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Khong tim thay nguoi dung: " + userId, "ERR_USER_NOT_FOUND")));
+    }
+
     @GetMapping("/{id}/phone-status")
     public ResponseEntity<ApiResponse<InternalPhoneStatusResponse>> getPhoneStatus(
             @PathVariable("id") String userId,
