@@ -68,11 +68,11 @@ public class RegisterUseCase {
 
         String passwordHash = passwordEncoder.encode(command.getPassword());
 
-        // R1: All self-registered accounts receive TENANT role only
-        User newUser = User.createNew(normalizedEmail, normalizedPhone, passwordHash, normalizedFullName, UserRoleType.TENANT);
+        UserRoleType primaryRole = "LANDLORD".equals(roleStr) ? UserRoleType.LANDLORD : UserRoleType.TENANT;
+        User newUser = User.createNew(normalizedEmail, normalizedPhone, passwordHash, normalizedFullName, primaryRole);
         User savedUser = userRepository.save(newUser);
 
-        // R2: Choosing LANDLORD creates an application in AWAITING_KYC
+        // Choosing LANDLORD creates an application in AWAITING_KYC
         LandlordProfile profile = null;
         if ("LANDLORD".equals(roleStr)) {
             profile = landlordProfileRepository.save(LandlordProfile.createNew(savedUser.getId()));
@@ -91,11 +91,16 @@ public class RegisterUseCase {
         );
         refreshTokenRepository.save(refreshToken);
 
+        List<String> rolesList = savedUser.getRoles().stream()
+                .map(Enum::name)
+                .sorted((a, b) -> "LANDLORD".equals(a) ? -1 : 1)
+                .toList();
+
         return AuthResult.builder()
                 .token(accessToken)
                 .refreshToken(rawRefreshToken)
                 .user(UserDto.fromDomain(savedUser, profile))
-                .roles(List.of("TENANT"))
+                .roles(rolesList)
                 .isNewUser(true)
                 .emailVerified(false)
                 .landlordApplication(vn.cozynest.identity.application.dto.LandlordApplicationSummaryDto.fromDomain(profile))
