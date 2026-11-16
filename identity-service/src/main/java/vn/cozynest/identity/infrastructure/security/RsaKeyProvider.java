@@ -115,14 +115,7 @@ public class RsaKeyProvider {
     }
 
     private static String cleanBase64(String pem) {
-        return pem.replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
-                .replace("-----END RSA PRIVATE KEY-----", "")
-                .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "")
-                .replace("-----BEGIN RSA PUBLIC KEY-----", "")
-                .replace("-----END RSA PUBLIC KEY-----", "")
+        return pem.replaceAll("-----(BEGIN|END)[ A-Z]+-----", "")
                 .replaceAll("\\s+", "");
     }
 
