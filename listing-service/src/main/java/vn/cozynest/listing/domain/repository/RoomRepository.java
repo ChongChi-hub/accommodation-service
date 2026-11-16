@@ -71,6 +71,12 @@ public interface RoomRepository {
 
     long countByLandlordIdAndDeletedAtIsNullAndStatus(Long landlordId, String status);
 
+    long countByLandlordIdAndRiskLevelAndDeletedAtIsNull(Long landlordId, String riskLevel);
+
+    List<BigDecimal> findPublishedPricesByWard(Long wardId, String wardCode);
+
+    List<BigDecimal> findPublishedPricesByDistrict(String districtCode);
+
     int incrementBookmarkCount(Long roomId);
 
     int decrementBookmarkCount(Long roomId);

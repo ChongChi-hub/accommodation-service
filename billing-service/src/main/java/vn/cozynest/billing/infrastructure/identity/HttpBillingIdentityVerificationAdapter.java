@@ -55,7 +55,7 @@ public class HttpBillingIdentityVerificationAdapter implements BillingIdentityVe
 
     @Override
     public boolean verifyOtp(String userId, String otpCode) {
-        if (otpCode == null || !otpCode.matches("^[0-9]{6}$")) {
+        if (otpCode == null || !otpCode.matches("^[0-9]{6,8}$")) {
             return false;
         }
         return circuitBreaker.executeWithFallback(2, () -> {

@@ -18,6 +18,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TwoFactorAuthService {
@@ -86,22 +87,28 @@ public class TwoFactorAuthService {
 
     @Transactional
     public boolean verifyChallenge(String userId, String code) {
-        UserTwoFactor twoFactor = twoFactorRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("2FA chua duoc khoi tao"));
+        if (code == null || code.trim().isEmpty()) {
+            return false;
+        }
+        Optional<UserTwoFactor> opt = twoFactorRepository.findByUserId(userId);
+        if (opt.isEmpty()) {
+            return false;
+        }
+        UserTwoFactor twoFactor = opt.get();
         if (!twoFactor.isEnabled()) {
-            return true;
+            return false;
         }
         Instant now = Instant.now();
         if (twoFactor.isLocked(now)) {
             throw new IllegalStateException("2FA tam khoa do nhap sai qua nhieu lan. Vui long thu lai sau 15 phut.");
         }
-        boolean validTotp = totpHelper.verifyCode(twoFactor.getTotpSecret(), code);
+        boolean validTotp = totpHelper.verifyCode(twoFactor.getTotpSecret(), code.trim());
         if (validTotp) {
             twoFactor.resetAttempts();
             twoFactorRepository.save(twoFactor);
             return true;
         }
-        if (tryConsumeBackupCode(twoFactor, code)) {
+        if (tryConsumeBackupCode(twoFactor, code.trim())) {
             twoFactor.resetAttempts();
             twoFactorRepository.save(twoFactor);
             return true;

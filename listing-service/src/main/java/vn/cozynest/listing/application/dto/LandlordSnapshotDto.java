@@ -24,6 +24,7 @@ public class LandlordSnapshotDto {
     private Integer responseRatePercent;
     private Integer responseTimeMinutes;
     private Integer roomCount;
+    private Integer trustScore;
     private LocalDateTime joinedAt;
 }
 

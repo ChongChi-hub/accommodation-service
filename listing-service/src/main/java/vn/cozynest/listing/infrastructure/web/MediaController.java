@@ -45,6 +45,29 @@ public class MediaController {
             mediaType = MediaType.IMAGE_JPEG;
         }
 
+        // Anti-Fraud: Apply subtle watermark "Tổ Ấm - #<roomId>" on public room photos
+        if (key.startsWith("rooms/")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("^rooms/(\\d+)/.*").matcher(key);
+            if (m.find()) {
+                String roomId = m.group(1);
+                try {
+                    java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(data));
+                    if (img != null) {
+                        java.awt.image.BufferedImage watermarked = vn.cozynest.common.image.ImageProcessingHelper.applyWatermark(
+                                img, "Tổ Ấm - #" + roomId);
+                        byte[] watermarkedBytes = vn.cozynest.common.image.ImageProcessingHelper.resizeToWebP(
+                                watermarked, watermarked.getWidth(), watermarked.getHeight(), 0.90f);
+                        if (watermarkedBytes != null && watermarkedBytes.length > 0) {
+                            data = watermarkedBytes;
+                            mediaType = MediaType.parseMediaType("image/webp");
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Fallback to raw bytes if watermark processing encounters an unreadable format
+                }
+            }
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(mediaType);
         headers.setCacheControl("public, max-age=31536000, immutable");

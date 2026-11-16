@@ -143,5 +143,103 @@ public final class ImageProcessingHelper {
         }
         return baos.toByteArray();
     }
+
+    public static String calculatePHash(BufferedImage source) {
+        if (source == null) return null;
+        int size = 32;
+        BufferedImage gray = new BufferedImage(size, size, BufferedImage.TYPE_BYTE_GRAY);
+        Graphics2D g = gray.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(source, 0, 0, size, size, null);
+        g.dispose();
+
+        double[][] vals = new double[size][size];
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                vals[x][y] = (gray.getRGB(x, y) & 0xFF);
+            }
+        }
+
+        int dctSize = 8;
+        double[][] dct = new double[dctSize][dctSize];
+        double total = 0.0;
+        for (int u = 0; u < dctSize; u++) {
+            for (int v = 0; v < dctSize; v++) {
+                double sum = 0.0;
+                for (int x = 0; x < size; x++) {
+                    for (int y = 0; y < size; y++) {
+                        sum += vals[x][y]
+                                * Math.cos(((2 * x + 1) * u * Math.PI) / (2.0 * size))
+                                * Math.cos(((2 * y + 1) * v * Math.PI) / (2.0 * size));
+                    }
+                }
+                double cu = (u == 0) ? 1.0 / Math.sqrt(2) : 1.0;
+                double cv = (v == 0) ? 1.0 / Math.sqrt(2) : 1.0;
+                dct[u][v] = 0.25 * cu * cv * sum;
+                if (u != 0 || v != 0) {
+                    total += dct[u][v];
+                }
+            }
+        }
+
+        double avg = total / 63.0;
+        long hash = 0L;
+        for (int u = 0; u < dctSize; u++) {
+            for (int v = 0; v < dctSize; v++) {
+                hash <<= 1;
+                if (dct[u][v] > avg) {
+                    hash |= 1L;
+                }
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    public static int hammingDistance(String h1, String h2) {
+        if (h1 == null || h2 == null || h1.length() != 16 || h2.length() != 16) {
+            return Integer.MAX_VALUE;
+        }
+        long v1 = Long.parseUnsignedLong(h1, 16);
+        long v2 = Long.parseUnsignedLong(h2, 16);
+        return Long.bitCount(v1 ^ v2);
+    }
+
+    public static BufferedImage applyWatermark(BufferedImage source, String watermarkText) {
+        if (source == null) return null;
+        if (watermarkText == null || watermarkText.isBlank()) return source;
+
+        int width = source.getWidth();
+        int height = source.getHeight();
+
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = result.createGraphics();
+        g.drawImage(source, 0, 0, null);
+
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int fontSize = Math.max(16, Math.min(48, height / 25));
+        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, fontSize));
+
+        FontMetrics fm = g.getFontMetrics();
+        int textWidth = fm.stringWidth(watermarkText);
+        int textHeight = fm.getHeight();
+
+        int padding = Math.max(12, width / 40);
+        int x = width - textWidth - padding;
+        int y = height - padding;
+
+        int badgePadX = 10;
+        int badgePadY = 6;
+        g.setColor(new Color(0, 0, 0, 95));
+        g.fillRoundRect(x - badgePadX, y - textHeight + fm.getDescent() - badgePadY,
+                textWidth + badgePadX * 2, textHeight + badgePadY * 2, 8, 8);
+
+        g.setColor(new Color(255, 255, 255, 210));
+        g.drawString(watermarkText, x, y);
+
+        g.dispose();
+        return result;
+    }
 }
 

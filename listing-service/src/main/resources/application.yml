@@ -44,6 +44,10 @@ management:
 storage:
   media-dir: ${STORAGE_MEDIA_DIR:./storage/media}
 
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:false}
+
 jwt:
   jwks-uri: ${IDENTITY_SERVICE_URL:http://localhost:8081}/.well-known/jwks.json
   issuer: cozynest-identity

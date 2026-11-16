@@ -45,6 +45,10 @@ jwt:
   expiration-ms: 900000          # 15 minutes
   refresh-expiration-ms: 2592000000 # 30 days
 
+cozynest:
+  broker:
+    enabled: ${COZYNEST_BROKER_ENABLED:false}
+
 google:
   enabled: ${GOOGLE_LOGIN_ENABLED:false}
   client-id: ${GOOGLE_CLIENT_ID:}

@@ -143,5 +143,18 @@ public class UserProfile {
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setVersion(Long version) { this.version = version; }
+
+    public void anonymize() {
+        this.fullName = "Người dùng đã xóa";
+        this.phone = null;
+        this.permanentAddress = null;
+        this.addressDetail = null;
+        this.occupation = null;
+        this.bio = null;
+        this.avatarKey = null;
+        this.avatarThumbKey = null;
+        this.avatarMediumKey = null;
+        this.updatedAt = Instant.now();
+    }
 }
 

@@ -33,6 +33,7 @@ public class LandlordImageService {
     private final ImageStoragePort imageStoragePort;
     private final UploadRateLimiter rateLimiter;
     private final Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository;
+    private final Optional<AntiFraudService> antiFraudService;
 
     public LandlordImageService(
             RoomRepository roomRepository,
@@ -40,7 +41,17 @@ public class LandlordImageService {
             ImageStoragePort imageStoragePort,
             UploadRateLimiter rateLimiter
     ) {
-        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, Optional.empty());
+        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, Optional.empty(), Optional.empty());
+    }
+
+    public LandlordImageService(
+            RoomRepository roomRepository,
+            RoomImageRepository roomImageRepository,
+            ImageStoragePort imageStoragePort,
+            UploadRateLimiter rateLimiter,
+            Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository
+    ) {
+        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, roomStatusHistoryRepository, Optional.empty());
     }
 
     @Autowired
@@ -49,7 +60,8 @@ public class LandlordImageService {
             RoomImageRepository roomImageRepository,
             ImageStoragePort imageStoragePort,
             UploadRateLimiter rateLimiter,
-            Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository
+            Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository,
+            Optional<AntiFraudService> antiFraudService
     ) {
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
@@ -58,6 +70,7 @@ public class LandlordImageService {
         this.roomStatusHistoryRepository = roomStatusHistoryRepository != null
                 ? roomStatusHistoryRepository
                 : Optional.empty();
+        this.antiFraudService = antiFraudService != null ? antiFraudService : Optional.empty();
     }
 
     public static final long MAX_FILE_SIZE = 5 * 1024 * 1024L; // 5MB
@@ -114,6 +127,17 @@ public class LandlordImageService {
                     continue;
                 }
 
+                String phash = vn.cozynest.common.image.ImageProcessingHelper.calculatePHash(sanitized);
+                if (antiFraudService.isPresent()) {
+                    antiFraudService.get().checkDuplicateUploadedImage(roomId, phash).ifPresent(dupMsg -> {
+                        log.warn("Room #{} duplicate image detected: {}", roomId, dupMsg);
+                        room.setRiskLevel("HIGH_RISK");
+                        String prev = room.getRiskReasons();
+                        room.setRiskReasons(prev != null && !prev.isBlank() ? prev + "; " + dupMsg : dupMsg);
+                        roomRepository.save(room);
+                    });
+                }
+
                 // 5. Generate 3 WebP sizes
                 byte[] largeBytes = vn.cozynest.common.image.ImageProcessingHelper.resizeBoundingBoxWebP(sanitized, 1600, 0.85f);
                 byte[] mediumBytes = vn.cozynest.common.image.ImageProcessingHelper.resizeBoundingBoxWebP(sanitized, 960, 0.85f);
@@ -140,6 +164,7 @@ public class LandlordImageService {
                         .mediumKey(mediumKey)
                         .thumbKey(thumbKey)
                         .originalFilename(filename)
+                        .phash(phash)
                         .contentType("image/webp")
                         .sizeBytes((long) largeBytes.length)
                         .width(sanitized.getWidth())

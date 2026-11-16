@@ -100,6 +100,7 @@ public class ListingCatalogPersistenceMapper {
                 .avatarUrl(e.getAvatarUrl()).email(e.getEmail()).verified(e.isVerified()).ratingAvg(e.getRatingAvg())
                 .reviewCount(e.getReviewCount()).responseRatePercent(e.getResponseRatePercent())
                 .responseTimeMinutes(e.getResponseTimeMinutes()).roomCount(e.getRoomCount())
+                .trustScore(e.getTrustScore() != null ? e.getTrustScore() : 85)
                 .joinedAt(e.getJoinedAt()).updatedAt(e.getUpdatedAt())
                 .build();
     }
@@ -111,6 +112,7 @@ public class ListingCatalogPersistenceMapper {
                 .avatarUrl(d.getAvatarUrl()).email(d.getEmail()).verified(d.isVerified()).ratingAvg(d.getRatingAvg())
                 .reviewCount(d.getReviewCount()).responseRatePercent(d.getResponseRatePercent())
                 .responseTimeMinutes(d.getResponseTimeMinutes()).roomCount(d.getRoomCount())
+                .trustScore(d.getTrustScore() != null ? d.getTrustScore() : 85)
                 .joinedAt(d.getJoinedAt()).updatedAt(d.getUpdatedAt())
                 .build();
     }

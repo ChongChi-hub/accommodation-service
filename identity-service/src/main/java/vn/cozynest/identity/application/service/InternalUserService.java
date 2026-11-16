@@ -26,13 +26,23 @@ public class InternalUserService {
     private final FaceVerificationRepository faceRepository;
     private final UserRepository userRepository;
     private final PhoneVerificationService phoneVerificationService;
+    private final TwoFactorAuthService twoFactorAuthService;
     private final boolean faceRequired;
 
     public InternalUserService(
             UserVerificationRepository verificationRepository,
             FaceVerificationRepository faceRepository,
             boolean faceRequired) {
-        this(verificationRepository, faceRepository, null, null, faceRequired);
+        this(verificationRepository, faceRepository, null, null, null, faceRequired);
+    }
+
+    public InternalUserService(
+            UserVerificationRepository verificationRepository,
+            FaceVerificationRepository faceRepository,
+            UserRepository userRepository,
+            PhoneVerificationService phoneVerificationService,
+            boolean faceRequired) {
+        this(verificationRepository, faceRepository, userRepository, phoneVerificationService, null, faceRequired);
     }
 
     @Autowired
@@ -41,11 +51,13 @@ public class InternalUserService {
             FaceVerificationRepository faceRepository,
             UserRepository userRepository,
             PhoneVerificationService phoneVerificationService,
+            Optional<TwoFactorAuthService> twoFactorAuthService,
             @Value("${face.required:true}") boolean faceRequired) {
         this.verificationRepository = verificationRepository;
         this.faceRepository = faceRepository;
         this.userRepository = userRepository;
         this.phoneVerificationService = phoneVerificationService;
+        this.twoFactorAuthService = twoFactorAuthService != null ? twoFactorAuthService.orElse(null) : null;
         this.faceRequired = faceRequired;
     }
 
@@ -66,6 +78,14 @@ public class InternalUserService {
 
     @Transactional
     public boolean verifyPhoneOtpForUser(String userId, String otpCode) {
+        if (twoFactorAuthService != null && otpCode != null && !otpCode.isBlank()) {
+            try {
+                if (twoFactorAuthService.verifyChallenge(userId, otpCode)) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
         User user = userRepository.findById(userId).orElse(null);
         if (user == null || !user.isPhoneVerified() || user.getPhone() == null || user.getPhone().isBlank()) {
             return false;

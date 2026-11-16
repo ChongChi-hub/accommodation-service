@@ -128,6 +128,28 @@ public interface SpringDataRoomRepository
 
     long countByLandlordIdAndDeletedAtIsNullAndStatus(Long landlordId, String status);
 
+    long countByLandlordIdAndRiskLevelAndDeletedAtIsNull(Long landlordId, String riskLevel);
+
+    @Query("""
+        SELECT r.price FROM RoomJpaEntity r
+        WHERE (r.wardId = :wardId OR (r.wardCode IS NOT NULL AND r.wardCode = :wardCode))
+          AND r.deletedAt IS NULL
+          AND r.hiddenAt IS NULL
+          AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+    """)
+    List<BigDecimal> findPublishedPricesByWard(@Param("wardId") Long wardId, @Param("wardCode") String wardCode);
+
+    @Query("""
+        SELECT r.price FROM RoomJpaEntity r
+        WHERE r.districtCode = :districtCode
+          AND r.deletedAt IS NULL
+          AND r.hiddenAt IS NULL
+          AND r.approved = true
+          AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
+    """)
+    List<BigDecimal> findPublishedPricesByDistrict(@Param("districtCode") String districtCode);
+
     @Modifying
     @Query("UPDATE RoomJpaEntity r SET r.bookmarkCount = r.bookmarkCount + 1 WHERE r.id = :roomId")
     int incrementBookmarkCount(@Param("roomId") Long roomId);

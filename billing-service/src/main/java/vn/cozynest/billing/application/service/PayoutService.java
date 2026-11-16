@@ -190,11 +190,14 @@ public class PayoutService {
     }
 
     private void verifyOtpCode(String userId, String otp) {
-        if (otp == null || !otp.matches("^[0-9]{6}$")) {
-            throw new IllegalArgumentException("Ma OTP xac nhan rut tien phai gom 6 chu so hop le.");
+        if (otp == null || otp.trim().isEmpty()) {
+            throw new AccessDeniedException("Yêu cầu mã TOTP để thực hiện giao dịch này");
+        }
+        if (!otp.matches("^[0-9]{6,8}$")) {
+            throw new AccessDeniedException("Mã OTP xác thực phải gồm 6 chữ số hợp lệ.");
         }
         if (identityVerificationPort != null && !identityVerificationPort.verifyOtp(userId, otp)) {
-            throw new IllegalArgumentException("Ma OTP xac thuc khong chinh xac hoac da het han");
+            throw new AccessDeniedException("Mã OTP xác thực không chính xác hoặc đã hết hạn");
         }
     }
 

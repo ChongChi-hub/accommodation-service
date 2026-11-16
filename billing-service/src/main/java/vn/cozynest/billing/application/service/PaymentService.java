@@ -73,10 +73,34 @@ public class PaymentService {
         this.gatewayPort = gatewayPort;
         this.webhookLogRepository = webhookLogRepository;
         this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
-        this.webhookSecret = webhookSecret;
-        this.previousWebhookSecret = previousWebhookSecret;
+        this.webhookSecret = resolveSecretContent(webhookSecret, "PAYMENT_WEBHOOK_SECRET");
+        this.previousWebhookSecret = resolveSecretContent(previousWebhookSecret, "PAYMENT_WEBHOOK_SECRET_PREVIOUS");
         this.strictIpAllowlist = strictIpAllowlist;
         this.allowedIps = parseIpList(allowedIpsRaw);
+    }
+
+    private static String resolveSecretContent(String rawInput, String envName) {
+        String val = rawInput;
+        if (val == null || val.isBlank()) {
+            val = System.getenv(envName);
+        }
+        if (val == null || val.isBlank()) {
+            String path = System.getenv(envName + "_PATH");
+            if (path != null && !path.isBlank()) {
+                val = "file:" + path;
+            }
+        }
+        if (val == null || val.isBlank()) {
+            return "";
+        }
+        if (val.startsWith("file:")) {
+            try {
+                return java.nio.file.Files.readString(java.nio.file.Path.of(val.substring(5).trim())).trim();
+            } catch (Exception ex) {
+                return val;
+            }
+        }
+        return val.trim();
     }
 
     @Transactional

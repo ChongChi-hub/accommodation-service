@@ -127,6 +127,13 @@ public class RoomJpaEntity {
     @Column(nullable = false, length = 30)
     private String status;
 
+    @Column(name = "risk_level", nullable = false, length = 30)
+    @Builder.Default
+    private String riskLevel = "NORMAL";
+
+    @Column(name = "risk_reasons", length = 500)
+    private String riskReasons;
+
     @Column(name = "publication_status", nullable = false, length = 30)
     @Builder.Default
     private String publicationStatus = "PUBLISHED";

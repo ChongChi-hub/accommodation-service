@@ -11,6 +11,7 @@ public interface RoomImageRepository {
     Optional<RoomImage> findByRoomIdAndCoverTrue(Long roomId);
     Optional<RoomImage> findByIdAndRoomId(Long id, Long roomId);
     long countByRoomId(Long roomId);
+    List<RoomImage> findOtherRoomImagesWithPhash(Long roomId);
     void resetCoverForRoom(Long roomId);
     void setCoverForRoom(Long roomId, Long imageId);
     RoomImage save(RoomImage image);

@@ -16,6 +16,7 @@ import vn.cozynest.listing.domain.repository.RoomRepository;
 import vn.cozynest.listing.domain.repository.RoomStatusHistoryRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -241,6 +242,44 @@ class LandlordRoomManagementServiceTest {
 
         assertThrows(RoomVersionConflictException.class, () ->
                 service.updateRoom(1L, 101L, req, "u-landlord-01"));
+    }
+
+    @Test
+    @DisplayName("Submitting a room with fraud anomaly flags room as HIGH_RISK in moderation queue")
+    void testSubmitRoomWithFraudAnomalyFlagsHighRisk() {
+        vn.cozynest.listing.application.service.AntiFraudService mockAntiFraud = mock(vn.cozynest.listing.application.service.AntiFraudService.class);
+        vn.cozynest.listing.application.service.TrustScoreCalculatorService mockTrustScore = mock(vn.cozynest.listing.application.service.TrustScoreCalculatorService.class);
+
+        LandlordRoomManagementService fraudAwareService = new LandlordRoomManagementService(
+                roomRepository,
+                roomStatusHistoryRepository,
+                roomUsagePort,
+                roomImageRepository,
+                kycVerificationPort,
+                Optional.of(mockAntiFraud),
+                Optional.of(mockTrustScore)
+        );
+
+        Room r = Room.builder().id(205L).landlordId(1L).title("Phòng siêu rẻ 0901234567").price(java.math.BigDecimal.valueOf(500000)).status("DRAFT").build();
+        when(roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(205L, 1L)).thenReturn(Optional.of(r));
+        when(roomImageRepository.countByRoomId(205L)).thenReturn(3L);
+        when(roomImageRepository.findByRoomIdAndCoverTrue(205L)).thenReturn(Optional.of(vn.cozynest.listing.domain.model.RoomImage.builder().id(1L).build()));
+        when(roomImageRepository.findByRoomIdOrderBySortOrderAsc(205L)).thenReturn(List.of());
+
+        when(mockAntiFraud.evaluateRoom(eq(r), anyList())).thenReturn(
+                vn.cozynest.listing.domain.service.AntiFraudRuleEngine.AntiFraudResult.highRisk(
+                        List.of("Giá phòng thấp bất thường (< 40% trung vị)", "Chứa SĐT né sàn")
+                )
+        );
+        when(roomRepository.save(any(Room.class))).thenAnswer(i -> i.getArgument(0));
+
+        Room submitted = fraudAwareService.submitForReview(1L, 205L, "u-landlord-01");
+
+        assertThat(submitted.getRiskLevel()).isEqualTo("HIGH_RISK");
+        assertThat(submitted.getRiskReasons()).contains("Giá phòng thấp bất thường").contains("Chứa SĐT né sàn");
+        assertThat(submitted.getStatus()).isEqualTo("PENDING_REVIEW");
+        assertThat(submitted.isApproved()).isFalse();
+        verify(mockTrustScore, times(1)).calculateAndUpdateTrustScore(1L);
     }
 }
 

@@ -43,8 +43,23 @@ public class DeadLetterMessage {
         if ("REPLAYED".equals(this.status)) {
             throw new IllegalStateException("Su kien DLQ da duoc phat lai truoc do");
         }
+        if ("DISCARDED".equals(this.status)) {
+            throw new IllegalStateException("Su kien DLQ da bi loai bo, khong the phat lai");
+        }
         this.retryCount += 1;
         this.status = "REPLAYED";
+        this.replayedBy = actorId;
+        this.replayedAt = Instant.now();
+    }
+
+    public void markDiscarded(String actorId) {
+        if ("DISCARDED".equals(this.status)) {
+            throw new IllegalStateException("Su kien DLQ da bi loai bo truoc do");
+        }
+        if ("REPLAYED".equals(this.status)) {
+            throw new IllegalStateException("Su kien DLQ da duoc phat lai, khong the loai bo");
+        }
+        this.status = "DISCARDED";
         this.replayedBy = actorId;
         this.replayedAt = Instant.now();
     }

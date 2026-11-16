@@ -39,6 +39,9 @@ public class RoomImageJpaEntity {
     @Column(name = "original_filename", length = 255)
     private String originalFilename;
 
+    @Column(name = "phash", length = 64)
+    private String phash;
+
     @Column(name = "content_type", length = 50)
     @Builder.Default
     private String contentType = "image/webp";

@@ -84,13 +84,8 @@ public class DeadLetterAdminService {
     public DeadLetterMessage discard(String id, String adminId) {
         DeadLetterMessage msg = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ban ghi DLQ: " + id));
-        DeadLetterMessage updated = new DeadLetterMessage(
-                msg.getId(), msg.getEventId(), msg.getEventType(), msg.getSchemaVersion(),
-                msg.getAggregateType(), msg.getAggregateId(), msg.getSourceService(),
-                msg.getPayloadJson(), msg.getFailureReason(), msg.getRetryCount(),
-                "DISCARDED", adminId, Instant.now(), msg.getCreatedAt()
-        );
-        return repository.save(updated);
+        msg.markDiscarded(adminId);
+        return repository.save(msg);
     }
 
     private String resolveRoutingPrefix(String sourceService) {
@@ -99,6 +94,9 @@ public class DeadLetterAdminService {
         }
         if (sourceService != null && sourceService.contains("listing")) {
             return "listing";
+        }
+        if (sourceService != null && sourceService.contains("identity")) {
+            return "identity";
         }
         return "booking";
     }

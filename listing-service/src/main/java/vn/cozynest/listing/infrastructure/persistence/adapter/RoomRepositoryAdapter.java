@@ -161,6 +161,21 @@ public class RoomRepositoryAdapter implements RoomRepository {
     }
 
     @Override
+    public long countByLandlordIdAndRiskLevelAndDeletedAtIsNull(Long landlordId, String riskLevel) {
+        return springRepo.countByLandlordIdAndRiskLevelAndDeletedAtIsNull(landlordId, riskLevel);
+    }
+
+    @Override
+    public List<BigDecimal> findPublishedPricesByWard(Long wardId, String wardCode) {
+        return springRepo.findPublishedPricesByWard(wardId, wardCode);
+    }
+
+    @Override
+    public List<BigDecimal> findPublishedPricesByDistrict(String districtCode) {
+        return springRepo.findPublishedPricesByDistrict(districtCode);
+    }
+
+    @Override
     public int incrementBookmarkCount(Long roomId) {
         return springRepo.incrementBookmarkCount(roomId);
     }

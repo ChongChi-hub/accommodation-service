@@ -67,6 +67,11 @@ public class Room {
     private String status;
 
     @Builder.Default
+    private String riskLevel = "NORMAL";
+
+    private String riskReasons;
+
+    @Builder.Default
     private String publicationStatus = "PUBLISHED";
 
     @Builder.Default
