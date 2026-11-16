@@ -194,5 +194,38 @@ class LoginUseCaseTest {
         assertNotNull(result);
         assertEquals("admin_token", result.getToken());
     }
+
+    @Test
+    @DisplayName("Should throw ERR_2FA_REQUIRED when Moderator logs in without 2FA code")
+    void shouldThrowErr2FaRequiredWhenModeratorLogsInWithout2FaCode() {
+        User mod = User.createNew("mod@cozynest.vn", "0904000004", "hashed_pwd", "Moderator", UserRoleType.MODERATOR);
+        when(userRepository.findByEmail("mod@cozynest.vn")).thenReturn(Optional.of(mod));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+
+        LoginCommand command = LoginCommand.builder()
+                .email("mod@cozynest.vn")
+                .password("pwd123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_2FA_REQUIRED", ex.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("Should throw ERR_2FA_REQUIRED when regular user has 2FA enabled but no code provided")
+    void shouldThrowErr2FaRequiredWhenUserHasTwoFactorEnabled() {
+        User user = User.createNew("user2fa@cozynest.vn", "0905000005", "hashed_pwd", "User 2FA", UserRoleType.LANDLORD);
+        user.enableTwoFactor();
+        when(userRepository.findByEmail("user2fa@cozynest.vn")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+
+        LoginCommand command = LoginCommand.builder()
+                .email("user2fa@cozynest.vn")
+                .password("pwd123")
+                .build();
+
+        IdentityDomainException ex = assertThrows(IdentityDomainException.class, () -> loginUseCase.execute(command));
+        assertEquals("ERR_2FA_REQUIRED", ex.getErrorCode());
+    }
 }
 

@@ -122,10 +122,10 @@ class Wave2FintechSecurityAndAuditTest {
                 poRepo, riskRepo, ledger, Optional.of(idPort), Optional.of(mcRepo), Optional.empty(),
                 "SANDBOX_ONLY", false, 10_000_000L);
 
-        // Wrong server-side OTP rejected
+        // Wrong server-side OTP rejected with 403 AccessDeniedException
         assertThatThrownBy(() -> payoutService.requestPayout("l1",
                 new PayoutDto.RequestPayoutCommand(2_000_000L, "VCB", "9988776655", "NGUYEN VAN L", "000000")))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
                 .hasMessageContaining("OTP");
 
         // > 10M goes PENDING_APPROVAL and masks bank account number

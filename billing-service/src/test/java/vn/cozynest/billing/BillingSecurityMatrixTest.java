@@ -45,4 +45,16 @@ class BillingSecurityMatrixTest {
         assertThat(issueCredit).isNotNull();
         assertThat(issueCredit.value()).contains("LANDLORD");
     }
+
+    @Test
+    void notifyBankChangedWithoutOtpThrowsAccessDenied() {
+        vn.cozynest.billing.application.service.PayoutService payoutService = org.mockito.Mockito.mock(vn.cozynest.billing.application.service.PayoutService.class);
+        PayoutController controller = new PayoutController(payoutService);
+        org.springframework.security.core.Authentication auth = org.mockito.Mockito.mock(org.springframework.security.core.Authentication.class);
+        org.mockito.Mockito.when(auth.getPrincipal()).thenReturn("landlord-1");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.notifyBankChanged(java.util.Map.of(), auth))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("TOTP");
+    }
 }

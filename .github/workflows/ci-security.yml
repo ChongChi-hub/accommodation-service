@@ -2,9 +2,9 @@ name: CI Security & Test Gate
 
 on:
   push:
-    branches: [ main, develop, feat/* ]
+    branches: [ main, master, develop, "feat/**" ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
 
 jobs:
   backend-verify:
