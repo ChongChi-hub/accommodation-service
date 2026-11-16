@@ -8,8 +8,8 @@ echo "=========================================================="
 echo "  🚀 KHỞI ĐỘNG TOÀN BỘ COZYNEST BACKEND MICROSERVICES"
 echo "=========================================================="
 
-# 1. Đảm bảo hạ tầng (MySQL, Redis, Mailpit) đang chạy
-echo "📦 [1/3] Kiểm tra hạ tầng Docker (MySQL, Redis, Mailpit)..."
+# 1. Đảm bảo hạ tầng (MySQL, Redis, Mailpit, RabbitMQ) đang chạy
+echo "📦 [1/3] Kiểm tra hạ tầng Docker (MySQL, Redis, Mailpit, RabbitMQ)..."
 if ! nc -z localhost 6379 2>/dev/null; then
   docker compose up -d redis 2>/dev/null || true
 else
@@ -22,6 +22,10 @@ fi
 
 if ! docker ps --format '{{.Names}}' | grep -q "^cozynest_mailpit$"; then
   docker compose up -d mailpit
+fi
+
+if ! docker ps --format '{{.Names}}' | grep -q "^cozynest_rabbitmq$"; then
+  DB_PASSWORD=rootpassword123 docker compose up -d rabbitmq 2>/dev/null || true
 fi
 
 # Phát hiện cổng MySQL đang mở (5555, 3307, hoặc 3306)
@@ -43,6 +47,12 @@ echo "🔨 [2/3] Biên dịch các file JAR microservice..."
 # 3. Khởi chạy 7 microservices
 echo "🚀 [3/3] Đang khởi chạy 7 microservices trong nền..."
 mkdir -p logs pids
+
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a
+  source "$SCRIPT_DIR/.env"
+  set +a
+fi
 
 export DB_PORT=$ACTIVE_DB_PORT
 export DB_HOST=localhost
@@ -76,6 +86,7 @@ for ENTRY in "${SERVICES[@]}"; do
         nohup java -Dserver.port=$PORT \
                    -DREDIS_HOST=localhost \
                    -DREDIS_PORT=6379 \
+                   -Dmanagement.endpoint.health.show-details=always \
                    -jar "$JAR_FILE" > "logs/$NAME.log" 2>&1 &
       else
         DB_NAME="cozynest_${NAME%-service}"
@@ -92,6 +103,7 @@ for ENTRY in "${SERVICES[@]}"; do
                    -Dspring.datasource.password=rootpassword123 \
                    -Dspring.flyway.enabled=false \
                    -Dspring.jpa.hibernate.ddl-auto=update \
+                   -Dmanagement.endpoint.health.show-details=always \
                    -jar "$JAR_FILE" > "logs/$NAME.log" 2>&1 &
       fi
       PID=$!

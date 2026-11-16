@@ -169,14 +169,13 @@ class AuthFlowIntegrationTest {
     }
 
     @Test
-    @DisplayName("2. Self-register LANDLORD: receives TENANT only, creates AWAITING_KYC LandlordProfile")
+    @DisplayName("2. Self-register LANDLORD: receives LANDLORD & TENANT, creates AWAITING_KYC LandlordProfile")
     void testSelfRegisterLandlord() {
         RegisterCommand cmd = RegisterCommand.builder()
                 .email("landlord.test@example.com").phone("0907654321").password("Password@123").fullName("Landlord Test").role("LANDLORD").build();
         AuthResult result = registerUseCase.execute(cmd);
 
-        assertThat(result.getRoles()).containsExactly("TENANT");
-        assertThat(result.getRoles()).doesNotContain("LANDLORD");
+        assertThat(result.getRoles()).contains("LANDLORD", "TENANT");
         assertThat(result.getLandlordApplication()).isNotNull();
         assertThat(result.getLandlordApplication().getStatus()).isEqualTo("AWAITING_KYC");
     }

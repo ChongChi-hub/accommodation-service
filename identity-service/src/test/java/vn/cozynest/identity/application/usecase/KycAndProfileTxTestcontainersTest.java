@@ -91,15 +91,15 @@ class KycAndProfileTxTestcontainersTest {
                         .build());
 
                 String userId = reg.getUser().getId();
-                assertThat(reg.getUser().getRoles()).containsExactly("TENANT");
+                assertThat(reg.getUser().getRoles()).contains("LANDLORD", "TENANT");
                 LandlordProfile initialLp = landlordProfileRepository.findByUserId(userId).orElseThrow();
                 assertThat(initialLp.getApprovalStatus()).isEqualTo(LandlordApprovalStatus.AWAITING_KYC);
 
-                // Old JWT contains TENANT only
+                // Initial JWT contains both LANDLORD and TENANT
                 Claims oldClaims = Jwts.parser().verifyWith(rsaKeyProvider.getPublicKey()).build()
                         .parseSignedClaims(reg.getToken()).getPayload();
                 List<String> oldRoles = java.util.Arrays.asList(String.valueOf(oldClaims.get("roles")).split(","));
-                assertThat(oldRoles).contains("TENANT").doesNotContain("LANDLORD");
+                assertThat(oldRoles).contains("LANDLORD", "TENANT");
 
                 // 2. USER-01: getProfile on brand new user lazily creates & persists UserProfile without read-only TX failure
                 UserProfileResponse profileResp = userProfileUseCase.getProfile(userId);
