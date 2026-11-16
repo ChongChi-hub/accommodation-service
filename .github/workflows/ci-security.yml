@@ -39,7 +39,8 @@ jobs:
 
       - name: Build Identity Docker Image for Scanning
         run: |
-          docker compose build identity-service
+          ./gradlew :identity-service:bootJar --no-daemon
+          docker build -t accommodation-service-identity-service:latest -f identity-service/Dockerfile .
 
       - name: Run Trivy Vulnerability Scan on Docker Image
         uses: aquasecurity/trivy-action@master
