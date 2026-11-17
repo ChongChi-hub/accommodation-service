@@ -33,7 +33,7 @@ public class HomeDataService {
     }
 
     public List<HotAreaDto> getHotAreas(int limit, boolean nonEmptyOnly) {
-        int safeLimit = Math.min(Math.max(limit, 1), 20);
+        int safeLimit = Math.min(Math.max(limit, 1), 64);
         List<Object[]> rows = roomRepository.findHotAreas();
         return rows.stream().map(row -> {
             String code = (String) row[0];

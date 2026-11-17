@@ -55,7 +55,9 @@ public interface SpringDataRoomRepository
     );
 
     @Query("""
-        SELECT p.code, p.name, p.fullName, p.slug, p.imageUrl, COUNT(r.id)
+        SELECT p.code, p.name, p.fullName, p.slug,
+               COALESCE((SELECT img.imageUrl FROM RoomImageJpaEntity img JOIN RoomJpaEntity r2 ON img.roomId = r2.id WHERE r2.provinceCode = p.code AND r2.deletedAt IS NULL AND r2.hiddenAt IS NULL AND r2.approved = true AND (r2.status = 'AVAILABLE' OR r2.status = 'PUBLISHED') ORDER BY img.cover DESC, img.id ASC LIMIT 1), p.imageUrl),
+               COUNT(r.id)
         FROM ProvinceJpaEntity p
         LEFT JOIN RoomJpaEntity r ON r.provinceCode = p.code AND r.deletedAt IS NULL AND r.hiddenAt IS NULL AND r.approved = true AND (r.status = 'AVAILABLE' OR r.status = 'PUBLISHED')
         GROUP BY p.code, p.name, p.fullName, p.slug, p.imageUrl, p.id
