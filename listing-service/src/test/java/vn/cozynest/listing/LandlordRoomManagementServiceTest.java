@@ -257,7 +257,8 @@ class LandlordRoomManagementServiceTest {
                 roomImageRepository,
                 kycVerificationPort,
                 Optional.of(mockAntiFraud),
-                Optional.of(mockTrustScore)
+                Optional.of(mockTrustScore),
+                Optional.empty()
         );
 
         Room r = Room.builder().id(205L).landlordId(1L).title("Phòng siêu rẻ 0901234567").price(java.math.BigDecimal.valueOf(500000)).status("DRAFT").build();

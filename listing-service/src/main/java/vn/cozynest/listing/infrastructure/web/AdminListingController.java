@@ -49,8 +49,10 @@ public class AdminListingController {
         List<RoomJpaEntity> all = roomRepository.findAll();
         List<AdminRoomDto> list = all.stream().map(r -> {
             String st = "APPROVED";
-            if (!r.isApproved()) {
-                st = "REJECTED".equalsIgnoreCase(r.getStatus()) ? "REJECTED" : "PENDING";
+            if ("REJECTED".equalsIgnoreCase(r.getStatus())) {
+                st = "REJECTED";
+            } else if ("PENDING_REVIEW".equalsIgnoreCase(r.getStatus()) || "PENDING".equalsIgnoreCase(r.getStatus()) || !r.isApproved()) {
+                st = "PENDING";
             }
             String submitted = r.getCreatedAt() != null ? r.getCreatedAt().toString() : "";
             return new AdminRoomDto(

@@ -238,6 +238,7 @@ public class LandlordRoomManagementService {
                 .initialElectricityReading(req.getInitialElectricityReading() != null ? req.getInitialElectricityReading() : java.math.BigDecimal.ZERO)
                 .initialWaterReading(req.getInitialWaterReading() != null ? req.getInitialWaterReading() : java.math.BigDecimal.ZERO)
                 .status("DRAFT")
+                .publicationStatus("DRAFT")
                 .approved(false)
                 .allowPets(Boolean.TRUE.equals(req.getAllowPets()))
                 .allowCooking(Boolean.TRUE.equals(req.getAllowCooking()))
@@ -305,6 +306,8 @@ public class LandlordRoomManagementService {
             room.setRiskLevel("NORMAL");
             room.setRiskReasons(null);
             room.setStatus("PENDING_REVIEW");
+            room.setApproved(false);
+            room.setPublicationStatus("PENDING_REVIEW");
             recordHistory(room.getId(), fromStatus, "PENDING_REVIEW", actorId, "Chủ trọ gửi duyệt bài đăng", LocalDateTime.now());
             log.info("Landlord {} submitted room {} for review (images: {}, hasCover: true)", landlordId, roomId, imageCount);
         }
