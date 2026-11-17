@@ -27,16 +27,65 @@ public class ChatApplicationService {
         this.chatMessageRepository = chatMessageRepository;
     }
 
+    public static String resolveCanonicalUserId(String userId) {
+        if (userId == null || userId.isBlank()) return userId;
+        String trimmed = userId.trim();
+        if ("2122472122".equals(trimmed) || "u-landlord-2122472122".equals(trimmed)
+                || "1".equals(trimmed) || "u-landlord-01".equals(trimmed) || "u-landlord-1".equals(trimmed)) {
+            return "u-huy-01";
+        }
+        if ("2".equals(trimmed) || "u-landlord-02".equals(trimmed) || "u-landlord-2".equals(trimmed)) {
+            return "u-hao-01";
+        }
+        return trimmed;
+    }
+
+    public static Set<String> getUserAliases(String userId) {
+        Set<String> set = new HashSet<>();
+        if (userId == null || userId.isBlank()) return set;
+        String trimmed = userId.trim();
+        set.add(trimmed);
+        String canonical = resolveCanonicalUserId(trimmed);
+        set.add(canonical);
+        if ("u-huy-01".equals(canonical)) {
+            set.add("2122472122");
+            set.add("u-landlord-2122472122");
+            set.add("1");
+            set.add("u-landlord-01");
+            set.add("u-landlord-1");
+        } else if ("u-hao-01".equals(canonical)) {
+            set.add("2");
+            set.add("u-landlord-02");
+            set.add("u-landlord-2");
+        }
+        return set;
+    }
+
     @Transactional(readOnly = true)
     public List<ConversationSummaryDto> getConversations(String currentUserId) {
-        List<Conversation> conversations = conversationRepository.findByUserId(currentUserId);
+        Set<String> aliases = getUserAliases(currentUserId);
+        List<Conversation> conversations = new ArrayList<>();
+        Set<String> seenConvIds = new HashSet<>();
+        for (String alias : aliases) {
+            for (Conversation c : conversationRepository.findByUserId(alias)) {
+                if (seenConvIds.add(c.getId())) {
+                    conversations.add(c);
+                }
+            }
+        }
+        conversations.sort((a, b) -> {
+            LocalDateTime ta = a.getLastMessageTime() != null ? a.getLastMessageTime() : a.getCreatedAt();
+            LocalDateTime tb = b.getLastMessageTime() != null ? b.getLastMessageTime() : b.getCreatedAt();
+            return tb.compareTo(ta);
+        });
+
         List<ConversationSummaryDto> summaries = new ArrayList<>();
 
         for (Conversation c : conversations) {
             List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(c.getId());
             ConversationParticipant other = null;
             for (ConversationParticipant p : participants) {
-                if (!currentUserId.equals(p.getUserId())) {
+                if (!aliases.contains(p.getUserId())) {
                     other = p;
                     break;
                 }
@@ -56,7 +105,10 @@ public class ChatApplicationService {
                         .build();
             }
 
-            long unreadCount = chatMessageRepository.countUnreadMessages(c.getId(), currentUserId);
+            long unreadCount = 0;
+            for (String alias : aliases) {
+                unreadCount = Math.max(unreadCount, chatMessageRepository.countUnreadMessages(c.getId(), alias));
+            }
 
             summaries.add(ConversationSummaryDto.builder()
                     .id(c.getId())
@@ -76,17 +128,25 @@ public class ChatApplicationService {
 
     @Transactional
     public ConversationSummaryDto startOrGetConversation(String currentUserId, String currentRole, StartConversationRequest request) {
-        String recipientId = request.getRecipientId();
-        if (recipientId != null && recipientId.matches("\\d+")) {
-            int num = Integer.parseInt(recipientId);
-            recipientId = num < 10 ? ("u-landlord-0" + num) : ("u-landlord-" + num);
-        }
+        String canonicalRecipientId = resolveCanonicalUserId(request.getRecipientId());
+        String canonicalCurrentUserId = resolveCanonicalUserId(currentUserId);
 
-        if (currentUserId.equals(recipientId)) {
+        if (canonicalCurrentUserId.equals(canonicalRecipientId)) {
             throw new IllegalArgumentException("Không thể tự nhắn tin cho chính mình.");
         }
 
-        Optional<Conversation> existing = conversationRepository.findByParticipants(currentUserId, recipientId, request.getRoomId());
+        Set<String> currentAliases = getUserAliases(currentUserId);
+        Set<String> recipientAliases = getUserAliases(request.getRecipientId());
+
+        Optional<Conversation> existing = Optional.empty();
+        for (String cAlias : currentAliases) {
+            for (String rAlias : recipientAliases) {
+                existing = conversationRepository.findByParticipants(cAlias, rAlias, request.getRoomId());
+                if (existing.isPresent()) break;
+            }
+            if (existing.isPresent()) break;
+        }
+
         Conversation conversation;
 
         if (existing.isPresent()) {
@@ -115,12 +175,12 @@ public class ChatApplicationService {
             String senderRole = currentRole != null && !currentRole.isBlank() ? currentRole : "TENANT";
             String senderName = request.getSenderName();
             if (senderName == null || senderName.isBlank()) {
-                senderName = "Người dùng " + currentUserId;
+                senderName = "Người dùng " + canonicalCurrentUserId;
             }
             ConversationParticipant senderParticipant = ConversationParticipant.builder()
                     .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
                     .conversationId(convId)
-                    .userId(currentUserId)
+                    .userId(canonicalCurrentUserId)
                     .role(senderRole)
                     .userName(senderName)
                     .lastReadAt(now)
@@ -134,12 +194,12 @@ public class ChatApplicationService {
                     : ("TENANT".equals(senderRole) ? "LANDLORD" : "TENANT");
             String recName = request.getRecipientName();
             if (recName == null || recName.isBlank()) {
-                recName = "Người dùng " + recipientId;
+                recName = "Người dùng " + canonicalRecipientId;
             }
             ConversationParticipant recParticipant = ConversationParticipant.builder()
                     .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
                     .conversationId(convId)
-                    .userId(recipientId)
+                    .userId(canonicalRecipientId)
                     .role(recRole)
                     .userName(recName)
                     .joinedAt(now)
@@ -158,7 +218,7 @@ public class ChatApplicationService {
         List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversation.getId());
         ConversationParticipant other = null;
         for (ConversationParticipant p : participants) {
-            if (!currentUserId.equals(p.getUserId())) {
+            if (!currentAliases.contains(p.getUserId())) {
                 other = p;
                 break;
             }
@@ -178,7 +238,7 @@ public class ChatApplicationService {
                     .build();
         }
 
-        long unread = chatMessageRepository.countUnreadMessages(conversation.getId(), currentUserId);
+        long unread = chatMessageRepository.countUnreadMessages(conversation.getId(), canonicalCurrentUserId);
 
         return ConversationSummaryDto.builder()
                 .id(conversation.getId())
@@ -200,6 +260,7 @@ public class ChatApplicationService {
         // Mark as read
         markAsRead(currentUserId, conversationId);
 
+        Set<String> aliases = getUserAliases(currentUserId);
         List<ChatMessage> messages = chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId, limit);
         List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversationId);
         Map<String, String> namesByUserId = new HashMap<>();
@@ -219,7 +280,7 @@ public class ChatApplicationService {
                 .content(m.getContent())
                 .type(m.getType())
                 .isRead(m.isRead())
-                .isMine(currentUserId.equals(m.getSenderId()))
+                .isMine(aliases.contains(m.getSenderId()))
                 .createdAt(m.getCreatedAt())
                 .build()
         ).toList();
@@ -231,11 +292,12 @@ public class ChatApplicationService {
 
         LocalDateTime now = LocalDateTime.now();
         String messageId = "msg-" + UUID.randomUUID().toString().substring(0, 8);
+        String canonicalUserId = resolveCanonicalUserId(currentUserId);
 
         ChatMessage msg = ChatMessage.builder()
                 .id(messageId)
                 .conversationId(conversationId)
-                .senderId(currentUserId)
+                .senderId(canonicalUserId)
                 .content(request.getContent().trim())
                 .type(request.getType() != null ? request.getType() : "TEXT")
                 .read(false)
@@ -246,12 +308,13 @@ public class ChatApplicationService {
 
         // Update conversation summary
         conversationRepository.updateLastMessage(conversationId, saved.getContent(), now);
-        conversationRepository.updateLastRead(conversationId, currentUserId, now);
+        conversationRepository.updateLastRead(conversationId, canonicalUserId, now);
 
         List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversationId);
-        String senderName = currentUserId;
+        String senderName = canonicalUserId;
+        Set<String> aliases = getUserAliases(currentUserId);
         for (ConversationParticipant p : participants) {
-            if (currentUserId.equals(p.getUserId())) {
+            if (aliases.contains(p.getUserId())) {
                 if (p.getUserName() != null && !p.getUserName().isBlank()) {
                     senderName = p.getUserName();
                 }
@@ -276,12 +339,18 @@ public class ChatApplicationService {
     public void markAsRead(String currentUserId, String conversationId) {
         verifyParticipant(currentUserId, conversationId);
         LocalDateTime now = LocalDateTime.now();
-        conversationRepository.updateLastRead(conversationId, currentUserId, now);
-        chatMessageRepository.markMessagesAsRead(conversationId, currentUserId);
+        String canonical = resolveCanonicalUserId(currentUserId);
+        conversationRepository.updateLastRead(conversationId, canonical, now);
+        Set<String> aliases = getUserAliases(currentUserId);
+        for (String alias : aliases) {
+            chatMessageRepository.markMessagesAsRead(conversationId, alias);
+        }
     }
 
     private void verifyParticipant(String currentUserId, String conversationId) {
-        boolean isMember = conversationRepository.findParticipant(conversationId, currentUserId).isPresent();
+        Set<String> aliases = getUserAliases(currentUserId);
+        List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversationId);
+        boolean isMember = participants.stream().anyMatch(p -> aliases.contains(p.getUserId()));
         if (!isMember) {
             throw new AccessDeniedException("Bạn không có quyền truy cập vào cuộc trò chuyện này.");
         }
