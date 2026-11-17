@@ -55,7 +55,9 @@ public class AdminListingController {
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<AdminRoomDto>>> getAdminRooms() {
         List<RoomJpaEntity> all = roomRepository.findAll();
-        List<AdminRoomDto> list = all.stream().map(r -> {
+        List<AdminRoomDto> list = all.stream()
+                .filter(r -> r.getStatus() != null && !"DRAFT".equalsIgnoreCase(r.getStatus()))
+                .map(r -> {
             String st = "APPROVED";
             if ("REJECTED".equalsIgnoreCase(r.getStatus())) {
                 st = "REJECTED";

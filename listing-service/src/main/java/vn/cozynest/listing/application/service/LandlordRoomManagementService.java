@@ -262,6 +262,12 @@ public class LandlordRoomManagementService {
         Room room = roomRepository.findByIdAndLandlordIdAndDeletedAtIsNull(roomId, landlordId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phòng trọ #" + roomId));
 
+        // If the room was already approved by a moderator/admin while images were uploading, preserve AVAILABLE status
+        if (room.isApproved() && "AVAILABLE".equalsIgnoreCase(room.getStatus())) {
+            log.info("Room #{} was already approved by moderator/admin. Preserving AVAILABLE status.", roomId);
+            return room;
+        }
+
         // KYC Gate check
         KycVerificationPort.KycVerificationStatus kyc = kycVerificationPort.checkLandlordKyc(actorId, landlordId);
         if (!kyc.isApproved()) {
