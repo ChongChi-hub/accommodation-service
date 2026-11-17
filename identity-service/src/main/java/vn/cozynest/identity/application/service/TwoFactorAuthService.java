@@ -48,7 +48,10 @@ public class TwoFactorAuthService {
 
     @Transactional
     public TwoFactorDto.SetupResponse setup(String userId, String userEmail) {
-        String secret = totpHelper.generateSecret();
+        String secret = twoFactorRepository.findByUserId(userId)
+                .map(UserTwoFactor::getTotpSecret)
+                .filter(s -> s != null && !s.isBlank())
+                .orElseGet(totpHelper::generateSecret);
         List<String> backupCodes = generateBackupCodes();
         String backupJson = serializeBackupCodes(backupCodes);
 
