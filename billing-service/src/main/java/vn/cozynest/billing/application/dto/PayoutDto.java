@@ -7,7 +7,7 @@ import java.time.Instant;
 public class PayoutDto {
 
     public record RequestPayoutCommand(
-            @Min(value = 50000, message = "Số tiền rút tối thiểu là 50,000 VND")
+            @Min(value = 1000, message = "Số tiền rút tối thiểu là 1,000 VND")
             long amount,
 
             @NotBlank(message = "Mã ngân hàng không được để trống")
@@ -31,7 +31,14 @@ public class PayoutDto {
             String accountNumber,
             String accountHolder,
             String status,
-            Instant createdAt
-    ) {}
+            Instant createdAt,
+            String landlordId,
+            String failureReason
+    ) {
+        public PayoutResponse(String id, String payoutCode, long amount, String bankCode,
+                              String accountNumber, String accountHolder, String status, Instant createdAt) {
+            this(id, payoutCode, amount, bankCode, accountNumber, accountHolder, status, createdAt, null, null);
+        }
+    }
 }
 

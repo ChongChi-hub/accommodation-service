@@ -60,6 +60,50 @@ public class EscrowService {
                         EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours)));
     }
 
+    @Transactional
+    public EscrowHold recordDepositPaid(String contractId, String tenantId, String landlordId, long amount, long inspectionHours) {
+        assertSandboxOrSignedOff();
+        if (escrowHoldRepository == null) {
+            return EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours);
+        }
+        EscrowHold hold = escrowHoldRepository.findByContractId(contractId)
+                .orElseGet(() -> EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours));
+        EscrowHold saved = escrowHoldRepository.save(hold);
+        emitOutbox("ESCROW_DEPOSIT_PAID", saved);
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<EscrowHold> findHoldForParticipant(String contractId, String actorId, boolean isAdmin) {
+        if (escrowHoldRepository == null) return Optional.empty();
+        Optional<EscrowHold> opt = escrowHoldRepository.findByContractId(contractId);
+        if (opt.isPresent()) {
+            EscrowHold hold = opt.get();
+            if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) {
+                throw new AccessDeniedException("Khong co quyen truy cap thong tin ky quy hop dong nay");
+            }
+        }
+        return opt;
+    }
+
+    @Transactional(readOnly = true)
+    public List<EscrowHold> getHoldsForTenant(String tenantId) {
+        if (escrowHoldRepository == null) return List.of();
+        return escrowHoldRepository.findByTenantId(tenantId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EscrowHold> getHoldsForLandlord(String landlordId) {
+        if (escrowHoldRepository == null) return List.of();
+        return escrowHoldRepository.findByLandlordId(landlordId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EscrowHold> getAllHolds() {
+        if (escrowHoldRepository == null) return List.of();
+        return escrowHoldRepository.findAll();
+    }
+
     @Transactional(readOnly = true)
     public EscrowHold getHoldForParticipant(String contractId, String actorId, boolean isAdmin) {
         EscrowHold hold = requireHold(contractId);

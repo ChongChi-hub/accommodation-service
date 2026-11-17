@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface SpringDataEscrowHoldRepository extends JpaRepository<EscrowHoldJpaEntity, String> {
     Optional<EscrowHoldJpaEntity> findByContractId(String contractId);
     List<EscrowHoldJpaEntity> findByStatusAndInspectionEndsAtBefore(String status, Instant cutoff);
+    List<EscrowHoldJpaEntity> findByTenantId(String tenantId);
+    List<EscrowHoldJpaEntity> findByLandlordId(String landlordId);
 }
 

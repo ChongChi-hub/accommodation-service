@@ -183,6 +183,35 @@ public class PayoutService {
     }
 
     @Transactional(readOnly = true)
+    public List<PayoutDto.PayoutResponse> getAllPayouts() {
+        return payoutRepository.findAll().stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public PayoutDto.PayoutResponse rejectPayout(String payoutId, String checkerAdminId, String reason) {
+        PayoutRequest payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay yeu cau rut tien: " + payoutId));
+        if ("COMPLETED".equals(payout.getStatus())) {
+            throw new IllegalStateException("Khong the tu choi yeu cau rut tien da hoan tat");
+        }
+        if ("REJECTED".equals(payout.getStatus())) {
+            return toResponse(payout);
+        }
+        if (payout.getMakerCheckerRequestId() != null && makerCheckerRepository != null) {
+            MakerCheckerRequest mc = makerCheckerRepository.findById(payout.getMakerCheckerRequestId())
+                    .orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
+            mc.reject(checkerAdminId, reason != null ? reason : "Tu choi boi quan tri vien");
+            makerCheckerRepository.save(mc);
+        }
+        payout.reject(reason != null ? reason : "Tu choi boi quan tri vien");
+        PayoutRequest saved = payoutRepository.save(payout);
+        emitOutbox("PAYOUT_REJECTED", saved);
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
     public List<PayoutDto.PayoutResponse> getLandlordPayouts(String landlordId) {
         return payoutRepository.findByLandlordId(landlordId).stream()
                 .map(this::toResponse)
@@ -235,7 +264,8 @@ public class PayoutService {
     private PayoutDto.PayoutResponse toResponse(PayoutRequest p) {
         return new PayoutDto.PayoutResponse(
                 p.getId(), p.getPayoutCode(), p.getAmount(), p.getBankCode(),
-                maskAccount(p.getAccountNumber()), p.getAccountHolder(), p.getStatus(), p.getCreatedAt()
+                maskAccount(p.getAccountNumber()), p.getAccountHolder(), p.getStatus(), p.getCreatedAt(),
+                p.getLandlordId(), p.getFailureReason()
         );
     }
 

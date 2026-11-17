@@ -10,5 +10,8 @@ public interface EscrowHoldRepository {
     EscrowHold save(EscrowHold hold);
     Optional<EscrowHold> findByContractId(String contractId);
     List<EscrowHold> findReleasableBefore(Instant cutoff);
+    List<EscrowHold> findByTenantId(String tenantId);
+    List<EscrowHold> findByLandlordId(String landlordId);
+    List<EscrowHold> findAll();
 }
 

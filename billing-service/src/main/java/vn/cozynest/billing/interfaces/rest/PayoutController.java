@@ -42,6 +42,24 @@ public class PayoutController {
                 payoutService.approvePayout(id, checkerId)));
     }
 
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PayoutDto.PayoutResponse>> rejectPayout(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication authentication) {
+        String checkerId = (String) authentication.getPrincipal();
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(ApiResponse.success("Da tu choi yeu cau rut tien",
+                payoutService.rejectPayout(id, checkerId, reason)));
+    }
+
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PayoutDto.PayoutResponse>>> getAdminPayouts() {
+        return ResponseEntity.ok(ApiResponse.success(payoutService.getAllPayouts()));
+    }
+
     @PostMapping("/bank-account-changed")
     public ResponseEntity<ApiResponse<RiskProfile>> notifyBankChanged(
             @RequestBody(required = false) Map<String, String> body,

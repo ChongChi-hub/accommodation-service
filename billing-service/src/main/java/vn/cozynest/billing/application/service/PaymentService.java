@@ -32,6 +32,8 @@ public class PaymentService {
     private final PaymentGatewayPort gatewayPort;
     private final PaymentWebhookLogRepository webhookLogRepository;
     private final BillingEventOutboxRepository outboxRepository;
+    private final EscrowService escrowService;
+    private final vn.cozynest.billing.application.port.BillingContractPort contractPort;
     private final String webhookSecret;
     private final String previousWebhookSecret;
     private final boolean strictIpAllowlist;
@@ -49,8 +51,25 @@ public class PaymentService {
             boolean strictIpAllowlist,
             String allowedIpsRaw) {
         this(paymentIntentRepository, invoiceRepository, ledgerService, objectMapper, gatewayPort,
-                webhookLogRepository, Optional.empty(), webhookSecret, previousWebhookSecret,
+                webhookLogRepository, Optional.empty(), Optional.empty(), Optional.empty(), webhookSecret, previousWebhookSecret,
                 strictIpAllowlist, allowedIpsRaw);
+    }
+
+    public PaymentService(
+            PaymentIntentRepository paymentIntentRepository,
+            InvoiceRepository invoiceRepository,
+            LedgerService ledgerService,
+            ObjectMapper objectMapper,
+            PaymentGatewayPort gatewayPort,
+            PaymentWebhookLogRepository webhookLogRepository,
+            Optional<BillingEventOutboxRepository> outboxRepository,
+            String webhookSecret,
+            String previousWebhookSecret,
+            boolean strictIpAllowlist,
+            String allowedIpsRaw) {
+        this(paymentIntentRepository, invoiceRepository, ledgerService, objectMapper, gatewayPort,
+                webhookLogRepository, outboxRepository, Optional.empty(), Optional.empty(),
+                webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
     }
 
     @Autowired
@@ -62,6 +81,8 @@ public class PaymentService {
             PaymentGatewayPort gatewayPort,
             PaymentWebhookLogRepository webhookLogRepository,
             Optional<BillingEventOutboxRepository> outboxRepository,
+            Optional<EscrowService> escrowService,
+            Optional<vn.cozynest.billing.application.port.BillingContractPort> contractPort,
             @Value("${fintech.gateway.webhook-secret:${cozynest.fintech.webhook-secret:toam_fintech_webhook_secret_2026}}") String webhookSecret,
             @Value("${fintech.gateway.webhook-secret-previous:}") String previousWebhookSecret,
             @Value("${fintech.gateway.webhook-strict-ip-allowlist:false}") boolean strictIpAllowlist,
@@ -73,6 +94,8 @@ public class PaymentService {
         this.gatewayPort = gatewayPort;
         this.webhookLogRepository = webhookLogRepository;
         this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
+        this.escrowService = escrowService != null ? escrowService.orElse(null) : null;
+        this.contractPort = contractPort != null ? contractPort.orElse(null) : null;
         this.webhookSecret = resolveSecretContent(webhookSecret, "PAYMENT_WEBHOOK_SECRET");
         this.previousWebhookSecret = resolveSecretContent(previousWebhookSecret, "PAYMENT_WEBHOOK_SECRET_PREVIOUS");
         this.strictIpAllowlist = strictIpAllowlist;
@@ -242,6 +265,20 @@ public class PaymentService {
                     List.of(
                             new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.DEBIT, paidChunk),
                             new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, paidChunk)));
+
+            if (escrowService != null) {
+                String contractId = intent.getOrderId();
+                String tenantId = intent.getPayerId();
+                String landlordId = "u-landlord-01";
+                if (contractPort != null) {
+                    var snap = contractPort.getContractSnapshot(contractId, java.time.LocalDate.now());
+                    if (snap.isPresent()) {
+                        tenantId = snap.get().tenantId();
+                        landlordId = snap.get().landlordId();
+                    }
+                }
+                escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
+            }
         } else if ("INVOICE".equalsIgnoreCase(intent.getOrderType())) {
             Invoice invoice = invoiceRepository.findById(intent.getOrderId()).orElse(null);
             String landlordId = invoice != null ? invoice.getLandlordId() : "landlord-system";

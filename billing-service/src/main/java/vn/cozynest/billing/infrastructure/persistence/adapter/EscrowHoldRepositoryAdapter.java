@@ -44,6 +44,21 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
         return repository.findByStatusAndInspectionEndsAtBefore("HELD", cutoff).stream().map(this::toDomain).toList();
     }
 
+    @Override
+    public List<EscrowHold> findByTenantId(String tenantId) {
+        return repository.findByTenantId(tenantId).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<EscrowHold> findByLandlordId(String landlordId) {
+        return repository.findByLandlordId(landlordId).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<EscrowHold> findAll() {
+        return repository.findAll().stream().map(this::toDomain).toList();
+    }
+
     private EscrowHold toDomain(EscrowHoldJpaEntity e) {
         return new EscrowHold(e.getId(), e.getContractId(), e.getTenantId(), e.getLandlordId(),
                 e.getAmount(), e.getStatus(), e.isSandboxMode(),
