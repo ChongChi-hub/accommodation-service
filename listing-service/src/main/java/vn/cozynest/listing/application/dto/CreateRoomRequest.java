@@ -67,5 +67,8 @@ public class CreateRoomRequest {
     @jakarta.validation.constraints.Min(value = 1, message = "Thời hạn thuê tối thiểu phải từ 1 tháng trở lên")
     private Integer minLeaseMonths;
 
+    private String landlordName;
+    private String landlordPhone;
+
     private Boolean submitForReview;
 }

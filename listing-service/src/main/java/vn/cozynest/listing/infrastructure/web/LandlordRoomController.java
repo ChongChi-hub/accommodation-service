@@ -106,7 +106,13 @@ public class LandlordRoomController {
     ) {
         Long landlordId = getRequiredLandlordId();
         String actorId = contextResolver.getCurrentActorId();
-        Room created = managementService.createRoom(landlordId, request, actorId, "Chủ trọ " + landlordId, "0901234567");
+        String resolvedLandlordName = (request.getLandlordName() != null && !request.getLandlordName().isBlank())
+                ? request.getLandlordName().trim()
+                : contextResolver.getCurrentLandlordName();
+        String resolvedLandlordPhone = (request.getLandlordPhone() != null && !request.getLandlordPhone().isBlank())
+                ? request.getLandlordPhone().trim()
+                : contextResolver.getCurrentLandlordPhone();
+        Room created = managementService.createRoom(landlordId, request, actorId, resolvedLandlordName, resolvedLandlordPhone);
         LandlordRoomListItemDto dto = LandlordRoomListItemDto.builder()
                 .id(created.getId())
                 .roomUuid(created.getRoomUuid())

@@ -3,6 +3,7 @@ package vn.cozynest.listing.infrastructure.security;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import vn.cozynest.common.security.DownstreamJwtVerifier;
 
 import java.util.Map;
 
@@ -53,6 +54,39 @@ public class LandlordContextResolver {
             return "anonymous";
         }
         return auth.getName();
+    }
+
+    public String getCurrentLandlordName() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof DownstreamJwtVerifier.VerifiedPrincipal vp) {
+            String name = vp.claims().get("fullName", String.class);
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+        }
+        return "Chủ trọ";
+    }
+
+    public String getCurrentLandlordPhone() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof DownstreamJwtVerifier.VerifiedPrincipal vp) {
+            String phone = vp.claims().get("phone", String.class);
+            if (phone != null && !phone.isBlank()) {
+                return phone;
+            }
+        }
+        return "0901234567";
+    }
+
+    public String getCurrentLandlordEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof DownstreamJwtVerifier.VerifiedPrincipal vp) {
+            String email = vp.claims().get("email", String.class);
+            if (email != null && !email.isBlank()) {
+                return email;
+            }
+        }
+        return null;
     }
 
     public boolean isPrivilegedModeratorOrAdmin() {
