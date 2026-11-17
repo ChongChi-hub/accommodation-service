@@ -62,6 +62,32 @@ public class LandlordContextResolver {
         }
         return auth.getAuthorities().stream()
                 .map(a -> a.getAuthority().toUpperCase())
-                .anyMatch(r -> r.equals("ROLE_ADMIN") || r.equals("ROLE_MODERATOR"));
+                .anyMatch(r -> r.equals("ROLE_ADMIN") || r.equals("ROLE_MODERATOR") || r.equals("ADMIN") || r.equals("MODERATOR"));
+    }
+
+    public boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(a -> a.getAuthority().toUpperCase())
+                .anyMatch(r -> r.equals("ROLE_ADMIN") || r.equals("ADMIN"));
+    }
+
+    public boolean isModerator() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .map(a -> a.getAuthority().toUpperCase())
+                .anyMatch(r -> r.equals("ROLE_MODERATOR") || r.equals("MODERATOR"));
+    }
+
+    public String getCurrentRole() {
+        if (isAdmin()) return "ADMIN";
+        if (isModerator()) return "MODERATOR";
+        return "LANDLORD";
     }
 }
