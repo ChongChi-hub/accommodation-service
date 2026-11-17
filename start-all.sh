@@ -102,7 +102,7 @@ for ENTRY in "${SERVICES[@]}"; do
                    -Dspring.datasource.username=root \
                    -Dspring.datasource.password=rootpassword123 \
                    -Dspring.flyway.enabled=false \
-                   -Dspring.jpa.hibernate.ddl-auto=update \
+                   -Dspring.jpa.hibernate.ddl-auto=${HIBERNATE_DDL_AUTO:-none} \
                    -Dmanagement.endpoint.health.show-details=always \
                    -jar "$JAR_FILE" > "logs/$NAME.log" 2>&1 &
       fi
