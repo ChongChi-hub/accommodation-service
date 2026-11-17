@@ -19,13 +19,44 @@ public class EscrowController {
         this.escrowService = escrowService;
     }
 
+    @PostMapping("/init")
+    public ResponseEntity<ApiResponse<EscrowHold>> initEscrowHold(@RequestBody Map<String, Object> body) {
+        String contractId = String.valueOf(body.getOrDefault("contractId", ""));
+        String tenantId = String.valueOf(body.getOrDefault("tenantId", ""));
+        String landlordId = String.valueOf(body.getOrDefault("landlordId", ""));
+        long amount = body.get("amount") instanceof Number n ? n.longValue() : 0L;
+        EscrowHold hold = escrowService.openHold(contractId, tenantId, landlordId, amount, 72);
+        return ResponseEntity.ok(ApiResponse.success("Khoi tao khoan ky quy thanh cong", hold));
+    }
+
+    @GetMapping("/tenant")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<EscrowHold>>> getTenantEscrowHolds(Authentication auth) {
+        String tenantId = (String) auth.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success(escrowService.getHoldsForTenant(tenantId)));
+    }
+
+    @GetMapping("/landlord")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<EscrowHold>>> getLandlordEscrowHolds(Authentication auth) {
+        String landlordId = (String) auth.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.success(escrowService.getHoldsForLandlord(landlordId)));
+    }
+
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<EscrowHold>>> getAllEscrowHolds() {
+        return ResponseEntity.ok(ApiResponse.success(escrowService.getAllHolds()));
+    }
+
     @GetMapping("/{contractId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<EscrowHold>> getEscrowHold(
             @PathVariable String contractId,
             Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(
-                escrowService.getHoldForParticipant(contractId, (String) auth.getPrincipal(), isAdmin(auth))));
+        EscrowHold hold = escrowService.findHoldForParticipant(contractId, (String) auth.getPrincipal(), isAdmin(auth))
+                .orElse(null);
+        return ResponseEntity.ok(ApiResponse.success(hold));
     }
 
     @PostMapping("/{contractId}/confirm-move-in")

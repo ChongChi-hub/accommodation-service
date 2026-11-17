@@ -36,22 +36,21 @@ public class RentalRequestService {
     private final Optional<BookingListingPort> listingPort;
     private final Optional<ContractRepository> contractRepository;
     private final Optional<RentalSagaOrchestrator> sagaOrchestrator;
+    private final Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort;
 
     public RentalRequestService(
             RentalRequestRepository rentalRequestRepository,
             IdentityVerificationPort identityVerificationPort,
-            AppointmentEventOutboxRepository outboxRepository
-    ) {
-        this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty(), null, null);
+            AppointmentEventOutboxRepository outboxRepository) {
+        this(rentalRequestRepository, identityVerificationPort, outboxRepository, Optional.empty(), null, null, null);
     }
 
     public RentalRequestService(
             RentalRequestRepository rentalRequestRepository,
             IdentityVerificationPort identityVerificationPort,
             AppointmentEventOutboxRepository outboxRepository,
-            Optional<BookingListingPort> listingPort
-    ) {
-        this(rentalRequestRepository, identityVerificationPort, outboxRepository, listingPort, null, null);
+            Optional<BookingListingPort> listingPort) {
+        this(rentalRequestRepository, identityVerificationPort, outboxRepository, listingPort, null, null, null);
     }
 
     @Autowired
@@ -61,30 +60,40 @@ public class RentalRequestService {
             AppointmentEventOutboxRepository outboxRepository,
             Optional<BookingListingPort> listingPort,
             @Autowired(required = false) ContractRepository contractRepository,
-            @Autowired(required = false) RentalSagaOrchestrator sagaOrchestrator
-    ) {
+            @Autowired(required = false) RentalSagaOrchestrator sagaOrchestrator,
+            @Autowired(required = false) vn.cozynest.booking.application.port.BookingBillingPort billingPort) {
         this.rentalRequestRepository = rentalRequestRepository;
         this.identityVerificationPort = identityVerificationPort;
         this.outboxRepository = outboxRepository;
         this.listingPort = listingPort != null ? listingPort : Optional.empty();
         this.contractRepository = Optional.ofNullable(contractRepository);
         this.sagaOrchestrator = Optional.ofNullable(sagaOrchestrator);
+        this.billingPort = Optional.ofNullable(billingPort);
     }
 
     private String normalizeLandlordId(String landlordId) {
-        if (landlordId == null) return null;
-        if ("1".equals(landlordId)) return "u-landlord-01";
-        if ("2".equals(landlordId)) return "u-landlord-02";
-        if ("3".equals(landlordId)) return "u-landlord-03";
-        if ("4".equals(landlordId)) return "u-landlord-04";
-        if ("5".equals(landlordId)) return "u-landlord-05";
-        if ("6".equals(landlordId)) return "u-landlord-06";
+        if (landlordId == null)
+            return null;
+        if ("1".equals(landlordId))
+            return "u-landlord-01";
+        if ("2".equals(landlordId))
+            return "u-landlord-02";
+        if ("3".equals(landlordId))
+            return "u-landlord-03";
+        if ("4".equals(landlordId))
+            return "u-landlord-04";
+        if ("5".equals(landlordId))
+            return "u-landlord-05";
+        if ("6".equals(landlordId))
+            return "u-landlord-06";
         return landlordId;
     }
 
     private boolean matchesLandlord(String expected, String actual) {
-        if (expected == null || actual == null) return false;
-        if (expected.equals(actual)) return true;
+        if (expected == null || actual == null)
+            return false;
+        if (expected.equals(actual))
+            return true;
         return normalizeLandlordId(expected).equals(normalizeLandlordId(actual));
     }
 
@@ -111,15 +120,15 @@ public class RentalRequestService {
                     dto.roomId(), dto.numOccupants());
             if (!availability.available()) {
                 throw new IllegalStateException(
-                        availability.reason() != null ? availability.reason() : "Phong khong kha dung hoac vuot so nguoi o toi da");
+                        availability.reason() != null ? availability.reason()
+                                : "Phong khong kha dung hoac vuot so nguoi o toi da");
             }
         });
 
         String targetLandlordId = normalizeLandlordId(dto.landlordId());
         RentalRequest saved = rentalRequestRepository.save(RentalRequest.create(
                 dto.roomId(), tenantId, targetLandlordId,
-                dto.proposedMoveInDate(), dto.numOccupants(), dto.message(), dto.idempotencyKey()
-        ));
+                dto.proposedMoveInDate(), dto.numOccupants(), dto.message(), dto.idempotencyKey()));
         publishOutbox("RENTAL_REQUEST_CREATED", saved);
         return RentalRequestDto.from(saved);
     }
@@ -132,8 +141,10 @@ public class RentalRequestService {
 
         String resolvedContractId = contractId;
         if ((resolvedContractId == null || resolvedContractId.isBlank()) && contractRepository.isPresent()) {
-            String code = "HD-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            LocalDate start = request.getProposedMoveInDate() != null ? request.getProposedMoveInDate() : LocalDate.now().plusDays(3);
+            String code = "HD-" + LocalDate.now().getYear() + "-"
+                    + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            LocalDate start = request.getProposedMoveInDate() != null ? request.getProposedMoveInDate()
+                    : LocalDate.now().plusDays(3);
             LocalDate end = start.plusMonths(6);
 
             long monthlyRent = 3500000L;
@@ -144,7 +155,8 @@ public class RentalRequestService {
             java.math.BigDecimal initialWater = java.math.BigDecimal.ZERO;
 
             if (listingPort.isPresent()) {
-                BookingListingPort.RoomContractSnapshot snapshot = listingPort.get().getRoomContractSnapshot(request.getRoomId());
+                BookingListingPort.RoomContractSnapshot snapshot = listingPort.get()
+                        .getRoomContractSnapshot(request.getRoomId());
                 if (snapshot != null) {
                     if (snapshot.monthlyRent() != null && snapshot.monthlyRent() > 0) {
                         monthlyRent = snapshot.monthlyRent();
@@ -171,16 +183,15 @@ public class RentalRequestService {
                     code, request.getRoomId(), request.getTenantId(), request.getLandlordId(),
                     request.getId(), start, end, monthlyRent, depositAmount,
                     "Hop dong thue phong tro tieu chuan To Am. Thoi han 06 thang, dat coc 01 thang.",
-                    initialElec, initialWater, elecRate, waterRate
-            ));
+                    initialElec, initialWater, elecRate, waterRate));
             resolvedContractId = newContract.getId();
+            billingPort.ifPresent(p -> p.openEscrowHold(newContract.getId(), newContract.getTenantId(), newContract.getLandlordId(), newContract.getDepositAmount()));
             final String finalCid = resolvedContractId;
             sagaOrchestrator.ifPresent(orchestrator -> {
                 String payload = String.format(
                         "{\"sagaId\":\"%s\",\"requestId\":\"%s\",\"roomId\":\"%s\",\"tenantId\":\"%s\",\"landlordId\":\"%s\",\"contractId\":\"%s\"}",
                         "saga-" + request.getId(), request.getId(), request.getRoomId(),
-                        request.getTenantId(), request.getLandlordId(), finalCid
-                );
+                        request.getTenantId(), request.getLandlordId(), finalCid);
                 orchestrator.startRentalSaga("saga-" + request.getId(), payload);
             });
         }
@@ -232,9 +243,12 @@ public class RentalRequestService {
         Set<String> searchIds = new HashSet<>();
         searchIds.add(landlordId);
         searchIds.add(normalizeLandlordId(landlordId));
-        if ("u-landlord-01".equals(landlordId)) searchIds.add("1");
-        if ("u-landlord-02".equals(landlordId)) searchIds.add("2");
-        if ("u-landlord-03".equals(landlordId)) searchIds.add("3");
+        if ("u-landlord-01".equals(landlordId))
+            searchIds.add("1");
+        if ("u-landlord-02".equals(landlordId))
+            searchIds.add("2");
+        if ("u-landlord-03".equals(landlordId))
+            searchIds.add("3");
 
         List<RentalRequest> all = new ArrayList<>();
         for (String id : searchIds) {
@@ -288,7 +302,8 @@ public class RentalRequestService {
     }
 
     private String escapeJson(String str) {
-        if (str == null) return "";
+        if (str == null)
+            return "";
         return str.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\b", "\\b")

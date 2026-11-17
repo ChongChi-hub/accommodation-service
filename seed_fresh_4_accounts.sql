@@ -108,6 +108,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE deposit_transactions;
 TRUNCATE TABLE deposits;
+TRUNCATE TABLE escrow_holds;
+TRUNCATE TABLE payout_requests;
+TRUNCATE TABLE refund_requests;
 TRUNCATE TABLE expenses;
 TRUNCATE TABLE invoice_items;
 TRUNCATE TABLE invoices;

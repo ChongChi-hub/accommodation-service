@@ -27,20 +27,34 @@ public class BillingDashboardService {
     private final LedgerService ledgerService;
     private final InvoiceRepository invoiceRepository;
     private final JournalEntryRepository journalEntryRepository;
+    private final vn.cozynest.billing.domain.repository.EscrowHoldRepository escrowHoldRepository;
 
     public BillingDashboardService(LedgerService ledgerService,
                                    InvoiceRepository invoiceRepository,
                                    JournalEntryRepository journalEntryRepository) {
+        this(ledgerService, invoiceRepository, journalEntryRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BillingDashboardService(LedgerService ledgerService,
+                                   InvoiceRepository invoiceRepository,
+                                   JournalEntryRepository journalEntryRepository,
+                                   @org.springframework.beans.factory.annotation.Autowired(required = false) vn.cozynest.billing.domain.repository.EscrowHoldRepository escrowHoldRepository) {
         this.ledgerService = ledgerService;
         this.invoiceRepository = invoiceRepository;
         this.journalEntryRepository = journalEntryRepository;
+        this.escrowHoldRepository = escrowHoldRepository;
     }
 
     @Transactional(readOnly = true)
     public DashboardStatsDto.LandlordFinancialStats getLandlordFinancialStats(String landlordId) {
         String walletAcc = ledgerService.getWalletAccountNumber(landlordId);
         long availableBalance = ledgerService.getAccountBalance(walletAcc);
-        long escrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
+        long escrowBalance = (escrowHoldRepository != null)
+                ? escrowHoldRepository.findByLandlordId(landlordId).stream()
+                        .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                        .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum()
+                : ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
 
         List<Invoice> invoices = invoiceRepository.findByLandlordId(landlordId);
         long totalRevenue = 0;
@@ -80,7 +94,11 @@ public class BillingDashboardService {
                 }
             }
         }
-        long escrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
+        long escrowBalance = (escrowHoldRepository != null)
+                ? escrowHoldRepository.findByTenantId(tenantId).stream()
+                        .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                        .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum()
+                : ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
         return new DashboardStatsDto.TenantFinancialStats(
                 totalPaid, unpaidTotal, escrowBalance, overdueCount, invoices.size()
         );

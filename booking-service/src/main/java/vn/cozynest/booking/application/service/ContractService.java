@@ -33,6 +33,7 @@ public class ContractService {
     private final ContractSigningCoordinator signingCoordinator;
     private final AppointmentEventOutboxRepository outboxRepository;
     private final Optional<BookingListingPort> listingPort;
+    private final Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort;
 
     public ContractService(
             ContractRepository contractRepository,
@@ -41,7 +42,18 @@ public class ContractService {
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository
     ) {
-        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty());
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty(), Optional.empty());
+    }
+
+    public ContractService(
+            ContractRepository contractRepository,
+            ContractAmendmentRepository amendmentRepository,
+            ContractOccupantRepository occupantRepository,
+            ContractSigningCoordinator signingCoordinator,
+            AppointmentEventOutboxRepository outboxRepository,
+            Optional<BookingListingPort> listingPort
+    ) {
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, Optional.empty());
     }
 
     @Autowired
@@ -51,7 +63,8 @@ public class ContractService {
             ContractOccupantRepository occupantRepository,
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository,
-            Optional<BookingListingPort> listingPort
+            Optional<BookingListingPort> listingPort,
+            Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort
     ) {
         this.contractRepository = contractRepository;
         this.amendmentRepository = amendmentRepository;
@@ -59,6 +72,7 @@ public class ContractService {
         this.signingCoordinator = signingCoordinator;
         this.outboxRepository = outboxRepository;
         this.listingPort = listingPort != null ? listingPort : Optional.empty();
+        this.billingPort = billingPort != null ? billingPort : Optional.empty();
     }
 
     public ContractDto createContract(CreateContractDto dto) {
@@ -74,6 +88,7 @@ public class ContractService {
                 dto.electricityRate(), dto.waterRate()
         ));
         emitContractEvent("CONTRACT_CREATED", saved);
+        billingPort.ifPresent(p -> p.openEscrowHold(saved.getId(), saved.getTenantId(), saved.getLandlordId(), saved.getDepositAmount()));
         return ContractDto.from(saved);
     }
 
@@ -82,6 +97,7 @@ public class ContractService {
         signingCoordinator.verifyAndSign(contract, userId, otpCode, isLandlord, ip, ua);
         Contract saved = contractRepository.save(contract);
         emitContractEvent("ACTIVE".equals(saved.getStatus()) ? "CONTRACT_ACTIVATED" : "CONTRACT_SIGNED", saved);
+        billingPort.ifPresent(p -> p.openEscrowHold(saved.getId(), saved.getTenantId(), saved.getLandlordId(), saved.getDepositAmount()));
         return ContractDto.from(saved);
     }
 

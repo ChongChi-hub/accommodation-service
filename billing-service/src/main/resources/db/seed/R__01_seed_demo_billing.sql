@@ -59,6 +59,13 @@ INSERT INTO deposits (id, contract_id, tenant_id, landlord_id, original_amount, 
 ('dep-0004', 'ct-00000004', 'u-tenant-06', 'u-landlord-03', 5500000, 0, 'REFUNDED', 2, '2025-10-25 10:00:00.000', '2026-10-31 17:00:00.000')
 ON DUPLICATE KEY UPDATE contract_id=contract_id;
 
+-- 5.1 Escrow Holds (Bảng ký quỹ Escrow Sprint 3)
+INSERT INTO escrow_holds (id, contract_id, tenant_id, landlord_id, amount, status, sandbox_mode, tenant_confirmed_move_in, landlord_confirmed_move_in, inspection_ends_at, created_at, updated_at) VALUES
+('eh-0001', 'ct-00000001', 'u-tenant-01', 'u-landlord-01', 4500000, 'HELD', 1, 1, 0, '2026-11-20 15:30:00.000', '2026-10-30 15:30:00.000', '2026-10-30 15:30:00.000'),
+('eh-0002', 'ct-00000002', 'u-tenant-02', 'u-landlord-01', 7200000, 'HELD', 1, 0, 0, '2026-11-20 16:00:00.000', '2026-10-31 16:00:00.000', '2026-10-31 16:00:00.000'),
+('eh-0003', 'ct-00000003', 'u-tenant-03', 'u-landlord-02', 3200000, 'HELD', 1, 0, 0, '2026-11-20 14:00:00.000', '2026-11-06 14:00:00.000', '2026-11-06 14:00:00.000')
+ON DUPLICATE KEY UPDATE contract_id=contract_id;
+
 -- 6. Deposit Transactions (Khớp TXN-9001 và TXN-9003 trong frontend)
 INSERT INTO deposit_transactions (id, deposit_id, type, amount, reason, reference_id, created_at) VALUES
 ('dt-0001', 'dep-0001', 'HOLD', 4500000, 'Tiền đặt cọc giữ chỗ phòng Studio Quận 1 (khóa phòng 7 ngày)', 'TOAM-QR-882193', '2026-11-01 08:32:15.000'),
