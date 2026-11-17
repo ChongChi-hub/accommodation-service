@@ -26,6 +26,7 @@ public class KycModerationUseCase {
     private final KycEventOutboxRepository outboxRepository;
     private final KycPrivateStoragePort kycStorage;
     private final KycCryptoService cryptoService;
+    private final Optional<vn.cozynest.identity.domain.repository.FaceVerificationRepository> faceRepository;
     private final Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient;
 
     public KycModerationUseCase(
@@ -37,7 +38,7 @@ public class KycModerationUseCase {
             KycEventOutboxRepository outboxRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService) {
-        this(verificationRepository, userRepository, landlordProfileRepository, historyRepository, accessLogRepository, outboxRepository, kycStorage, cryptoService, Optional.empty());
+        this(verificationRepository, userRepository, landlordProfileRepository, historyRepository, accessLogRepository, outboxRepository, kycStorage, cryptoService, Optional.empty(), Optional.empty());
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -50,6 +51,7 @@ public class KycModerationUseCase {
             KycEventOutboxRepository outboxRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService,
+            Optional<vn.cozynest.identity.domain.repository.FaceVerificationRepository> faceRepository,
             Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient) {
         this.verificationRepository = verificationRepository;
         this.userRepository = userRepository;
@@ -59,15 +61,42 @@ public class KycModerationUseCase {
         this.outboxRepository = outboxRepository;
         this.kycStorage = kycStorage;
         this.cryptoService = cryptoService;
+        this.faceRepository = faceRepository != null ? faceRepository : Optional.empty();
         this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
     }
 
     @Transactional(readOnly = true)
     public List<KycModerationListItemDto> getKycList(KycStatus status, String search, int page, int size) {
         int offset = page * size;
-        return verificationRepository.findAllFiltered(status, search, offset, size).stream()
+        List<UserVerification> list;
+        if (status == KycStatus.PENDING) {
+            List<UserVerification> baseList = verificationRepository.findAllFiltered(null, search, 0, 200);
+            list = baseList.stream()
+                    .filter(v -> {
+                        if (v.getStatus() == KycStatus.PENDING) return true;
+                        if (faceRepository.isPresent()) {
+                            Optional<FaceVerification> fv = faceRepository.get().findByUserId(v.getUserId());
+                            return fv.isPresent() && fv.get().getStatus() == FaceVerificationStatus.PENDING;
+                        }
+                        return false;
+                    })
+                    .skip(offset)
+                    .limit(size)
+                    .toList();
+        } else {
+            list = verificationRepository.findAllFiltered(status, search, offset, size);
+        }
+
+        return list.stream()
                 .map(v -> {
                     Optional<User> uOpt = userRepository.findById(v.getUserId());
+                    String faceStatus = "NONE";
+                    if (faceRepository.isPresent()) {
+                        Optional<FaceVerification> fvOpt = faceRepository.get().findByUserId(v.getUserId());
+                        if (fvOpt.isPresent()) {
+                            faceStatus = fvOpt.get().getStatus().name();
+                        }
+                    }
                     return KycModerationListItemDto.builder()
                             .id(v.getId())
                             .userId(v.getUserId())
@@ -76,6 +105,7 @@ public class KycModerationUseCase {
                             .fullNameOnId(v.getFullNameOnId())
                             .idNumberMasked(cryptoService.maskIdNumber(v.getIdNumberLast4()))
                             .status(v.getStatus().name())
+                            .faceStatus(faceStatus)
                             .submittedAt(v.getSubmittedAt())
                             .reviewedAt(v.getReviewedAt())
                             .reviewedBy(v.getReviewedBy())

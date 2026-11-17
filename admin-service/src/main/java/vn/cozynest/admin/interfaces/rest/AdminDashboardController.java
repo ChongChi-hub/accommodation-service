@@ -49,7 +49,11 @@ public class AdminDashboardController {
 
         try {
             Number kycCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM cozynest_identity.user_verifications WHERE status = 'PENDING'", 
+                "SELECT COUNT(DISTINCT user_id) FROM (" +
+                "  SELECT user_id FROM cozynest_identity.user_verifications WHERE status = 'PENDING' " +
+                "  UNION " +
+                "  SELECT user_id FROM cozynest_identity.face_verifications WHERE status = 'PENDING'" +
+                ") AS pending_kyc_users", 
                 Number.class
             );
             if (kycCount != null) pendingKyc = kycCount.intValue();

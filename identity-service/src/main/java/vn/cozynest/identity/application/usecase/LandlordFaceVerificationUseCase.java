@@ -41,6 +41,8 @@ public class LandlordFaceVerificationUseCase {
     private final FaceImageValidator imageValidator;
     private final Map<String, FaceVerificationProvider> providers;
     private final String activeProviderName;
+    private final Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient;
+    private final Optional<vn.cozynest.identity.domain.repository.UserRepository> userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public LandlordFaceVerificationUseCase(
@@ -52,6 +54,21 @@ public class LandlordFaceVerificationUseCase {
             FaceImageValidator imageValidator,
             List<FaceVerificationProvider> providerList,
             @Value("${face.provider:manual}") String activeProviderName) {
+        this(faceRepository, frameRepository, userVerificationRepository, storagePort, cryptoService, imageValidator, providerList, activeProviderName, Optional.empty(), Optional.empty());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LandlordFaceVerificationUseCase(
+            FaceVerificationRepository faceRepository,
+            FaceVerificationFrameRepository frameRepository,
+            UserVerificationRepository userVerificationRepository,
+            FacePrivateStoragePort storagePort,
+            FaceCryptoService cryptoService,
+            FaceImageValidator imageValidator,
+            List<FaceVerificationProvider> providerList,
+            @Value("${face.provider:manual}") String activeProviderName,
+            Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient,
+            Optional<vn.cozynest.identity.domain.repository.UserRepository> userRepository) {
         this.faceRepository = faceRepository;
         this.frameRepository = frameRepository;
         this.userVerificationRepository = userVerificationRepository;
@@ -59,6 +76,8 @@ public class LandlordFaceVerificationUseCase {
         this.cryptoService = cryptoService;
         this.imageValidator = imageValidator;
         this.activeProviderName = activeProviderName != null ? activeProviderName.trim() : "manual";
+        this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
+        this.userRepository = userRepository != null ? userRepository : Optional.empty();
         this.providers = new HashMap<>();
         for (FaceVerificationProvider p : providerList) {
             this.providers.put(p.getProviderName(), p);
@@ -176,6 +195,19 @@ public class LandlordFaceVerificationUseCase {
         }
 
         FaceVerification saved = faceRepository.save(verification);
+
+        if (notificationClient.isPresent()) {
+            String applicantName = (userRepository.isPresent())
+                    ? userRepository.get().findById(userId).map(User::getFullName).orElse(userId)
+                    : userId;
+            notificationClient.get().notifyModeratorsAndAdmins(
+                    "KYC",
+                    "Xác thực khuôn mặt mới cần xét duyệt",
+                    "Chủ trọ " + applicantName + " vừa nộp dữ liệu xác thực khuôn mặt sinh trắc học. Vui lòng kiểm tra và phê duyệt.",
+                    "/dashboard/moderator/kyc"
+            );
+        }
+
         return toStatusResponse(saved);
     }
 
