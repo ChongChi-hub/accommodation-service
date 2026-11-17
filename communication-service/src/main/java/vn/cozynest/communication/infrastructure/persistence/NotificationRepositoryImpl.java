@@ -48,6 +48,16 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     }
 
     @Override
+    public void deleteByIdAndUserId(String id, String userId) {
+        jpaRepository.deleteByIdAndUserId(id, userId);
+    }
+
+    @Override
+    public int deleteAllByUserId(String userId) {
+        return jpaRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
     public Notification save(Notification n) {
         NotificationJpaEntity entity = NotificationJpaEntity.builder()
                 .id(n.getId())

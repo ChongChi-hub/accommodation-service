@@ -60,6 +60,16 @@ public class NotificationApplicationService implements NotificationQueryPort {
     }
 
     @Transactional
+    public void deleteNotification(String userId, String id) {
+        notificationRepository.deleteByIdAndUserId(id, userId);
+    }
+
+    @Transactional
+    public int deleteAllNotifications(String userId) {
+        return notificationRepository.deleteAllByUserId(userId);
+    }
+
+    @Transactional
     public NotificationDto createInternalNotification(String userId, String type, String title, String content, String linkUrl) {
         Notification notification = Notification.builder()
                 .id(java.util.UUID.randomUUID().toString())
