@@ -20,20 +20,59 @@ public class AdminDashboardController {
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
         Map<String, Object> result = new LinkedHashMap<>();
+        int totalUsers = 0;
+        int activeRooms = 0;
+        int pendingRooms = 0;
+        int pendingKyc = 0;
+        long totalRevenue = 0L;
+
         try {
-            Map<String, Object> row = jdbcTemplate.queryForMap(
+            Number userCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM cozynest_identity.users", Number.class);
+            if (userCount != null) totalUsers = userCount.intValue();
+        } catch (Exception ignored) {}
+
+        try {
+            Number roomCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND hidden_at IS NULL AND is_approved = true AND status IN ('AVAILABLE', 'PUBLISHED')", 
+                Number.class
+            );
+            if (roomCount != null) activeRooms = roomCount.intValue();
+        } catch (Exception ignored) {}
+
+        try {
+            Number pendingCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND is_approved = false", 
+                Number.class
+            );
+            if (pendingCount != null) pendingRooms = pendingCount.intValue();
+        } catch (Exception ignored) {}
+
+        try {
+            Number kycCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM cozynest_identity.user_verifications WHERE status = 'PENDING'", 
+                Number.class
+            );
+            if (kycCount != null) pendingKyc = kycCount.intValue();
+        } catch (Exception ignored) {}
+
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT total_users, active_rooms, pending_rooms, total_revenue FROM daily_statistics ORDER BY stat_date DESC LIMIT 1"
             );
-            result.put("totalUsers", ((Number) row.getOrDefault("total_users", 1420)).intValue());
-            result.put("activeRooms", ((Number) row.getOrDefault("active_rooms", 520)).intValue());
-            result.put("pendingApprovals", ((Number) row.getOrDefault("pending_rooms", 12)).intValue());
-            result.put("monthlyRevenue", ((Number) row.getOrDefault("total_revenue", 285000000L)).longValue());
-        } catch (Exception e) {
-            result.put("totalUsers", 1420);
-            result.put("activeRooms", 520);
-            result.put("pendingApprovals", 12);
-            result.put("monthlyRevenue", 285000000L);
-        }
+            if (!rows.isEmpty()) {
+                Map<String, Object> row = rows.get(0);
+                if (row.get("total_users") != null) totalUsers = ((Number) row.get("total_users")).intValue();
+                if (row.get("active_rooms") != null) activeRooms = ((Number) row.get("active_rooms")).intValue();
+                if (row.get("pending_rooms") != null) pendingRooms = ((Number) row.get("pending_rooms")).intValue();
+                if (row.get("total_revenue") != null) totalRevenue = ((Number) row.get("total_revenue")).longValue();
+            }
+        } catch (Exception ignored) {}
+
+        result.put("totalUsers", totalUsers);
+        result.put("activeRooms", activeRooms);
+        result.put("pendingApprovals", pendingRooms);
+        result.put("pendingKyc", pendingKyc);
+        result.put("monthlyRevenue", totalRevenue);
 
         Map<String, Boolean> health = new LinkedHashMap<>();
         health.put("gateway", true);

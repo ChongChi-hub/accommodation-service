@@ -11,6 +11,8 @@
 -- 1. cozynest_identity
 -- ------------------------------------------------------------------------------
 USE cozynest_identity;
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+SET CHARACTER SET utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE face_access_logs;
