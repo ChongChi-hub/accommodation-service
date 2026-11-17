@@ -22,6 +22,11 @@ public class ReviewRepositoryAdapter implements ReviewRepository {
     }
 
     @Override
+    public List<Review> findByRoomIdInOrderByCreatedAtDesc(List<Long> roomIds) {
+        return springRepo.findByRoomIdInOrderByCreatedAtDesc(roomIds).stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public long count() {
         return springRepo.count();
     }

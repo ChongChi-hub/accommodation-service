@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface ReviewRepository {
     List<Review> findByRoomIdOrderByCreatedAtDesc(Long roomId);
+    List<Review> findByRoomIdInOrderByCreatedAtDesc(List<Long> roomIds);
     long count();
     Review save(Review review);
 }

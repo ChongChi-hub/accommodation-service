@@ -230,12 +230,7 @@ public class ReviewController {
         // Update landlord snapshot
         Long landlordId = room.getLandlordId();
         if (landlordId != null) {
-            landlordSnapshotRepository.findByLandlordId(landlordId).ifPresent(ls -> {
-                ls.setReviewCount(ls.getReviewCount() + 1);
-                ls.setRatingAvg(Math.round(avg * 10.0) / 10.0);
-                ls.setTrustScore(100);
-                landlordSnapshotRepository.save(ls);
-            });
+            updateLandlordRatings(landlordId);
         }
 
         // Notify landlord and moderators
@@ -301,6 +296,29 @@ public class ReviewController {
                 .createdAt(review.getCreatedAt())
                 .build();
         return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    private void updateLandlordRatings(Long landlordId) {
+        if (landlordId == null) return;
+        List<RoomJpaEntity> landlordRooms = roomRepository.findByLandlordId(landlordId);
+        if (landlordRooms.isEmpty()) return;
+
+        List<Long> roomIds = landlordRooms.stream().map(RoomJpaEntity::getId).toList();
+        List<ReviewJpaEntity> visibleReviews = reviewRepository.findByRoomIdInOrderByCreatedAtDesc(roomIds).stream()
+                .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
+                .toList();
+
+        int totalReviews = visibleReviews.size();
+        double landlordAvg = totalReviews > 0
+                ? visibleReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(5.0)
+                : 5.0;
+
+        landlordSnapshotRepository.findByLandlordId(landlordId).ifPresent(ls -> {
+            ls.setReviewCount(totalReviews);
+            ls.setRatingAvg(Math.round(landlordAvg * 10.0) / 10.0);
+            ls.setTrustScore(100);
+            landlordSnapshotRepository.save(ls);
+        });
     }
 }
 

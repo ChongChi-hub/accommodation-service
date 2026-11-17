@@ -254,9 +254,34 @@ public class AdminListingController {
             room.setReviewCount(count);
             room.setRatingAvg(Math.round(avg * 10.0) / 10.0);
             roomRepository.save(room);
+
+            updateLandlordRatings(room.getLandlordId());
         });
 
         return ResponseEntity.ok(ApiResponse.success(Map.of("id", id, "status", next)));
+    }
+
+    private void updateLandlordRatings(Long landlordId) {
+        if (landlordId == null) return;
+        List<RoomJpaEntity> landlordRooms = roomRepository.findByLandlordId(landlordId);
+        if (landlordRooms.isEmpty()) return;
+
+        List<Long> roomIds = landlordRooms.stream().map(RoomJpaEntity::getId).toList();
+        List<ReviewJpaEntity> visibleReviews = reviewRepository.findByRoomIdInOrderByCreatedAtDesc(roomIds).stream()
+                .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
+                .toList();
+
+        int totalReviews = visibleReviews.size();
+        double landlordAvg = totalReviews > 0
+                ? visibleReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(5.0)
+                : 5.0;
+
+        landlordSnapshotRepository.findByLandlordId(landlordId).ifPresent(ls -> {
+            ls.setReviewCount(totalReviews);
+            ls.setRatingAvg(Math.round(landlordAvg * 10.0) / 10.0);
+            ls.setTrustScore(100);
+            landlordSnapshotRepository.save(ls);
+        });
     }
 }
 
