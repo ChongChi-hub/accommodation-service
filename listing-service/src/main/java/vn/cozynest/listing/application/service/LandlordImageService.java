@@ -14,6 +14,8 @@ import vn.cozynest.listing.domain.port.ImageStoragePort;
 import vn.cozynest.listing.domain.repository.RoomImageRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 import vn.cozynest.listing.domain.repository.RoomStatusHistoryRepository;
+import vn.cozynest.listing.domain.repository.LandlordSnapshotRepository;
+import vn.cozynest.listing.infrastructure.storage.CloudinaryStorageService;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -34,6 +36,8 @@ public class LandlordImageService {
     private final UploadRateLimiter rateLimiter;
     private final Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository;
     private final Optional<AntiFraudService> antiFraudService;
+    private final Optional<CloudinaryStorageService> cloudinaryStorageService;
+    private final Optional<LandlordSnapshotRepository> landlordSnapshotRepository;
 
     public LandlordImageService(
             RoomRepository roomRepository,
@@ -41,7 +45,7 @@ public class LandlordImageService {
             ImageStoragePort imageStoragePort,
             UploadRateLimiter rateLimiter
     ) {
-        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, Optional.empty(), Optional.empty());
+        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     public LandlordImageService(
@@ -51,7 +55,7 @@ public class LandlordImageService {
             UploadRateLimiter rateLimiter,
             Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository
     ) {
-        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, roomStatusHistoryRepository, Optional.empty());
+        this(roomRepository, roomImageRepository, imageStoragePort, rateLimiter, roomStatusHistoryRepository, Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     @Autowired
@@ -61,7 +65,9 @@ public class LandlordImageService {
             ImageStoragePort imageStoragePort,
             UploadRateLimiter rateLimiter,
             Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository,
-            Optional<AntiFraudService> antiFraudService
+            Optional<AntiFraudService> antiFraudService,
+            Optional<CloudinaryStorageService> cloudinaryStorageService,
+            Optional<LandlordSnapshotRepository> landlordSnapshotRepository
     ) {
         this.roomRepository = roomRepository;
         this.roomImageRepository = roomImageRepository;
@@ -71,6 +77,8 @@ public class LandlordImageService {
                 ? roomStatusHistoryRepository
                 : Optional.empty();
         this.antiFraudService = antiFraudService != null ? antiFraudService : Optional.empty();
+        this.cloudinaryStorageService = cloudinaryStorageService != null ? cloudinaryStorageService : Optional.empty();
+        this.landlordSnapshotRepository = landlordSnapshotRepository != null ? landlordSnapshotRepository : Optional.empty();
     }
 
     public static final long MAX_FILE_SIZE = 5 * 1024 * 1024L; // 5MB
@@ -152,13 +160,33 @@ public class LandlordImageService {
                 imageStoragePort.store(mediumKey, mediumBytes, "image/webp");
                 imageStoragePort.store(thumbKey, thumbBytes, "image/webp");
 
+                // Resolve landlord name for Cloudinary folder (e.g. "Đoàn Gia Huy" -> "cozynest/rooms/doan_gia_huy")
+                String landlordName = room.getLandlordName();
+                if ((landlordName == null || landlordName.isBlank() || landlordName.matches("(?i).*\\d{5,}.*")) && landlordSnapshotRepository.isPresent()) {
+                    landlordName = landlordSnapshotRepository.get().findByLandlordId(landlordId)
+                            .map(ls -> ls.getName())
+                            .filter(n -> n != null && !n.isBlank())
+                            .orElse(landlordName != null && !landlordName.isBlank() ? landlordName : "doan_gia_huy");
+                }
+                if (landlordName == null || landlordName.isBlank()) {
+                    landlordName = "doan_gia_huy";
+                }
+
+                String finalImageUrl = "/api/v1/media/" + largeKey;
+                if (cloudinaryStorageService.isPresent()) {
+                    String cloudUrl = cloudinaryStorageService.get().uploadRoomImage(largeBytes, landlordName, fileUuid + "_large");
+                    if (cloudUrl != null && !cloudUrl.isBlank()) {
+                        finalImageUrl = cloudUrl;
+                    }
+                }
+
                 // If room currently has 0 images, first uploaded image defaults to cover
                 boolean isCover = (currentCount + successful == 0);
                 int sortOrder = (int) (currentCount + successful);
 
                 RoomImage roomImage = RoomImage.builder()
                         .roomId(roomId)
-                        .imageUrl("/api/v1/media/" + largeKey)
+                        .imageUrl(finalImageUrl)
                         .storageKey(largeKey)
                         .largeKey(largeKey)
                         .mediumKey(mediumKey)
@@ -184,7 +212,7 @@ public class LandlordImageService {
                 results.add(ImageUploadResponse.ImageUploadItemResult.builder()
                         .imageId(saved.getId())
                         .originalFilename(filename)
-                        .imageUrl("/api/v1/media/" + largeKey)
+                        .imageUrl(finalImageUrl)
                         .largeUrl("/api/v1/media/" + largeKey)
                         .mediumUrl("/api/v1/media/" + mediumKey)
                         .thumbUrl("/api/v1/media/" + thumbKey)

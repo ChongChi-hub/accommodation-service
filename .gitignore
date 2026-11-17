@@ -27,7 +27,6 @@ logs/
 .tmp/
 
 # Uploads & storage runtime directories (only root and service runtime media folders, never src/)
-storage/
 /storage/
 /uploads/
 listing-service/storage/
