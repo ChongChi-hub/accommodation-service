@@ -174,10 +174,10 @@ public class KycModerationUseCase {
         v.approve(reviewerId);
         UserVerification saved = verificationRepository.save(v);
 
-        // R2: Grant LANDLORD role in the SAME transaction
+        // R2: Set role to LANDLORD
         User user = userRepository.findById(v.getUserId())
                 .orElseThrow(() -> new IdentityDomainException("Người dùng không tồn tại", "ERR_AUTH_USER_NOT_FOUND"));
-        user.addRole(UserRoleType.LANDLORD);
+        user.setSingleRole(UserRoleType.LANDLORD);
         userRepository.save(user);
 
         // Update LandlordProfile to APPROVED
