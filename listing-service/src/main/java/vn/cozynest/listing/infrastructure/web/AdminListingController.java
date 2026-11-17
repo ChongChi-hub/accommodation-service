@@ -7,9 +7,13 @@ import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.listing.infrastructure.persistence.entity.ReviewJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.RoomJpaEntity;
+import vn.cozynest.listing.infrastructure.persistence.entity.RoomStatusHistoryJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataReviewRepository;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataRoomRepository;
+import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataRoomStatusHistoryRepository;
+import vn.cozynest.listing.infrastructure.security.LandlordContextResolver;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -19,6 +23,8 @@ public class AdminListingController {
 
     private final SpringDataRoomRepository roomRepository;
     private final SpringDataReviewRepository reviewRepository;
+    private final SpringDataRoomStatusHistoryRepository roomStatusHistoryRepository;
+    private final LandlordContextResolver contextResolver;
     private final Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient;
 
     public record AdminRoomDto(
@@ -76,12 +82,41 @@ public class AdminListingController {
     public ResponseEntity<ApiResponse<Void>> approveRoom(@PathVariable Long id) {
         RoomJpaEntity room = roomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay phong: " + id));
+
+        boolean isAdmin = contextResolver != null && contextResolver.isAdmin();
+        boolean isModerator = contextResolver != null && contextResolver.isModerator();
+        String actorId = contextResolver != null ? contextResolver.getCurrentActorId() : "system";
+        String actorRole = isAdmin ? "ADMIN" : (isModerator ? "MODERATOR" : "ADMIN");
+
+        if (room.isApproved() && "AVAILABLE".equalsIgnoreCase(room.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.message("Tin dang phong tro da duoc phe duyet truoc do."));
+        }
+
+        if ("REJECTED".equalsIgnoreCase(room.getStatus()) && !isAdmin) {
+            throw new IllegalStateException("Tin dang da bi tu choi truoc do. Chi Quan tri vien (Admin) moi co quyen phe duyet lai.");
+        }
+
+        String fromStatus = room.getStatus();
         room.setApproved(true);
         room.setStatus("AVAILABLE");
         room.setPublicationStatus("PUBLISHED");
         room.setOccupancyStatus("AVAILABLE");
         room.setRiskLevel("NORMAL");
+        room.setHiddenBy(actorRole);
+        room.setUpdatedAt(LocalDateTime.now());
         roomRepository.save(room);
+
+        if (roomStatusHistoryRepository != null) {
+            roomStatusHistoryRepository.save(RoomStatusHistoryJpaEntity.builder()
+                    .roomId(room.getId())
+                    .fromStatus(fromStatus)
+                    .toStatus("AVAILABLE")
+                    .actorId(actorId)
+                    .actorRole(actorRole)
+                    .reason(isAdmin ? "Quan tri vien (Admin) phe duyet bai dang" : "Kiem duyet vien (Moderator) phe duyet bai dang")
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
 
         if (notificationClient != null && notificationClient.isPresent()) {
             String targetUser = resolveLandlordUserId(room.getLandlordId());
@@ -89,7 +124,7 @@ public class AdminListingController {
                     targetUser,
                     "ROOM",
                     "Tin đăng phòng trọ đã được phê duyệt",
-                    "Tin đăng \"" + room.getTitle() + "\" của bạn đã được kiểm duyệt thành công và hiển thị công khai trên CozyNest.",
+                    "Tin đăng \"" + room.getTitle() + "\" của bạn đã được " + (isAdmin ? "Quản trị viên" : "Kiểm duyệt viên") + " phê duyệt thành công và hiển thị công khai trên CozyNest.",
                     "/dashboard/landlord/rooms"
             );
         }
@@ -102,12 +137,49 @@ public class AdminListingController {
     public ResponseEntity<ApiResponse<Void>> rejectRoom(@PathVariable Long id, @RequestBody(required = false) Map<String, String> body) {
         RoomJpaEntity room = roomRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay phong: " + id));
+
+        boolean isAdmin = contextResolver != null && contextResolver.isAdmin();
+        boolean isModerator = contextResolver != null && contextResolver.isModerator();
+        String actorId = contextResolver != null ? contextResolver.getCurrentActorId() : "system";
+        String actorRole = isAdmin ? "ADMIN" : (isModerator ? "MODERATOR" : "ADMIN");
+
+        // Moderator CANNOT reject an already approved room!
+        if (room.isApproved() || "AVAILABLE".equalsIgnoreCase(room.getStatus()) || "PUBLISHED".equalsIgnoreCase(room.getPublicationStatus())) {
+            if (!isAdmin) {
+                throw new IllegalStateException("Tin đăng phòng trọ này đã được Quản trị viên (Admin) phê duyệt. Kiểm duyệt viên không có quyền từ chối bài đăng đã được Admin chấp thuận.");
+            }
+        }
+
+        if ("REJECTED".equalsIgnoreCase(room.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.message("Phong tro da o trang thai tu choi truoc do."));
+        }
+
+        boolean isPending = !room.isApproved() && ("PENDING_REVIEW".equalsIgnoreCase(room.getStatus()) || "PENDING".equalsIgnoreCase(room.getStatus()) || "DRAFT".equalsIgnoreCase(room.getStatus()));
+        if (!isPending && !isAdmin) {
+            throw new IllegalStateException("Bài đăng không ở trạng thái chờ duyệt. Kiểm duyệt viên không thể thao tác.");
+        }
+
+        String fromStatus = room.getStatus();
         String reason = body != null ? body.getOrDefault("reason", "Vi pham quy che dang tin") : "Vi pham quy che";
         room.setApproved(false);
         room.setStatus("REJECTED");
         room.setPublicationStatus("REJECTED");
         room.setRejectedReason(reason);
+        room.setHiddenBy(actorRole);
+        room.setUpdatedAt(LocalDateTime.now());
         roomRepository.save(room);
+
+        if (roomStatusHistoryRepository != null) {
+            roomStatusHistoryRepository.save(RoomStatusHistoryJpaEntity.builder()
+                    .roomId(room.getId())
+                    .fromStatus(fromStatus)
+                    .toStatus("REJECTED")
+                    .actorId(actorId)
+                    .actorRole(actorRole)
+                    .reason(reason)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
 
         if (notificationClient != null && notificationClient.isPresent()) {
             String targetUser = resolveLandlordUserId(room.getLandlordId());
