@@ -8,6 +8,7 @@ import vn.cozynest.common.dto.ApiResponse;
 import vn.cozynest.listing.infrastructure.persistence.entity.ReviewJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.RoomJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.RoomStatusHistoryJpaEntity;
+import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataLandlordSnapshotRepository;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataReviewRepository;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataRoomRepository;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataRoomStatusHistoryRepository;
@@ -24,6 +25,7 @@ public class AdminListingController {
     private final SpringDataRoomRepository roomRepository;
     private final SpringDataReviewRepository reviewRepository;
     private final SpringDataRoomStatusHistoryRepository roomStatusHistoryRepository;
+    private final SpringDataLandlordSnapshotRepository landlordSnapshotRepository;
     private final LandlordContextResolver contextResolver;
     private final Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient;
 
@@ -61,10 +63,17 @@ public class AdminListingController {
                 st = "PENDING";
             }
             String submitted = r.getCreatedAt() != null ? r.getCreatedAt().toString() : "";
+            String resolvedLandlordName = r.getLandlordName();
+            if (resolvedLandlordName == null || resolvedLandlordName.isBlank() || resolvedLandlordName.matches("(?i).*\\d{5,}.*")) {
+                resolvedLandlordName = landlordSnapshotRepository.findByLandlordId(r.getLandlordId())
+                        .map(ls -> ls.getName())
+                        .filter(n -> n != null && !n.isBlank())
+                        .orElse(resolvedLandlordName != null && !resolvedLandlordName.isBlank() ? resolvedLandlordName : "Chủ trọ");
+            }
             return new AdminRoomDto(
                     r.getId(),
                     r.getTitle(),
-                    r.getLandlordName() != null ? r.getLandlordName() : "Chủ trọ",
+                    resolvedLandlordName,
                     r.getPrice(),
                     r.getArea(),
                     r.getAddress(),

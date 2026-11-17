@@ -188,15 +188,15 @@ public class RoomJpaEntity {
 
     @Column(name = "rating_cleanliness")
     @Builder.Default
-    private Double ratingCleanliness = 4.9;
+    private Double ratingCleanliness = 5.0;
 
     @Column(name = "rating_location")
     @Builder.Default
-    private Double ratingLocation = 4.8;
+    private Double ratingLocation = 5.0;
 
     @Column(name = "rating_price_quality")
     @Builder.Default
-    private Double ratingPriceQuality = 4.7;
+    private Double ratingPriceQuality = 5.0;
 
     @Column(name = "rating_security")
     @Builder.Default

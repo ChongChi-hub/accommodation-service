@@ -61,12 +61,12 @@ public class HostQueryService {
                 .name(first.getLandlordName())
                 .avatarUrl("/uploads/avatars/default.png")
                 .verified(first.isVerifiedOwnership())
-                .ratingAvg(4.8)
+                .ratingAvg(5.0)
                 .reviewCount(0)
-                .responseRatePercent(95)
-                .responseTimeMinutes(30)
+                .responseRatePercent(100)
+                .responseTimeMinutes(15)
                 .roomCount(roomDtos.size())
-                .trustScore(85)
+                .trustScore(100)
                 .rooms(roomDtos)
                 .build();
     }
