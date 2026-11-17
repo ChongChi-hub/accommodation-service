@@ -23,6 +23,7 @@ public interface SpringDataRoomRepository
     List<RoomJpaEntity> findRecommendations(@Param("provinceCode") String provinceCode, @Param("roomId") Long roomId, Pageable pageable);
 
     Page<RoomJpaEntity> findByLandlordId(Long landlordId, Pageable pageable);
+    List<RoomJpaEntity> findByLandlordId(Long landlordId);
 
     List<RoomJpaEntity> findAllByIdIn(Collection<Long> ids);
 
