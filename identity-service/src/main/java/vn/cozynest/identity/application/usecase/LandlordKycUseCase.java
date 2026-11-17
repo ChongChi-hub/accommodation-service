@@ -36,6 +36,7 @@ public class LandlordKycUseCase {
     private final KycPrivateStoragePort kycStorage;
     private final KycCryptoService cryptoService;
     private final UserRepository userRepository;
+    private final Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient;
 
     public LandlordKycUseCase(
             UserVerificationRepository verificationRepository,
@@ -44,7 +45,18 @@ public class LandlordKycUseCase {
             LandlordProfileRepository landlordProfileRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService) {
-        this(verificationRepository, historyRepository, outboxRepository, landlordProfileRepository, kycStorage, cryptoService, null);
+        this(verificationRepository, historyRepository, outboxRepository, landlordProfileRepository, kycStorage, cryptoService, null, Optional.empty());
+    }
+
+    public LandlordKycUseCase(
+            UserVerificationRepository verificationRepository,
+            KycStatusHistoryRepository historyRepository,
+            KycEventOutboxRepository outboxRepository,
+            LandlordProfileRepository landlordProfileRepository,
+            KycPrivateStoragePort kycStorage,
+            KycCryptoService cryptoService,
+            UserRepository userRepository) {
+        this(verificationRepository, historyRepository, outboxRepository, landlordProfileRepository, kycStorage, cryptoService, userRepository, Optional.empty());
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -55,7 +67,8 @@ public class LandlordKycUseCase {
             LandlordProfileRepository landlordProfileRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient) {
         this.verificationRepository = verificationRepository;
         this.historyRepository = historyRepository;
         this.outboxRepository = outboxRepository;
@@ -63,6 +76,7 @@ public class LandlordKycUseCase {
         this.kycStorage = kycStorage;
         this.cryptoService = cryptoService;
         this.userRepository = userRepository;
+        this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +222,18 @@ public class LandlordKycUseCase {
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + landlordId + "\"}";
         outboxRepository.save(KycEventOutbox.create(saved.getId(), "KycSubmitted", outboxPayload));
+
+        if (notificationClient.isPresent()) {
+            String applicantName = (userRepository != null)
+                    ? userRepository.findById(landlordId).map(User::getFullName).orElse(fullNameOnId)
+                    : fullNameOnId;
+            notificationClient.get().notifyModeratorsAndAdmins(
+                    "KYC",
+                    "Hồ sơ KYC mới cần xét duyệt",
+                    "Chủ trọ " + applicantName + " vừa nộp hồ sơ định danh CCCD. Vui lòng kiểm tra và thẩm định.",
+                    "/dashboard/moderator/kyc"
+            );
+        }
 
         return toResponse(saved);
     }

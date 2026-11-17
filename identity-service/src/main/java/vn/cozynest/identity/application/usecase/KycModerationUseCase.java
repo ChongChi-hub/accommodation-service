@@ -26,6 +26,7 @@ public class KycModerationUseCase {
     private final KycEventOutboxRepository outboxRepository;
     private final KycPrivateStoragePort kycStorage;
     private final KycCryptoService cryptoService;
+    private final Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient;
 
     public KycModerationUseCase(
             UserVerificationRepository verificationRepository,
@@ -36,6 +37,20 @@ public class KycModerationUseCase {
             KycEventOutboxRepository outboxRepository,
             KycPrivateStoragePort kycStorage,
             KycCryptoService cryptoService) {
+        this(verificationRepository, userRepository, landlordProfileRepository, historyRepository, accessLogRepository, outboxRepository, kycStorage, cryptoService, Optional.empty());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public KycModerationUseCase(
+            UserVerificationRepository verificationRepository,
+            UserRepository userRepository,
+            LandlordProfileRepository landlordProfileRepository,
+            KycStatusHistoryRepository historyRepository,
+            KycAccessLogRepository accessLogRepository,
+            KycEventOutboxRepository outboxRepository,
+            KycPrivateStoragePort kycStorage,
+            KycCryptoService cryptoService,
+            Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient) {
         this.verificationRepository = verificationRepository;
         this.userRepository = userRepository;
         this.landlordProfileRepository = landlordProfileRepository;
@@ -44,6 +59,7 @@ public class KycModerationUseCase {
         this.outboxRepository = outboxRepository;
         this.kycStorage = kycStorage;
         this.cryptoService = cryptoService;
+        this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +196,16 @@ public class KycModerationUseCase {
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"APPROVED\"}";
         outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordApproved", outboxPayload));
+
+        if (notificationClient.isPresent()) {
+            notificationClient.get().sendNotification(
+                    saved.getUserId(),
+                    "KYC",
+                    "Hồ sơ định danh eKYC đã được phê duyệt",
+                    "Chúc mừng! Hồ sơ xác thực căn cước công dân của bạn đã được kiểm duyệt thành công. Bạn đã có quyền đăng tin cho thuê phòng.",
+                    "/dashboard/landlord/kyc"
+            );
+        }
     }
 
     public void rejectKyc(String reviewerId, String reviewerRole, String kycId, RejectKycRequest request, Long expectedVersion, String clientIp) {
@@ -215,5 +241,18 @@ public class KycModerationUseCase {
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"REJECTED\",\"reasonCode\":\"" + request.getReasonCode() + "\"}";
         outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordRejected", outboxPayload));
+
+        if (notificationClient.isPresent()) {
+            String note = request.getReasonNote() != null && !request.getReasonNote().isBlank()
+                    ? request.getReasonNote()
+                    : (request.getReasonCode() != null ? request.getReasonCode().name() : "Chưa đạt yêu cầu");
+            notificationClient.get().sendNotification(
+                    saved.getUserId(),
+                    "KYC",
+                    "Hồ sơ định danh eKYC bị từ chối",
+                    "Hồ sơ CCCD của bạn chưa được duyệt: " + note + ". Vui lòng kiểm tra lại ảnh chụp và gửi lại.",
+                    "/dashboard/landlord/kyc"
+            );
+        }
     }
 }
