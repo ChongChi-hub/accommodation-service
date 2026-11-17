@@ -36,6 +36,7 @@ public class LandlordRoomManagementService {
     private final KycVerificationPort kycVerificationPort;
     private final Optional<AntiFraudService> antiFraudService;
     private final Optional<TrustScoreCalculatorService> trustScoreCalculatorService;
+    private final Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient;
 
     @Value("${toam.listing.min-images-for-review:3}")
     private int minImagesForReview = 3;
@@ -48,7 +49,7 @@ public class LandlordRoomManagementService {
             KycVerificationPort kycVerificationPort
     ) {
         this(roomRepository, roomStatusHistoryRepository, roomUsagePort, roomImageRepository, kycVerificationPort,
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -59,7 +60,8 @@ public class LandlordRoomManagementService {
             RoomImageRepository roomImageRepository,
             KycVerificationPort kycVerificationPort,
             Optional<AntiFraudService> antiFraudService,
-            Optional<TrustScoreCalculatorService> trustScoreCalculatorService
+            Optional<TrustScoreCalculatorService> trustScoreCalculatorService,
+            Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient
     ) {
         this.roomRepository = roomRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;
@@ -68,6 +70,7 @@ public class LandlordRoomManagementService {
         this.kycVerificationPort = kycVerificationPort;
         this.antiFraudService = antiFraudService != null ? antiFraudService : Optional.empty();
         this.trustScoreCalculatorService = trustScoreCalculatorService != null ? trustScoreCalculatorService : Optional.empty();
+        this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
     }
 
     public Room toggleVisibility(Long landlordId, Long roomId, boolean visible, String actorId) {
@@ -311,6 +314,15 @@ public class LandlordRoomManagementService {
 
         if (trustScoreCalculatorService.isPresent()) {
             trustScoreCalculatorService.get().calculateAndUpdateTrustScore(landlordId);
+        }
+
+        if (notificationClient.isPresent()) {
+            notificationClient.get().notifyModeratorsAndAdmins(
+                    "ROOM",
+                    "Phòng trọ mới chờ kiểm duyệt",
+                    "Chủ trọ vừa gửi duyệt tin đăng phòng: \"" + room.getTitle() + "\". Vui lòng kiểm tra và duyệt bài.",
+                    "/dashboard/moderator/rooms"
+            );
         }
 
         return saved;

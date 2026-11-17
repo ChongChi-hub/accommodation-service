@@ -19,6 +19,7 @@ public class AdminListingController {
 
     private final SpringDataRoomRepository roomRepository;
     private final SpringDataReviewRepository reviewRepository;
+    private final Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient;
 
     public record AdminRoomDto(
             Long id,
@@ -79,6 +80,18 @@ public class AdminListingController {
         room.setOccupancyStatus("AVAILABLE");
         room.setRiskLevel("NORMAL");
         roomRepository.save(room);
+
+        if (notificationClient != null && notificationClient.isPresent()) {
+            String targetUser = resolveLandlordUserId(room.getLandlordId());
+            notificationClient.get().sendNotification(
+                    targetUser,
+                    "ROOM",
+                    "Tin đăng phòng trọ đã được phê duyệt",
+                    "Tin đăng \"" + room.getTitle() + "\" của bạn đã được kiểm duyệt thành công và hiển thị công khai trên CozyNest.",
+                    "/dashboard/landlord/rooms"
+            );
+        }
+
         return ResponseEntity.ok(ApiResponse.message("Phe duyet phong thanh cong"));
     }
 
@@ -93,7 +106,26 @@ public class AdminListingController {
         room.setPublicationStatus("REJECTED");
         room.setRejectedReason(reason);
         roomRepository.save(room);
+
+        if (notificationClient != null && notificationClient.isPresent()) {
+            String targetUser = resolveLandlordUserId(room.getLandlordId());
+            notificationClient.get().sendNotification(
+                    targetUser,
+                    "ROOM",
+                    "Tin đăng phòng trọ bị từ chối",
+                    "Tin đăng \"" + room.getTitle() + "\" chưa được phê duyệt: " + reason + ".",
+                    "/dashboard/landlord/rooms"
+            );
+        }
+
         return ResponseEntity.ok(ApiResponse.message("Tu choi phong thanh cong"));
+    }
+
+    private String resolveLandlordUserId(Long landlordId) {
+        if (landlordId == null) return "u-huy-01";
+        if (landlordId == 1L) return "u-huy-01";
+        if (landlordId == 2L) return "u-hao-01";
+        return "u-huy-01";
     }
 
     @GetMapping("/reviews")
