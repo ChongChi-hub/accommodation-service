@@ -12,5 +12,7 @@ public interface NotificationRepository {
     List<Notification> findTopByUserIdOrderByCreatedAtDesc(String userId, int limit);
     long countUnreadByUserId(String userId);
     int markAllAsReadByUserId(String userId, LocalDateTime readAt);
+    void deleteByIdAndUserId(String id, String userId);
+    int deleteAllByUserId(String userId);
     Notification save(Notification notification);
 }

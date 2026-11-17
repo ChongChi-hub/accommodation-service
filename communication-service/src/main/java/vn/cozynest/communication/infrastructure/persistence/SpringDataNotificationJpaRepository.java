@@ -22,5 +22,13 @@ public interface SpringDataNotificationJpaRepository extends JpaRepository<Notif
     @Modifying
     @Query("UPDATE NotificationJpaEntity n SET n.isRead = true, n.readAt = :readAt WHERE n.userId = :userId AND n.isRead = false")
     int markAllAsReadByUserId(@Param("userId") String userId, @Param("readAt") LocalDateTime readAt);
+
+    @Modifying
+    @Query("DELETE FROM NotificationJpaEntity n WHERE n.id = :id AND n.userId = :userId")
+    int deleteByIdAndUserId(@Param("id") String id, @Param("userId") String userId);
+
+    @Modifying
+    @Query("DELETE FROM NotificationJpaEntity n WHERE n.userId = :userId")
+    int deleteAllByUserId(@Param("userId") String userId);
 }
 

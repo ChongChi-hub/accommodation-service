@@ -56,6 +56,23 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success("Đã đánh dấu tất cả thông báo đã đọc", Map.of("updated", updated)));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteNotification(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        String userId = extractUserId(authentication);
+        notificationApplicationService.deleteNotification(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("Đã xoá thông báo", null));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> deleteAllNotifications(Authentication authentication) {
+        String userId = extractUserId(authentication);
+        int deleted = notificationApplicationService.deleteAllNotifications(userId);
+        return ResponseEntity.ok(ApiResponse.success("Đã xoá tất cả thông báo", Map.of("deleted", deleted)));
+    }
+
     private String extractUserId(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new AuthenticationCredentialsNotFoundException("Yêu cầu đăng nhập để thực hiện thao tác này.");
