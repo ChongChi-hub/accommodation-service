@@ -1,9 +1,9 @@
 -- ==============================================================================
 -- CozyNest Master Reset & Fresh Seed Script (4 Accounts Only)
--- 1. Admin: admin@cozynest.vn (Password: password123)
--- 2. Moderator: moderator@cozynest.vn (Password: password123)
--- 3. Dev 1: dgiahuy2911@gmail.com (Password: password123, Roles: TENANT, LANDLORD)
--- 4. Dev 2: lehuunhathao2k6@gmail.com (Password: password123, Roles: TENANT, LANDLORD)
+-- 1. Admin: admin@cozynest.vn (Password: password123, Role: ADMIN)
+-- 2. Moderator: moderator@cozynest.vn (Password: password123, Role: MODERATOR)
+-- 3. Dev 1: dgiahuy2911@gmail.com (Password: password123, Role: LANDLORD)
+-- 4. Dev 2: lehuunhathao2k6@gmail.com (Password: password123, Role: TENANT)
 -- All other transactional/mock data wiped clean. Master catalogs preserved.
 -- ==============================================================================
 
@@ -47,14 +47,12 @@ INSERT INTO users (id, email, phone, password_hash, full_name, avatar_url, gende
 ('u-huy-01', 'dgiahuy2911@gmail.com', '0901000001', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đoàn Gia Huy', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 ('u-hao-01', 'lehuunhathao2k6@gmail.com', '0902000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hữu Nhật Hào', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3));
 
--- User Roles
+-- User Roles (Strict Single-Role Architecture: Landlord != Tenant)
 INSERT INTO user_roles (user_id, role_id) VALUES
 ('u-admin-01', 'r-004'),
 ('u-mod-01', 'r-003'),
-('u-huy-01', 'r-001'),
 ('u-huy-01', 'r-002'),
-('u-hao-01', 'r-001'),
-('u-hao-01', 'r-002');
+('u-hao-01', 'r-001');
 
 -- Profiles
 INSERT INTO user_profiles (id, user_id, full_name, phone, language, timezone, created_at, updated_at) VALUES

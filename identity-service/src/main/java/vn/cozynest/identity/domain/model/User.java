@@ -70,9 +70,6 @@ public class User {
         Set<UserRoleType> roles = new HashSet<>();
         UserRoleType primaryRole = role != null ? role : UserRoleType.TENANT;
         roles.add(primaryRole);
-        if (primaryRole == UserRoleType.LANDLORD) {
-            roles.add(UserRoleType.TENANT);
-        }
         return new User(
                 UUID.randomUUID().toString(),
                 email,
@@ -95,9 +92,6 @@ public class User {
         Set<UserRoleType> roles = new HashSet<>();
         UserRoleType primaryRole = role != null ? role : UserRoleType.TENANT;
         roles.add(primaryRole);
-        if (primaryRole == UserRoleType.LANDLORD) {
-            roles.add(UserRoleType.TENANT);
-        }
         return new User(
                 UUID.randomUUID().toString(),
                 email,
@@ -166,6 +160,12 @@ public class User {
     }
 
     public void addRole(UserRoleType role) {
+        this.roles.add(role);
+        this.updatedAt = Instant.now();
+    }
+
+    public void setSingleRole(UserRoleType role) {
+        this.roles.clear();
         this.roles.add(role);
         this.updatedAt = Instant.now();
     }
