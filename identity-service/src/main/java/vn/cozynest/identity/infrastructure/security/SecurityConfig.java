@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/google/**",
                                 "/api/v1/auth/phone/send-otp",
                                 "/api/v1/auth/phone/verify-otp",
+                                "/api/v1/users/*/presence",
                                 "/api/v1/consents",
                                 "/api/v1/auth/jwks",
                                 "/.well-known/jwks.json",
