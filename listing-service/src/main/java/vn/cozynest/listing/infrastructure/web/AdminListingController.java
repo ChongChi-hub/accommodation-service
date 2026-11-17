@@ -217,21 +217,46 @@ public class AdminListingController {
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<AdminReviewDto>>> getAdminReviews() {
         List<ReviewJpaEntity> reviews = reviewRepository.findAll();
-        List<AdminReviewDto> list = reviews.stream().map(rev -> new AdminReviewDto(
-                rev.getId(),
-                rev.getTenantName(),
-                "Phòng trọ #" + rev.getRoomId(),
-                rev.getRating(),
-                rev.getComment() != null ? rev.getComment() : "",
-                "VISIBLE"
-        )).toList();
+        List<AdminReviewDto> list = reviews.stream().map(rev -> {
+            String roomTitle = roomRepository.findById(rev.getRoomId())
+                    .map(RoomJpaEntity::getTitle)
+                    .orElse("Phòng trọ #" + rev.getRoomId());
+            String status = rev.getStatus() != null ? rev.getStatus() : "VISIBLE";
+            return new AdminReviewDto(
+                    rev.getId(),
+                    rev.getTenantName(),
+                    roomTitle,
+                    rev.getRating(),
+                    rev.getComment() != null ? rev.getComment() : "",
+                    status
+            );
+        }).toList();
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
     @PostMapping("/reviews/{id}/toggle")
     @Transactional
-    public ResponseEntity<ApiResponse<Void>> toggleReview(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.message("Da thay doi trang thai danh gia"));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> toggleReview(@PathVariable Long id) {
+        ReviewJpaEntity review = reviewRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy đánh giá: " + id));
+        String current = review.getStatus() != null ? review.getStatus() : "VISIBLE";
+        String next = "VISIBLE".equalsIgnoreCase(current) ? "HIDDEN" : "VISIBLE";
+        review.setStatus(next);
+        reviewRepository.save(review);
+
+        roomRepository.findById(review.getRoomId()).ifPresent(room -> {
+            List<ReviewJpaEntity> roomReviews = reviewRepository.findByRoomIdInOrderByCreatedAtDesc(List.of(room.getId()))
+                    .stream()
+                    .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
+                    .toList();
+            int count = roomReviews.size();
+            double avg = roomReviews.isEmpty() ? 5.0 : roomReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(5.0);
+            room.setReviewCount(count);
+            room.setRatingAvg(Math.round(avg * 10.0) / 10.0);
+            roomRepository.save(room);
+        });
+
+        return ResponseEntity.ok(ApiResponse.success(Map.of("id", id, "status", next)));
     }
 }
 

@@ -144,7 +144,8 @@ public class ListingCatalogPersistenceMapper {
         return Review.builder()
                 .id(e.getId()).roomId(e.getRoomId()).tenantId(e.getTenantId()).tenantName(e.getTenantName())
                 .tenantAvatar(e.getTenantAvatar()).rating(e.getRating()).verifiedTenant(e.isVerifiedTenant())
-                .comment(e.getComment()).landlordReply(e.getLandlordReply()).createdAt(e.getCreatedAt())
+                .comment(e.getComment()).landlordReply(e.getLandlordReply()).status(e.getStatus() != null ? e.getStatus() : "VISIBLE")
+                .createdAt(e.getCreatedAt())
                 .build();
     }
 
@@ -153,7 +154,8 @@ public class ListingCatalogPersistenceMapper {
         return ReviewJpaEntity.builder()
                 .id(d.getId()).roomId(d.getRoomId()).tenantId(d.getTenantId()).tenantName(d.getTenantName())
                 .tenantAvatar(d.getTenantAvatar()).rating(d.getRating()).verifiedTenant(d.isVerifiedTenant())
-                .comment(d.getComment()).landlordReply(d.getLandlordReply()).createdAt(d.getCreatedAt())
+                .comment(d.getComment()).landlordReply(d.getLandlordReply()).status(d.getStatus() != null ? d.getStatus() : "VISIBLE")
+                .createdAt(d.getCreatedAt())
                 .build();
     }
 }

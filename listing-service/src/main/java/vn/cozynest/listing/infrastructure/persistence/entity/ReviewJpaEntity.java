@@ -43,6 +43,10 @@ public class ReviewJpaEntity {
     @Column(name = "landlord_reply", columnDefinition = "TEXT")
     private String landlordReply;
 
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private String status = "VISIBLE";
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

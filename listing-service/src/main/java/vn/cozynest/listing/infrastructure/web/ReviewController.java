@@ -122,6 +122,7 @@ public class ReviewController {
                     .rating(r.getRating())
                     .comment(r.getComment())
                     .landlordReply(r.getLandlordReply())
+                    .status(r.getStatus() != null ? r.getStatus() : "VISIBLE")
                     .createdAt(r.getCreatedAt())
                     .build();
         }).toList();
@@ -158,6 +159,7 @@ public class ReviewController {
                     .rating(r.getRating())
                     .comment(r.getComment())
                     .landlordReply(r.getLandlordReply())
+                    .status(r.getStatus() != null ? r.getStatus() : "VISIBLE")
                     .createdAt(r.getCreatedAt())
                     .build();
         }).toList();
@@ -187,6 +189,7 @@ public class ReviewController {
                 .tenantName(tenantName)
                 .tenantAvatar("/uploads/avatars/default.png")
                 .rating(request.getRating())
+                .status("VISIBLE")
                 .verifiedTenant(true)
                 .comment(request.getComment())
                 .createdAt(LocalDateTime.now())
@@ -194,7 +197,9 @@ public class ReviewController {
         review = reviewRepository.save(review);
 
         // Update room stats
-        List<ReviewJpaEntity> roomReviews = reviewRepository.findByRoomIdInOrderByCreatedAtDesc(List.of(roomId));
+        List<ReviewJpaEntity> roomReviews = reviewRepository.findByRoomIdInOrderByCreatedAtDesc(List.of(roomId)).stream()
+                .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
+                .toList();
         int count = roomReviews.size();
         double avg = roomReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(5.0);
         room.setReviewCount(count);

@@ -21,6 +21,7 @@ public class ReviewDto {
     private int rating;
     private String comment;
     private String landlordReply;
+    private String status;
     private LocalDateTime createdAt;
 }
 

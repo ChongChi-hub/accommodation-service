@@ -23,5 +23,9 @@ public class Review {
 
     private String comment;
     private String landlordReply;
+
+    @Builder.Default
+    private String status = "VISIBLE";
+
     private LocalDateTime createdAt;
 }
