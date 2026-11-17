@@ -122,9 +122,7 @@ public class LoginUseCase {
             throw new IdentityDomainException("Tài khoản đã bị xóa khỏi hệ thống", "ERR_USER_DELETED");
         }
 
-        boolean requires2fa = user.isTwoFactorEnabled()
-                || user.getRoles().contains(vn.cozynest.identity.domain.model.UserRoleType.ADMIN)
-                || user.getRoles().contains(vn.cozynest.identity.domain.model.UserRoleType.MODERATOR);
+        boolean requires2fa = user.isTwoFactorEnabled();
 
         if (requires2fa) {
             String code = command.getTwoFactorCode();

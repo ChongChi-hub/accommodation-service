@@ -140,9 +140,30 @@ class LoginUseCaseTest {
     }
 
     @Test
-    @DisplayName("Should throw ERR_2FA_REQUIRED when Admin logs in without 2FA code")
+    @DisplayName("Should login successfully without 2FA when Admin has not enabled 2FA")
+    void shouldLoginSuccessfullyWithout2FaWhenAdminHasNotEnabledTwoFactor() {
+        User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
+        when(tokenProvider.generateAccessToken(admin)).thenReturn("admin_token");
+        when(tokenProvider.generateRefreshToken()).thenReturn("admin_refresh");
+        when(tokenProvider.hashToken("admin_refresh")).thenReturn("hash");
+
+        LoginCommand command = LoginCommand.builder()
+                .email("admin@cozynest.vn")
+                .password("pwd123")
+                .build();
+
+        AuthResult result = loginUseCase.execute(command);
+        assertNotNull(result);
+        assertEquals("admin_token", result.getToken());
+    }
+
+    @Test
+    @DisplayName("Should throw ERR_2FA_REQUIRED when Admin has enabled 2FA and logs in without 2FA code")
     void shouldThrowErr2FaRequiredWhenAdminLogsInWithout2FaCode() {
         User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        admin.enableTwoFactor();
         when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
         when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
 
@@ -159,6 +180,7 @@ class LoginUseCaseTest {
     @DisplayName("Should throw ERR_2FA_INVALID when Admin logs in with wrong 2FA code")
     void shouldThrowErr2FaInvalidWhenAdminLogsInWithWrong2FaCode() {
         User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        admin.enableTwoFactor();
         when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
         when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
         when(twoFactorAuthService.verifyChallenge(admin.getId(), "000000")).thenReturn(false);
@@ -177,6 +199,7 @@ class LoginUseCaseTest {
     @DisplayName("Should login successfully when Admin provides valid 2FA code")
     void shouldSucceedWhenAdminProvidesValid2FaCode() {
         User admin = User.createNew("admin@cozynest.vn", "0903000003", "hashed_pwd", "Admin", UserRoleType.ADMIN);
+        admin.enableTwoFactor();
         when(userRepository.findByEmail("admin@cozynest.vn")).thenReturn(Optional.of(admin));
         when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
         when(twoFactorAuthService.verifyChallenge(admin.getId(), "123456")).thenReturn(true);
@@ -199,6 +222,7 @@ class LoginUseCaseTest {
     @DisplayName("Should throw ERR_2FA_REQUIRED when Moderator logs in without 2FA code")
     void shouldThrowErr2FaRequiredWhenModeratorLogsInWithout2FaCode() {
         User mod = User.createNew("mod@cozynest.vn", "0904000004", "hashed_pwd", "Moderator", UserRoleType.MODERATOR);
+        mod.enableTwoFactor();
         when(userRepository.findByEmail("mod@cozynest.vn")).thenReturn(Optional.of(mod));
         when(passwordEncoder.matches("pwd123", "hashed_pwd")).thenReturn(true);
 

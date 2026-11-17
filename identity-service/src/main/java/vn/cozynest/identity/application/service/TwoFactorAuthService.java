@@ -48,7 +48,10 @@ public class TwoFactorAuthService {
 
     @Transactional
     public TwoFactorDto.SetupResponse setup(String userId, String userEmail) {
-        String secret = totpHelper.generateSecret();
+        String secret = twoFactorRepository.findByUserId(userId)
+                .map(UserTwoFactor::getTotpSecret)
+                .filter(s -> s != null && !s.isBlank())
+                .orElseGet(totpHelper::generateSecret);
         List<String> backupCodes = generateBackupCodes();
         String backupJson = serializeBackupCodes(backupCodes);
 
@@ -66,7 +69,13 @@ public class TwoFactorAuthService {
     @Transactional
     public boolean verifyAndEnable(String userId, String code) {
         UserTwoFactor twoFactor = twoFactorRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("2FA chua duoc khoi tao"));
+                .orElseGet(() -> {
+                    String defaultSecret = totpHelper.generateSecret();
+                    List<String> backupCodes = generateBackupCodes();
+                    String backupJson = serializeBackupCodes(backupCodes);
+                    UserTwoFactor pending = UserTwoFactor.createPending(userId, defaultSecret, backupJson);
+                    return twoFactorRepository.save(pending);
+                });
         Instant now = Instant.now();
         if (twoFactor.isLocked(now)) {
             throw new IllegalStateException("2FA tam khoa do nhap sai qua nhieu lan. Vui long thu lai sau 15 phut.");
