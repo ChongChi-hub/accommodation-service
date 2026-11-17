@@ -15,6 +15,7 @@ public class KycModerationListItemDto {
     private String fullNameOnId;
     private String idNumberMasked;
     private String status;
+    private String faceStatus;
     private Instant submittedAt;
     private Instant reviewedAt;
     private String reviewedBy;

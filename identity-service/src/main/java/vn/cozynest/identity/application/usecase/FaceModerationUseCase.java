@@ -29,6 +29,7 @@ public class FaceModerationUseCase {
     private final FacePrivateStoragePort storagePort;
     private final FaceCryptoService faceCryptoService;
     private final KycCryptoService kycCryptoService;
+    private final Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public FaceModerationUseCase(
@@ -41,6 +42,21 @@ public class FaceModerationUseCase {
             FacePrivateStoragePort storagePort,
             FaceCryptoService faceCryptoService,
             KycCryptoService kycCryptoService) {
+        this(faceRepository, frameRepository, accessLogRepository, outboxRepository, userVerificationRepository, userRepository, storagePort, faceCryptoService, kycCryptoService, Optional.empty());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public FaceModerationUseCase(
+            FaceVerificationRepository faceRepository,
+            FaceVerificationFrameRepository frameRepository,
+            FaceAccessLogRepository accessLogRepository,
+            FaceEventOutboxRepository outboxRepository,
+            UserVerificationRepository userVerificationRepository,
+            UserRepository userRepository,
+            FacePrivateStoragePort storagePort,
+            FaceCryptoService faceCryptoService,
+            KycCryptoService kycCryptoService,
+            Optional<vn.cozynest.identity.infrastructure.client.IdentityNotificationClient> notificationClient) {
         this.faceRepository = faceRepository;
         this.frameRepository = frameRepository;
         this.accessLogRepository = accessLogRepository;
@@ -50,6 +66,7 @@ public class FaceModerationUseCase {
         this.storagePort = storagePort;
         this.faceCryptoService = faceCryptoService;
         this.kycCryptoService = kycCryptoService;
+        this.notificationClient = notificationClient != null ? notificationClient : Optional.empty();
     }
 
     public FaceModerationDetailDto getFaceDetail(String reviewerId, String reviewerRole, String kycId, String clientIp) {
@@ -165,6 +182,29 @@ public class FaceModerationUseCase {
         }
 
         faceRepository.save(v);
+
+        if (notificationClient.isPresent()) {
+            if ("PASSED".equals(decision)) {
+                notificationClient.get().sendNotification(
+                        v.getUserId(),
+                        "KYC",
+                        "Xác thực khuôn mặt thành công",
+                        "Dữ liệu sinh trắc học khuôn mặt của bạn đã được kiểm duyệt thành công.",
+                        "/dashboard/landlord/kyc"
+                );
+            } else if ("FAILED".equals(decision)) {
+                String note = request.getNote() != null && !request.getNote().isBlank()
+                        ? request.getNote()
+                        : (request.getReasonCode() != null ? request.getReasonCode() : "Không khớp dữ liệu");
+                notificationClient.get().sendNotification(
+                        v.getUserId(),
+                        "KYC",
+                        "Xác thực khuôn mặt không đạt",
+                        "Xác thực khuôn mặt chưa đạt yêu cầu: " + note + ". Vui lòng chụp lại ảnh rõ nét.",
+                        "/dashboard/landlord/kyc"
+                );
+            }
+        }
     }
 
     private FaceVerification findVerificationByKycOrId(String kycOrVerificationId) {
