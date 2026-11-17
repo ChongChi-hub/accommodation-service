@@ -5,7 +5,7 @@
 -- ============================================================
 
 -- Insert Additional Rooms with Realistic 2-Tier Details
-INSERT INTO rooms (
+INSERT IGNORE INTO rooms (
     id, room_uuid, landlord_id, landlord_name, landlord_phone,
     room_type_id, room_type_code, title, slug, description,
     address, province_code, district_code, ward_code, ward_id,
@@ -44,7 +44,7 @@ INSERT INTO rooms (
 ON DUPLICATE KEY UPDATE title=title;
 
 -- 5. Seed Images for Additional Rooms
-INSERT INTO room_images (room_id, image_url, is_primary, display_order) VALUES
+INSERT IGNORE INTO room_images (room_id, image_url, is_primary, display_order) VALUES
 (9, '/uploads/rooms/r9_1.webp', TRUE, 1), (9, '/uploads/rooms/r9_2.webp', FALSE, 2),
 (10, '/uploads/rooms/r10_1.webp', TRUE, 1), (10, '/uploads/rooms/r10_2.webp', FALSE, 2),
 (11, '/uploads/rooms/r11_1.webp', TRUE, 1), (11, '/uploads/rooms/r11_2.webp', FALSE, 2),
@@ -67,7 +67,7 @@ INSERT INTO room_images (room_id, image_url, is_primary, display_order) VALUES
 ON DUPLICATE KEY UPDATE image_url=image_url;
 
 -- 6. Seed Room Amenities
-INSERT INTO room_amenities (room_id, amenity_id) VALUES
+INSERT IGNORE INTO room_amenities (room_id, amenity_id) VALUES
 (9, 1), (9, 2), (9, 3), (9, 5), (9, 8),
 (10, 1), (10, 2), (10, 3), (10, 4), (10, 5), (10, 6), (10, 10),
 (11, 1), (11, 2), (11, 5), (11, 9),
@@ -83,7 +83,7 @@ INSERT INTO room_amenities (room_id, amenity_id) VALUES
 ON DUPLICATE KEY UPDATE room_id=room_id;
 
 -- 7. Seed Room Unit Prices (Điện, Nước, Dịch vụ)
-INSERT INTO room_prices (room_id, label, price, unit, is_metered, meter_type) VALUES
+INSERT IGNORE INTO room_prices (room_id, label, price, unit, is_metered, meter_type) VALUES
 (9, 'Điện tiêu thụ', 3800, 'kWh', TRUE, 'electric'),
 (9, 'Nước sinh hoạt', 28000, 'm³', TRUE, 'water'),
 (9, 'Internet WiFi tốc độ cao', 100000, 'tháng', FALSE, NULL),
@@ -101,7 +101,7 @@ INSERT INTO room_prices (room_id, label, price, unit, is_metered, meter_type) VA
 ON DUPLICATE KEY UPDATE label=label;
 
 -- 8. Seed Room Rules
-INSERT INTO room_rules (room_id, rule_type, rule_text, is_allowed) VALUES
+INSERT IGNORE INTO room_rules (room_id, rule_type, rule_text, is_allowed) VALUES
 (9, 'PET', 'Không cho phép nuôi thú cưng (chó/mèo)', FALSE),
 (9, 'COOKING', 'Được phép nấu ăn bằng bếp điện từ', TRUE),
 (9, 'CURFEW', 'Giờ giấc tự do, cửa khóa vân tay 24/7', TRUE),

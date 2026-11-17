@@ -8,7 +8,7 @@
 -- 3-10 images per room with exact 1 cover and contiguous sort order.
 -- ============================================================
 
-INSERT INTO rooms (
+INSERT IGNORE INTO rooms (
     id, room_uuid, landlord_id, landlord_name, landlord_phone,
     room_type_id, room_type_code, title, title_search, slug, description,
     address, province_code, district_code, ward_code, ward_id,
@@ -112,7 +112,7 @@ INSERT INTO rooms (
 (128, 'room-00000001-0000-0000-0000-000000000128', 1, 'Trần Thị Chủ Trọ', '0902000002', 2, 'MINI_APARTMENT', 'Căn hộ mini 1 phòng ngủ ngõ 19 Liễu Giai cạnh Lotte Center', 'can ho mini 1 phong ngu ngo 19 lieu giai canh lotte center', 'lieu-giai-128', 'Tòa nhà cao cấp có bảo vệ 24/7, thang máy tốc độ cao.', '19 Liễu Giai, Phường Giảng Võ, Hà Nội', 'HN', NULL, 'HN_GV', 22, 21.033, 105.814, 42.0, 2, 7500000, 7500000, 3800.0, 28000.0, 100000.0, 80000.0, 'PUBLISHED', TRUE, TRUE, TRUE, 5.0, 19, 1, '2026-03-01 10:00:00', NULL, NULL, NULL, NULL, 820);
 
 -- Insert Images for rooms 101 to 128 (3 to 6 images per room, exactly 1 cover photo per room)
-INSERT INTO room_images (
+INSERT IGNORE INTO room_images (
     room_id, image_url, storage_key, thumb_key, medium_key, large_key,
     original_filename, content_type, size_bytes, width, height,
     is_cover, sort_order, alt_text, uploaded_by, is_primary, display_order
@@ -240,7 +240,7 @@ INSERT INTO room_images (
 (128, '/uploads/rooms/r128_3.webp', 'rooms/128/img_3.webp', 'rooms/128/img_3_thumb.webp', 'rooms/128/img_3_medium.webp', 'rooms/128/img_3_large.webp', 'img3.jpg', 'image/webp', 190000, 1920, 1080, FALSE, 2, 'Phòng ngủ phong cách hiện đại', 'u-landlord-01', FALSE, 2);
 
 -- Insert status history for demo transitions
-INSERT INTO room_status_history (room_id, from_status, to_status, actor_id, actor_role, reason, created_at) VALUES
+INSERT IGNORE INTO room_status_history (room_id, from_status, to_status, actor_id, actor_role, reason, created_at) VALUES
 (101, 'PENDING_REVIEW', 'PUBLISHED', 'u-mod-01', 'MODERATOR', 'Hồ sơ và thông tin phòng trọ hợp lệ đầy đủ', '2026-02-15 08:30:00'),
 (102, 'PENDING_REVIEW', 'PUBLISHED', 'u-mod-01', 'MODERATOR', 'Phòng đạt tiêu chuẩn chất lượng hình ảnh cao', '2026-02-20 10:15:00'),
 (103, 'PUBLISHED', 'HIDDEN', 'u-landlord-01', 'LANDLORD', 'Tạm thời ẩn để sơn sửa tường và nâng cấp máy lạnh', '2026-03-01 09:00:00'),

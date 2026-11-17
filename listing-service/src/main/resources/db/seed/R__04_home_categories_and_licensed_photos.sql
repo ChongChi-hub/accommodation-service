@@ -10,7 +10,7 @@ DELETE FROM room_amenities WHERE room_id BETWEEN 201 AND 232;
 DELETE FROM room_images WHERE room_id BETWEEN 201 AND 232;
 DELETE FROM rooms WHERE id BETWEEN 201 AND 232;
 
-INSERT INTO rooms (
+INSERT IGNORE INTO rooms (
     id, room_uuid, landlord_id, landlord_name, landlord_phone,
     room_type_id, room_type_code, title, title_search, slug, description,
     address, province_code, district_code, ward_code, ward_id,
@@ -259,7 +259,7 @@ INSERT INTO rooms (
 -- SEED IMAGES FOR ROOMS 201-232 (EACH ROOM HAS 3-4 LICENSED WEBP PHOTOS)
 -- Exactly 1 is_cover=1 AND is_primary=1 per room!
 -- ==============================================================================
-INSERT INTO room_images (
+INSERT IGNORE INTO room_images (
     room_id, image_url, thumb_key, medium_key, large_key, is_cover, is_primary, sort_order, display_order, created_at
 )
 SELECT
@@ -333,7 +333,7 @@ WHERE r.id BETWEEN 201 AND 232;
 -- ==============================================================================
 -- SEED AMENITIES FOR ROOMS 201-232
 -- ==============================================================================
-INSERT INTO room_amenities (room_id, amenity_id)
+INSERT IGNORE INTO room_amenities (room_id, amenity_id)
 SELECT r.id, a.id
 FROM rooms r
 CROSS JOIN amenities a
