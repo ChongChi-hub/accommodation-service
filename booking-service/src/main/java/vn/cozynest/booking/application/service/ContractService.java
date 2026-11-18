@@ -143,12 +143,18 @@ public class ContractService {
 
     @Transactional(readOnly = true)
     public List<ContractDto> getContractsByLandlord(String landlordId) {
-        return contractRepository.findByLandlordId(landlordId).stream().map(ContractDto::from).toList();
+        java.util.Set<String> aliases = LandlordIdentityResolver.resolveAliases(landlordId);
+        return aliases.stream()
+                .flatMap(id -> contractRepository.findByLandlordId(id).stream())
+                .collect(java.util.stream.Collectors.toMap(Contract::getId, c -> c, (a, b) -> a, java.util.LinkedHashMap::new))
+                .values().stream()
+                .map(ContractDto::from)
+                .toList();
     }
 
     public ContractDto updateDraftContract(String contractId, String actorId, boolean isAdmin, CreateContractDto dto) {
         Contract contract = findContractOrThrow(contractId);
-        if (!isAdmin && !contract.getLandlordId().equals(actorId)) {
+        if (!isAdmin && !LandlordIdentityResolver.matches(contract.getLandlordId(), actorId)) {
             throw new AccessDeniedException("Chi chu tro moi duoc sua ban nhap hop dong");
         }
         contract.updateDraft(dto.startDate(), dto.endDate(), dto.monthlyRent(), dto.depositAmount(), dto.terms());
@@ -159,7 +165,7 @@ public class ContractService {
 
     public ContractDto uploadPhysicalSignedContract(String contractId, String actorId, boolean isAdmin, String scanUrl) {
         Contract contract = findContractOrThrow(contractId);
-        if (!isAdmin && !contract.getLandlordId().equals(actorId)) {
+        if (!isAdmin && !LandlordIdentityResolver.matches(contract.getLandlordId(), actorId)) {
             throw new AccessDeniedException("Chi chu tro moi co quyen tai len ban scan hop dong da ky");
         }
         if (scanUrl == null || scanUrl.isBlank()) {
@@ -316,7 +322,7 @@ public class ContractService {
     }
 
     private void assertParticipantOrAdmin(Contract c, String actorId, boolean isAdmin) {
-        if (!isAdmin && !c.getTenantId().equals(actorId) && !c.getLandlordId().equals(actorId)) {
+        if (!isAdmin && !c.getTenantId().equals(actorId) && !LandlordIdentityResolver.matches(c.getLandlordId(), actorId)) {
             throw new AccessDeniedException("Ban khong co quyen truy cap hop dong nay");
         }
     }

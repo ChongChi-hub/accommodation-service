@@ -116,10 +116,11 @@ public class LandlordAppointmentService {
         checkVersion(req != null ? req.version() : null, appointment.getVersion());
 
         boolean force = req != null && Boolean.TRUE.equals(req.force());
+        String lockLandlordId = appointment.getLandlordId() != null ? appointment.getLandlordId() : landlordId;
         appointmentRepository.lockOverlappingPending(
-                landlordId, appointment.getScheduledStart(), appointment.getScheduledEnd());
+                lockLandlordId, appointment.getScheduledStart(), appointment.getScheduledEnd());
         List<ViewingAppointment> overlapping = appointmentRepository.findOverlappingConfirmedForUpdate(
-                landlordId, appointment.getScheduledStart(), appointment.getScheduledEnd(), appointment.getId());
+                lockLandlordId, appointment.getScheduledStart(), appointment.getScheduledEnd(), appointment.getId());
 
         if (!overlapping.isEmpty() && !force) {
             ViewingAppointment conflict = overlapping.get(0);
@@ -177,6 +178,7 @@ public class LandlordAppointmentService {
         declinePayload.put("landlordId", landlordId);
         declinePayload.put("tenantId", appointment.getTenantId());
         declinePayload.put("roomId", appointment.getRoomId());
+        declinePayload.put("cancelledBy", "LANDLORD");
         declinePayload.put("reasonCode", req.reasonCode().name());
         declinePayload.put("reasonNote", req.reasonNote() != null ? req.reasonNote() : "");
         if (appointment.getRoomTitle() != null) declinePayload.put("roomTitle", appointment.getRoomTitle());
