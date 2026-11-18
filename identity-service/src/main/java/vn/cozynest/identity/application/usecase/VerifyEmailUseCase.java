@@ -111,5 +111,13 @@ public class VerifyEmailUseCase {
         user.verifyEmailNow();
         userRepository.save(user);
     }
+
+    @Transactional
+    public void verifyUserEmail(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IdentityDomainException("Người dùng không tồn tại", "ERR_AUTH_USER_NOT_FOUND"));
+        user.verifyEmailNow();
+        userRepository.save(user);
+    }
 }
 

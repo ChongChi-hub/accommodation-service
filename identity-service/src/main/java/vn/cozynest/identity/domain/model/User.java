@@ -68,8 +68,10 @@ public class User {
 
     public static User createNew(String email, String phone, String passwordHash, String fullName, UserRoleType role) {
         Set<UserRoleType> roles = new HashSet<>();
-        UserRoleType primaryRole = role != null ? role : UserRoleType.TENANT;
-        roles.add(primaryRole);
+        roles.add(UserRoleType.TENANT);
+        if (role != null) {
+            roles.add(role);
+        }
         return new User(
                 UUID.randomUUID().toString(),
                 email,
@@ -90,8 +92,10 @@ public class User {
 
     public static User createNewGoogleUser(String email, String fullName, UserRoleType role) {
         Set<UserRoleType> roles = new HashSet<>();
-        UserRoleType primaryRole = role != null ? role : UserRoleType.TENANT;
-        roles.add(primaryRole);
+        roles.add(UserRoleType.TENANT);
+        if (role != null) {
+            roles.add(role);
+        }
         return new User(
                 UUID.randomUUID().toString(),
                 email,

@@ -13,6 +13,7 @@ import vn.cozynest.identity.application.dto.UserProfileResponse;
 import vn.cozynest.identity.application.usecase.GetProfileUseCase;
 import vn.cozynest.identity.application.usecase.LandlordApplicationUseCase;
 import vn.cozynest.identity.application.usecase.UserProfileUseCase;
+import vn.cozynest.identity.application.usecase.VerifyEmailUseCase;
 
 @RestController
 @RequestMapping({"/api/v1/me", "/api/v1/users/me"})
@@ -21,15 +22,18 @@ public class MeController {
     private final GetProfileUseCase getProfileUseCase;
     private final LandlordApplicationUseCase landlordApplicationUseCase;
     private final UserProfileUseCase userProfileUseCase;
+    private final VerifyEmailUseCase verifyEmailUseCase;
 
     public MeController(
             GetProfileUseCase getProfileUseCase,
             LandlordApplicationUseCase landlordApplicationUseCase,
-            UserProfileUseCase userProfileUseCase
+            UserProfileUseCase userProfileUseCase,
+            VerifyEmailUseCase verifyEmailUseCase
     ) {
         this.getProfileUseCase = getProfileUseCase;
         this.landlordApplicationUseCase = landlordApplicationUseCase;
         this.userProfileUseCase = userProfileUseCase;
+        this.verifyEmailUseCase = verifyEmailUseCase;
     }
 
     @GetMapping
@@ -47,6 +51,14 @@ public class MeController {
         String userId = (String) authentication.getPrincipal();
         UserProfileResponse response = userProfileUseCase.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Cap nhat ho so ca nhan thanh cong", response));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<UserDto>> verifyMyEmail(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        verifyEmailUseCase.verifyUserEmail(userId);
+        UserDto profile = getProfileUseCase.execute(userId);
+        return ResponseEntity.ok(ApiResponse.success("Xác minh email thành công", profile));
     }
 
     @PostMapping("/landlord-application")
