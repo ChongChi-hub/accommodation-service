@@ -45,13 +45,26 @@ public class InternalRoomUsageController {
     @GetMapping("/{roomId}/usage")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getRoomUsage(
             @PathVariable String roomId,
+            @RequestParam(value = "roomUuid", required = false) String roomUuid,
             @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
         if (serviceKey == null || !isKeyValid(serviceKey)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Truy cập nội bộ không hợp lệ", "ERR_UNAUTHORIZED"));
         }
-        boolean hasActiveContract = contractRepository.findActiveByRoomId(roomId).isPresent();
-        boolean hasUpcomingAppointment = appointmentRepository.countActiveAppointmentsByRoomId(roomId, Instant.now()) > 0;
+
+        java.util.Set<String> roomIdentifiers = new java.util.HashSet<>();
+        if (roomId != null && !roomId.isBlank()) {
+            roomIdentifiers.add(roomId.trim());
+        }
+        if (roomUuid != null && !roomUuid.isBlank()) {
+            roomIdentifiers.add(roomUuid.trim());
+        }
+
+        Instant now = Instant.now();
+        boolean hasActiveContract = roomIdentifiers.stream()
+                .anyMatch(id -> contractRepository.findActiveByRoomId(id).isPresent());
+        boolean hasUpcomingAppointment = roomIdentifiers.stream()
+                .anyMatch(id -> appointmentRepository.countActiveAppointmentsByRoomId(id, now) > 0);
         boolean inActiveUse = hasActiveContract || hasUpcomingAppointment;
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(

@@ -5,7 +5,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.common.dto.ApiResponse;
+import vn.cozynest.listing.infrastructure.persistence.entity.AmenityJpaEntity;
+import vn.cozynest.listing.infrastructure.persistence.entity.LandlordSnapshotJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.ReviewJpaEntity;
+import vn.cozynest.listing.infrastructure.persistence.entity.RoomImageJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.RoomJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.entity.RoomStatusHistoryJpaEntity;
 import vn.cozynest.listing.infrastructure.persistence.repository.SpringDataLandlordSnapshotRepository;
@@ -31,15 +34,39 @@ public class AdminListingController {
 
     public record AdminRoomDto(
             Long id,
+            String roomUuid,
             String title,
             String landlordName,
+            String landlordPhone,
+            Long landlordId,
             java.math.BigDecimal price,
+            java.math.BigDecimal deposit,
+            java.math.BigDecimal electricityCost,
+            java.math.BigDecimal waterCost,
+            java.math.BigDecimal internetCost,
+            java.math.BigDecimal serviceCost,
             double area,
             String address,
+            String provinceCode,
+            String districtCode,
+            String wardCode,
+            String description,
+            String roomTypeCode,
+            Integer floor,
+            Integer bedrooms,
+            Integer bathrooms,
+            Integer maxOccupants,
+            Boolean allowPets,
+            Boolean allowCooking,
+            String curfew,
+            String houseRules,
+            List<String> images,
+            List<String> amenities,
             String submittedAt,
             String status,
             String riskLevel,
-            String riskReasons
+            String riskReasons,
+            Boolean verifiedOwnership
     ) {}
 
     public record AdminReviewDto(
@@ -51,41 +78,98 @@ public class AdminListingController {
             String status
     ) {}
 
+    private AdminRoomDto toAdminRoomDto(RoomJpaEntity r) {
+        String st = "APPROVED";
+        if ("REJECTED".equalsIgnoreCase(r.getStatus())) {
+            st = "REJECTED";
+        } else if ("PENDING_REVIEW".equalsIgnoreCase(r.getStatus()) || "PENDING".equalsIgnoreCase(r.getStatus()) || !r.isApproved()) {
+            st = "PENDING";
+        }
+        String submitted = r.getCreatedAt() != null ? r.getCreatedAt().toString() : "";
+        String resolvedLandlordName = r.getLandlordName();
+        if (resolvedLandlordName == null || resolvedLandlordName.isBlank() || resolvedLandlordName.matches("(?i).*\\d{5,}.*")) {
+            resolvedLandlordName = landlordSnapshotRepository.findByLandlordId(r.getLandlordId())
+                    .map(LandlordSnapshotJpaEntity::getName)
+                    .filter(n -> n != null && !n.isBlank())
+                    .orElse(resolvedLandlordName != null && !resolvedLandlordName.isBlank() ? resolvedLandlordName : "Chủ trọ");
+        }
+        String resolvedLandlordPhone = r.getLandlordPhone();
+        if (resolvedLandlordPhone == null || resolvedLandlordPhone.isBlank()) {
+            resolvedLandlordPhone = landlordSnapshotRepository.findByLandlordId(r.getLandlordId())
+                    .map(LandlordSnapshotJpaEntity::getPhone)
+                    .filter(p -> p != null && !p.isBlank())
+                    .orElse(null);
+        }
+
+        List<String> images = r.getImages() != null ? r.getImages().stream()
+                .sorted(Comparator.comparing(RoomImageJpaEntity::isCover).reversed()
+                        .thenComparing(RoomImageJpaEntity::isPrimary).reversed()
+                        .thenComparing(img -> img.getSortOrder() != null ? img.getSortOrder() : 0)
+                        .thenComparing(img -> img.getDisplayOrder() != null ? img.getDisplayOrder() : 0))
+                .map(RoomImageJpaEntity::getImageUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .toList() : List.of();
+
+        List<String> amenities = r.getAmenities() != null ? r.getAmenities().stream()
+                .map(AmenityJpaEntity::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .toList() : List.of();
+
+        return new AdminRoomDto(
+                r.getId(),
+                r.getRoomUuid(),
+                r.getTitle(),
+                resolvedLandlordName,
+                resolvedLandlordPhone,
+                r.getLandlordId(),
+                r.getPrice(),
+                r.getDeposit(),
+                r.getElectricityCost(),
+                r.getWaterCost(),
+                r.getInternetCost(),
+                r.getServiceCost(),
+                r.getArea(),
+                r.getAddress(),
+                r.getProvinceCode(),
+                r.getDistrictCode(),
+                r.getWardCode(),
+                r.getDescription(),
+                r.getRoomTypeCode(),
+                r.getFloor(),
+                r.getBedrooms(),
+                r.getBathrooms(),
+                r.getMaxOccupants(),
+                r.isAllowPets(),
+                r.isAllowCooking(),
+                r.getCurfew(),
+                r.getHouseRules(),
+                images,
+                amenities,
+                submitted,
+                st,
+                r.getRiskLevel() != null ? r.getRiskLevel() : "NORMAL",
+                r.getRiskReasons(),
+                r.isVerifiedOwnership()
+        );
+    }
+
     @GetMapping("/rooms")
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<AdminRoomDto>>> getAdminRooms() {
         List<RoomJpaEntity> all = roomRepository.findAll();
         List<AdminRoomDto> list = all.stream()
                 .filter(r -> r.getStatus() != null && !"DRAFT".equalsIgnoreCase(r.getStatus()))
-                .map(r -> {
-            String st = "APPROVED";
-            if ("REJECTED".equalsIgnoreCase(r.getStatus())) {
-                st = "REJECTED";
-            } else if ("PENDING_REVIEW".equalsIgnoreCase(r.getStatus()) || "PENDING".equalsIgnoreCase(r.getStatus()) || !r.isApproved()) {
-                st = "PENDING";
-            }
-            String submitted = r.getCreatedAt() != null ? r.getCreatedAt().toString() : "";
-            String resolvedLandlordName = r.getLandlordName();
-            if (resolvedLandlordName == null || resolvedLandlordName.isBlank() || resolvedLandlordName.matches("(?i).*\\d{5,}.*")) {
-                resolvedLandlordName = landlordSnapshotRepository.findByLandlordId(r.getLandlordId())
-                        .map(ls -> ls.getName())
-                        .filter(n -> n != null && !n.isBlank())
-                        .orElse(resolvedLandlordName != null && !resolvedLandlordName.isBlank() ? resolvedLandlordName : "Chủ trọ");
-            }
-            return new AdminRoomDto(
-                    r.getId(),
-                    r.getTitle(),
-                    resolvedLandlordName,
-                    r.getPrice(),
-                    r.getArea(),
-                    r.getAddress(),
-                    submitted,
-                    st,
-                    r.getRiskLevel() != null ? r.getRiskLevel() : "NORMAL",
-                    r.getRiskReasons()
-            );
-        }).toList();
+                .map(this::toAdminRoomDto)
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(list));
+    }
+
+    @GetMapping("/rooms/{id}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<AdminRoomDto>> getAdminRoomById(@PathVariable Long id) {
+        RoomJpaEntity room = roomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay phong: " + id));
+        return ResponseEntity.ok(ApiResponse.success(toAdminRoomDto(room)));
     }
 
     @PostMapping("/rooms/{id}/approve")
