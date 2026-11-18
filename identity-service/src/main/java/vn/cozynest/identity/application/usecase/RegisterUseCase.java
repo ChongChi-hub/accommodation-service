@@ -70,6 +70,7 @@ public class RegisterUseCase {
 
         UserRoleType primaryRole = "LANDLORD".equals(roleStr) ? UserRoleType.LANDLORD : UserRoleType.TENANT;
         User newUser = User.createNew(normalizedEmail, normalizedPhone, passwordHash, normalizedFullName, primaryRole);
+        newUser.verifyEmailNow();
         User savedUser = userRepository.save(newUser);
 
         // Choosing LANDLORD creates an application in AWAITING_KYC

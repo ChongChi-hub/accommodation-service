@@ -109,9 +109,15 @@ class AuthFlowIntegrationTest {
         UserVerificationRepository verificationRepository = mock(UserVerificationRepository.class);
         when(verificationRepository.findById(anyString())).thenAnswer(i -> Optional.ofNullable(verificationDb.get(i.getArgument(0))));
         when(verificationRepository.findByUserId(anyString())).thenAnswer(i -> verificationDb.values().stream().filter(v -> v.getUserId().equals(i.getArgument(0))).findFirst());
+        final java.util.concurrent.atomic.AtomicLong kycVersionTracker = new java.util.concurrent.atomic.AtomicLong(0);
         when(verificationRepository.save(any(UserVerification.class))).thenAnswer(i -> {
             UserVerification v = i.getArgument(0);
-            v.setVersion(v.getVersion() + 1);
+            synchronized (kycVersionTracker) {
+                if (v.getVersion() != null && v.getVersion() < kycVersionTracker.get()) {
+                    throw new IdentityDomainException("Ho so da duoc thay doi boi kiem duyet vien khac", "ERR_KYC_VERSION_CONFLICT");
+                }
+                v.setVersion(kycVersionTracker.incrementAndGet());
+            }
             verificationDb.put(v.getId(), v);
             return v;
         });
