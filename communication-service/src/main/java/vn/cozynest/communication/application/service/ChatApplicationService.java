@@ -1,23 +1,32 @@
 package vn.cozynest.communication.application.service;
 
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.communication.application.dto.*;
+import vn.cozynest.communication.application.exception.ChatRateLimitException;
+import vn.cozynest.communication.application.exception.ConversationNotFoundException;
 import vn.cozynest.communication.domain.model.ChatMessage;
 import vn.cozynest.communication.domain.model.Conversation;
 import vn.cozynest.communication.domain.model.ConversationParticipant;
 import vn.cozynest.communication.domain.repository.ChatMessageRepository;
 import vn.cozynest.communication.domain.repository.ConversationRepository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ChatApplicationService {
 
+    private static final int MAX_MESSAGE_LENGTH = 2000;
+    private static final int RATE_LIMIT_MAX_MESSAGES = 20;
+    private static final long RATE_LIMIT_WINDOW_MS = 10_000L;
+
     private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final Map<String, Deque<Long>> rateLimitBuckets = new ConcurrentHashMap<>();
 
     public ChatApplicationService(
             ConversationRepository conversationRepository,
@@ -65,7 +74,6 @@ public class ChatApplicationService {
             set.add("2");
             set.add("u-landlord-2");
             set.add("u-landlord-02");
-            set.add("u-hao-01");
         } else if ("u-tenant-01".equals(canonical)) {
             set.add("u-tenant-1");
             set.add("u-tenant-01");
@@ -153,13 +161,16 @@ public class ChatApplicationService {
         Set<String> currentAliases = getUserAliases(currentUserId);
         Set<String> recipientAliases = getUserAliases(request.getRecipientId());
 
-        Optional<Conversation> existing = Optional.empty();
-        for (String cAlias : currentAliases) {
-            for (String rAlias : recipientAliases) {
-                existing = conversationRepository.findByParticipants(cAlias, rAlias, request.getRoomId());
+        String pairKey = buildPairKey(canonicalCurrentUserId, canonicalRecipientId, request.getRoomId());
+        Optional<Conversation> existing = conversationRepository.findByParticipantPairKey(pairKey);
+        if (existing.isEmpty()) {
+            for (String cAlias : currentAliases) {
+                for (String rAlias : recipientAliases) {
+                    existing = conversationRepository.findByParticipants(cAlias, rAlias, request.getRoomId());
+                    if (existing.isPresent()) break;
+                }
                 if (existing.isPresent()) break;
             }
-            if (existing.isPresent()) break;
         }
 
         Conversation conversation;
@@ -175,51 +186,56 @@ public class ChatApplicationService {
             String convId = "conv-" + UUID.randomUUID().toString().substring(0, 8);
             LocalDateTime now = LocalDateTime.now();
 
-            conversation = Conversation.builder()
+            Conversation candidate = Conversation.builder()
                     .id(convId)
                     .roomId(request.getRoomId())
+                    .participantPairKey(pairKey)
                     .roomTitle(request.getRoomTitle())
                     .lastMessageContent(request.getInitialMessage())
                     .lastMessageTime(request.getInitialMessage() != null ? now : null)
                     .createdAt(now)
                     .updatedAt(now)
                     .build();
-            conversationRepository.save(conversation);
+            try {
+                conversation = conversationRepository.save(candidate);
+                // Create current user participant
+                String senderRole = currentRole != null && !currentRole.isBlank() ? currentRole : "TENANT";
+                String senderName = request.getSenderName();
+                if (senderName == null || senderName.isBlank()) {
+                    senderName = "Người dùng " + canonicalCurrentUserId;
+                }
+                ConversationParticipant senderParticipant = ConversationParticipant.builder()
+                        .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
+                        .conversationId(convId)
+                        .userId(canonicalCurrentUserId)
+                        .role(senderRole)
+                        .userName(senderName)
+                        .lastReadAt(now)
+                        .joinedAt(now)
+                        .build();
+                conversationRepository.saveParticipant(senderParticipant);
 
-            // Create current user participant
-            String senderRole = currentRole != null && !currentRole.isBlank() ? currentRole : "TENANT";
-            String senderName = request.getSenderName();
-            if (senderName == null || senderName.isBlank()) {
-                senderName = "Người dùng " + canonicalCurrentUserId;
+                // Create recipient participant
+                String recRole = request.getRecipientRole() != null && !request.getRecipientRole().isBlank()
+                        ? request.getRecipientRole()
+                        : ("TENANT".equals(senderRole) ? "LANDLORD" : "TENANT");
+                String recName = request.getRecipientName();
+                if (recName == null || recName.isBlank()) {
+                    recName = "Người dùng " + canonicalRecipientId;
+                }
+                ConversationParticipant recParticipant = ConversationParticipant.builder()
+                        .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
+                        .conversationId(convId)
+                        .userId(canonicalRecipientId)
+                        .role(recRole)
+                        .userName(recName)
+                        .joinedAt(now)
+                        .build();
+                conversationRepository.saveParticipant(recParticipant);
+            } catch (DataIntegrityViolationException raceEx) {
+                conversation = conversationRepository.findByParticipantPairKey(pairKey)
+                        .orElseThrow(() -> raceEx);
             }
-            ConversationParticipant senderParticipant = ConversationParticipant.builder()
-                    .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
-                    .conversationId(convId)
-                    .userId(canonicalCurrentUserId)
-                    .role(senderRole)
-                    .userName(senderName)
-                    .lastReadAt(now)
-                    .joinedAt(now)
-                    .build();
-            conversationRepository.saveParticipant(senderParticipant);
-
-            // Create recipient participant
-            String recRole = request.getRecipientRole() != null && !request.getRecipientRole().isBlank()
-                    ? request.getRecipientRole()
-                    : ("TENANT".equals(senderRole) ? "LANDLORD" : "TENANT");
-            String recName = request.getRecipientName();
-            if (recName == null || recName.isBlank()) {
-                recName = "Người dùng " + canonicalRecipientId;
-            }
-            ConversationParticipant recParticipant = ConversationParticipant.builder()
-                    .id("cp-" + UUID.randomUUID().toString().substring(0, 8))
-                    .conversationId(convId)
-                    .userId(canonicalRecipientId)
-                    .role(recRole)
-                    .userName(recName)
-                    .joinedAt(now)
-                    .build();
-            conversationRepository.saveParticipant(recParticipant);
         }
 
         // If there is an initial message, send it
@@ -270,13 +286,22 @@ public class ChatApplicationService {
 
     @Transactional
     public List<ChatMessageDto> getMessages(String currentUserId, String conversationId, int limit) {
+        return getMessages(currentUserId, conversationId, limit, null);
+    }
+
+    @Transactional
+    public List<ChatMessageDto> getMessages(String currentUserId, String conversationId, int limit, LocalDateTime before) {
         verifyParticipant(currentUserId, conversationId);
 
-        // Mark as read
-        markAsRead(currentUserId, conversationId);
+        // Mark as read only on initial/latest fetch
+        if (before == null) {
+            markAsRead(currentUserId, conversationId);
+        }
 
         Set<String> aliases = getUserAliases(currentUserId);
-        List<ChatMessage> messages = chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId, limit);
+        List<ChatMessage> messages = before == null
+                ? chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId, limit)
+                : chatMessageRepository.findByConversationIdBefore(conversationId, before, limit);
         List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversationId);
         Map<String, String> namesByUserId = new HashMap<>();
         for (ConversationParticipant cp : participants) {
@@ -305,6 +330,15 @@ public class ChatApplicationService {
     public ChatMessageDto sendMessage(String currentUserId, String conversationId, SendMessageRequest request) {
         verifyParticipant(currentUserId, conversationId);
 
+        String rawContent = request.getContent() != null ? request.getContent().trim() : "";
+        if (rawContent.isEmpty()) {
+            throw new IllegalArgumentException("Noi dung tin nhan khong duoc de trong.");
+        }
+        if (rawContent.length() > MAX_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("Tin nhan vuot qua gioi han " + MAX_MESSAGE_LENGTH + " ky tu.");
+        }
+        enforceRateLimit(resolveCanonicalUserId(currentUserId));
+
         LocalDateTime now = LocalDateTime.now();
         String messageId = "msg-" + UUID.randomUUID().toString().substring(0, 8);
         String canonicalUserId = resolveCanonicalUserId(currentUserId);
@@ -313,7 +347,7 @@ public class ChatApplicationService {
                 .id(messageId)
                 .conversationId(conversationId)
                 .senderId(canonicalUserId)
-                .content(request.getContent().trim())
+                .content(rawContent)
                 .type(request.getType() != null ? request.getType() : "TEXT")
                 .read(false)
                 .createdAt(now)
@@ -367,7 +401,28 @@ public class ChatApplicationService {
         List<ConversationParticipant> participants = conversationRepository.findParticipantsByConversationId(conversationId);
         boolean isMember = participants.stream().anyMatch(p -> aliases.contains(p.getUserId()));
         if (!isMember) {
-            throw new AccessDeniedException("Bạn không có quyền truy cập vào cuộc trò chuyện này.");
+            throw new ConversationNotFoundException(conversationId);
+        }
+    }
+
+    public static String buildPairKey(String userA, String userB, String roomId) {
+        String first = userA.compareTo(userB) <= 0 ? userA : userB;
+        String second = userA.compareTo(userB) <= 0 ? userB : userA;
+        String roomPart = (roomId != null && !roomId.isBlank()) ? roomId.trim() : "direct";
+        return first + "|" + second + "|" + roomPart;
+    }
+
+    private void enforceRateLimit(String userId) {
+        long nowMs = Instant.now().toEpochMilli();
+        Deque<Long> bucket = rateLimitBuckets.computeIfAbsent(userId, k -> new ArrayDeque<>());
+        synchronized (bucket) {
+            while (!bucket.isEmpty() && nowMs - bucket.peekFirst() > RATE_LIMIT_WINDOW_MS) {
+                bucket.pollFirst();
+            }
+            if (bucket.size() >= RATE_LIMIT_MAX_MESSAGES) {
+                throw new ChatRateLimitException("Ban dang gui tin nhan qua nhanh. Vui long thu lai sau giay lat.");
+            }
+            bucket.addLast(nowMs);
         }
     }
 }

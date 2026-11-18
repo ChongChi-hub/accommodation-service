@@ -45,10 +45,13 @@ public class ChatController {
     public ResponseEntity<ApiResponse<List<ChatMessageDto>>> getMessages(
             Authentication authentication,
             @PathVariable String conversationId,
-            @RequestParam(defaultValue = "50") int limit
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) java.time.LocalDateTime before
     ) {
         String userId = extractUserId(authentication);
-        List<ChatMessageDto> messages = chatApplicationService.getMessages(userId, conversationId, limit);
+        List<ChatMessageDto> messages = before == null
+                ? chatApplicationService.getMessages(userId, conversationId, limit)
+                : chatApplicationService.getMessages(userId, conversationId, limit, before);
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 

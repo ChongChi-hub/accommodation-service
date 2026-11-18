@@ -45,6 +45,11 @@ public class ConversationRepositoryImpl implements ConversationRepository {
     }
 
     @Override
+    public Optional<Conversation> findByParticipantPairKey(String pairKey) {
+        return conversationJpaRepo.findByParticipantPairKey(pairKey).map(this::toDomain);
+    }
+
+    @Override
     public Conversation save(Conversation domain) {
         ConversationJpaEntity entity = toJpa(domain);
         ConversationJpaEntity saved = conversationJpaRepo.save(entity);
@@ -90,6 +95,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
         return Conversation.builder()
                 .id(entity.getId())
                 .roomId(entity.getRoomId())
+                .participantPairKey(entity.getParticipantPairKey())
                 .roomTitle(entity.getRoomTitle())
                 .lastMessageContent(entity.getLastMessageContent())
                 .lastMessageTime(entity.getLastMessageTime())
@@ -102,6 +108,7 @@ public class ConversationRepositoryImpl implements ConversationRepository {
         return ConversationJpaEntity.builder()
                 .id(domain.getId())
                 .roomId(domain.getRoomId())
+                .participantPairKey(domain.getParticipantPairKey())
                 .roomTitle(domain.getRoomTitle())
                 .lastMessageContent(domain.getLastMessageContent())
                 .lastMessageTime(domain.getLastMessageTime())

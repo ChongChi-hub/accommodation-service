@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface SpringDataConversationJpaRepository extends JpaRepository<ConversationJpaEntity, String> {
 
+    Optional<ConversationJpaEntity> findByParticipantPairKey(String participantPairKey);
+
     @Query("""
         SELECT c FROM ConversationJpaEntity c
         WHERE c.id IN (

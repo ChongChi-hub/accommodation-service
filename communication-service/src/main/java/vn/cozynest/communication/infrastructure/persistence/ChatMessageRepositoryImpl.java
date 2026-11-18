@@ -33,6 +33,20 @@ public class ChatMessageRepositoryImpl implements ChatMessageRepository {
     }
 
     @Override
+    public List<ChatMessage> findByConversationIdBefore(String conversationId, LocalDateTime before, int limit) {
+        if (before == null) {
+            return findByConversationIdOrderByCreatedAtAsc(conversationId, limit);
+        }
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        List<ChatMessage> desc = messageJpaRepo.findOlderMessages(conversationId, before, PageRequest.of(0, safeLimit))
+                .stream()
+                .map(this::toDomain)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+        java.util.Collections.reverse(desc);
+        return desc;
+    }
+
+    @Override
     public long countUnreadMessages(String conversationId, String userId) {
         return messageJpaRepo.countUnreadMessages(conversationId, userId);
     }

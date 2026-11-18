@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class Conversation {
     private String id;
     private String roomId;
+    private String participantPairKey;
     private String roomTitle;
     private String lastMessageContent;
     private LocalDateTime lastMessageTime;

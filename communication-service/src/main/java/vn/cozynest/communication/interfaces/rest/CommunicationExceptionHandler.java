@@ -9,12 +9,42 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import vn.cozynest.communication.application.exception.ChatRateLimitException;
+import vn.cozynest.communication.application.exception.ConversationNotFoundException;
 import vn.cozynest.communication.application.exception.NotificationNotFoundException;
 
 import java.net.URI;
 
 @RestControllerAdvice
 public class CommunicationExceptionHandler {
+
+    @ExceptionHandler(ConversationNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleConversationNotFound(
+            ConversationNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setType(URI.create("https://cozynest.vn/errors/conversation-not-found"));
+        problem.setTitle("Conversation Not Found");
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
+
+    @ExceptionHandler(ChatRateLimitException.class)
+    public ResponseEntity<ProblemDetail> handleChatRateLimit(
+            ChatRateLimitException ex,
+            HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+        problem.setType(URI.create("https://cozynest.vn/errors/chat-rate-limited"));
+        problem.setTitle("Too Many Requests");
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
 
     @ExceptionHandler(NotificationNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleNotificationNotFound(

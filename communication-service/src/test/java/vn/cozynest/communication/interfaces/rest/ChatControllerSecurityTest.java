@@ -83,12 +83,11 @@ class ChatControllerSecurityTest {
                 UsernamePasswordAuthenticationToken attackerAuth = auth("u-attacker", "TENANT");
 
                 when(chatApplicationService.getMessages(eq("u-attacker"), eq("conv-private"), anyInt()))
-                                .thenThrow(new AccessDeniedException(
-                                                "Bạn không có quyền truy cập vào cuộc trò chuyện này."));
+                                .thenThrow(new vn.cozynest.communication.application.exception.ConversationNotFoundException("conv-private"));
 
                 mockMvc.perform(get("/api/v1/chat/conversations/conv-private/messages").principal(attackerAuth))
-                                .andExpect(status().isForbidden())
-                                .andExpect(jsonPath("$.title").value("Forbidden"));
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.title").value("Conversation Not Found"));
         }
 
         @Test

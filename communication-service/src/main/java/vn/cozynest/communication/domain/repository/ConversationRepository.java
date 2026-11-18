@@ -11,6 +11,7 @@ public interface ConversationRepository {
     Optional<Conversation> findById(String id);
     List<Conversation> findByUserId(String userId);
     Optional<Conversation> findByParticipants(String userId1, String userId2, String roomId);
+    default Optional<Conversation> findByParticipantPairKey(String pairKey) { return Optional.empty(); }
     Conversation save(Conversation conversation);
     List<ConversationParticipant> findParticipantsByConversationId(String conversationId);
     Optional<ConversationParticipant> findParticipant(String conversationId, String userId);

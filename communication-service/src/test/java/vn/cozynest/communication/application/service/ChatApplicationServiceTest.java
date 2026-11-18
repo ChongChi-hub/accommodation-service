@@ -3,8 +3,10 @@ package vn.cozynest.communication.application.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.dao.DataIntegrityViolationException;
 import vn.cozynest.communication.application.dto.*;
+import vn.cozynest.communication.application.exception.ChatRateLimitException;
+import vn.cozynest.communication.application.exception.ConversationNotFoundException;
 import vn.cozynest.communication.domain.model.ChatMessage;
 import vn.cozynest.communication.domain.model.Conversation;
 import vn.cozynest.communication.domain.model.ConversationParticipant;
@@ -79,18 +81,17 @@ class ChatApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Kiểm tra IDOR: Không phải thành viên tham gia hội thoại thì bị ném AccessDeniedException")
-    void idor_check_throwsAccessDeniedException() {
-        when(conversationRepository.findParticipant("conv-secret", "u-attacker"))
-                .thenReturn(Optional.empty());
+    @DisplayName("Kiểm tra IDOR: Không phải thành viên tham gia hội thoại thì trả 404 ConversationNotFoundException")
+    void idor_check_throwsConversationNotFoundException() {
+        when(conversationRepository.findParticipantsByConversationId("conv-secret"))
+                .thenReturn(List.of());
 
         assertThatThrownBy(() -> chatService.getMessages("u-attacker", "conv-secret", 50))
-                .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Bạn không có quyền truy cập");
+                .isInstanceOf(ConversationNotFoundException.class);
 
         assertThatThrownBy(() -> chatService.sendMessage("u-attacker", "conv-secret",
                 SendMessageRequest.builder().content("Hacked").build()))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(ConversationNotFoundException.class);
     }
 
     @Test
@@ -103,6 +104,54 @@ class ChatApplicationServiceTest {
         assertThatThrownBy(() -> chatService.startOrGetConversation("u-tenant-01", "TENANT", req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Không thể tự nhắn tin cho chính mình");
+    }
+
+    @Test
+    @DisplayName("Concurrent startOrGetConversation recovers via unique pair key without duplicate")
+    void concurrentStartOrGetConversationReturnsWinner() {
+        String pairKey = ChatApplicationService.buildPairKey("u-tenant-01", "u-landlord-01", "room-99");
+        Conversation winner = Conversation.builder().id("conv-winner").roomId("room-99").participantPairKey(pairKey).build();
+        when(conversationRepository.findByParticipantPairKey(pairKey))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(winner));
+        when(conversationRepository.findByParticipants(anyString(), anyString(), anyString())).thenReturn(Optional.empty());
+        when(conversationRepository.save(any(Conversation.class)))
+                .thenThrow(new DataIntegrityViolationException("uq_conversations_pair_key"));
+        when(conversationRepository.findParticipantsByConversationId("conv-winner")).thenReturn(List.of());
+
+        ConversationSummaryDto result = chatService.startOrGetConversation("u-tenant-01", "TENANT",
+                StartConversationRequest.builder().recipientId("u-landlord-01").roomId("room-99").build());
+        assertThat(result.getId()).isEqualTo("conv-winner");
+    }
+
+    @Test
+    @DisplayName("u-hao-01 is not aliased to u-landlord-02; XSS stored verbatim; length & rate limits enforced")
+    void chatValidationRateLimitAndAliasFix() {
+        assertThat(ChatApplicationService.getUserAliases("u-landlord-02")).doesNotContain("u-hao-01");
+
+        ConversationParticipant cp = ConversationParticipant.builder()
+                .conversationId("conv-1").userId("u-tenant-01").role("TENANT").userName("Tenant").build();
+        when(conversationRepository.findParticipantsByConversationId("conv-1")).thenReturn(List.of(cp));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // XSS payload stored verbatim (escaped on FE display)
+        ChatMessageDto xssMsg = chatService.sendMessage("u-tenant-01", "conv-1",
+                SendMessageRequest.builder().content("<script>alert(1)</script>").build());
+        assertThat(xssMsg.getContent()).isEqualTo("<script>alert(1)</script>");
+
+        // Exceeds 2000 chars
+        assertThatThrownBy(() -> chatService.sendMessage("u-tenant-01", "conv-1",
+                SendMessageRequest.builder().content("a".repeat(2001)).build()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Exceeds 20 msgs / 10s rate limit (1 already sent above -> send 19 more, 21st fails)
+        for (int i = 0; i < 19; i++) {
+            chatService.sendMessage("u-tenant-01", "conv-1",
+                    SendMessageRequest.builder().content("msg " + i).build());
+        }
+        assertThatThrownBy(() -> chatService.sendMessage("u-tenant-01", "conv-1",
+                SendMessageRequest.builder().content("spam").build()))
+                .isInstanceOf(ChatRateLimitException.class);
     }
 }
 

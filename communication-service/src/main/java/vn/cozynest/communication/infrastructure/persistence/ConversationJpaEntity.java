@@ -21,6 +21,9 @@ public class ConversationJpaEntity {
     @Column(name = "room_id", length = 64)
     private String roomId;
 
+    @Column(name = "participant_pair_key", length = 160, unique = true)
+    private String participantPairKey;
+
     @Column(name = "room_title", length = 255)
     private String roomTitle;
 
