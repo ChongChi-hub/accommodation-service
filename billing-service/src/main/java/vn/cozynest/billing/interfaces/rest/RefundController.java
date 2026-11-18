@@ -38,6 +38,17 @@ public class RefundController {
                 refundService.approveRefund(id, (String) auth.getPrincipal())));
     }
 
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RefundDto.RefundResponse>> rejectRefund(
+            @PathVariable String id,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication auth) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(ApiResponse.success("Da tu choi yeu cau hoan tien",
+                refundService.rejectRefund(id, (String) auth.getPrincipal(), reason)));
+    }
+
     @PostMapping("/{id}/retry")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RefundDto.RefundResponse>> retryFailedRefund(

@@ -50,6 +50,11 @@ public class ContractRepositoryAdapter implements ContractRepository {
     }
 
     @Override
+    public List<Contract> findAll() {
+        return repository.findAll().stream().map(ContractPersistenceMapper::toDomain).toList();
+    }
+
+    @Override
     public Contract save(Contract contract) {
         return ContractPersistenceMapper.toDomain(repository.save(ContractPersistenceMapper.toEntity(contract)));
     }

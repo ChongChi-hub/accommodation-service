@@ -43,6 +43,19 @@ public class LedgerDto {
             Instant createdAt
     ) {}
 
+    public record JournalEntryDetailResponse(
+            String id,
+            String entryNumber,
+            String description,
+            String referenceType,
+            String referenceId,
+            long totalAmount,
+            String status,
+            String createdBy,
+            Instant createdAt,
+            List<PostingItem> postings
+    ) {}
+
     public record IntegrityReportResponse(
             boolean isBalanced,
             long totalDebit,

@@ -198,6 +198,28 @@ public class RefundService {
     }
 
     @Transactional
+    public RefundDto.RefundResponse rejectRefund(String refundId, String checkerAdminId, String reason) {
+        RefundRequest refund = refundRepository.findById(refundId)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay yeu cau hoan tien: " + refundId));
+        if ("COMPLETED".equals(refund.getStatus())) {
+            throw new IllegalStateException("Khong the tu choi yeu cau hoan tien da hoan tat");
+        }
+        if ("REJECTED".equals(refund.getStatus())) {
+            return toResponse(refund);
+        }
+        if (refund.getMakerCheckerRequestId() != null) {
+            MakerCheckerRequest mc = makerCheckerRepository.findById(refund.getMakerCheckerRequestId())
+                    .orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
+            mc.reject(checkerAdminId, reason != null && !reason.isBlank() ? reason : "Tu choi boi quan tri vien");
+            makerCheckerRepository.save(mc);
+        }
+        refund.markRejected(reason != null && !reason.isBlank() ? reason : "Tu choi boi quan tri vien");
+        RefundRequest saved = refundRepository.save(refund);
+        emitOutbox("REFUND_REJECTED", saved);
+        return toResponse(saved);
+    }
+
+    @Transactional
     public RefundDto.RefundResponse markFailed(String refundId, String reason) {
         RefundRequest refund = refundRepository.findById(refundId)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay yeu cau hoan tien: " + refundId));

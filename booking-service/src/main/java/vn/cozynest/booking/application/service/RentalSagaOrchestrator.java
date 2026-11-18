@@ -143,6 +143,14 @@ public class RentalSagaOrchestrator {
         return sagaRepository.findByStatus("MANUAL_INTERVENTION_REQUIRED");
     }
 
+    @Transactional(readOnly = true)
+    public List<SagaInstance> getAllSagas() {
+        return sagaRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(SagaInstance::getUpdatedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList();
+    }
+
     public SagaInstance resolveManualSaga(String sagaId, String resolutionNote) {
         SagaInstance saga = getSaga(sagaId);
         if (!"MANUAL_INTERVENTION_REQUIRED".equals(saga.getStatus())) {

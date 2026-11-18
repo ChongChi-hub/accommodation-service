@@ -11,5 +11,6 @@ public interface SagaInstanceRepository {
     Optional<SagaInstance> findBySagaId(String sagaId);
     List<SagaInstance> findByStatus(String status);
     List<SagaInstance> findStuckInProgressBefore(Instant cutoff);
+    default List<SagaInstance> findAll() { return List.of(); }
 }
 

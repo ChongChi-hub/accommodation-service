@@ -78,6 +78,11 @@ public class MakerCheckerService {
         MakerCheckerRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu duyệt: " + requestId));
 
+        if (!"MANUAL_ADJUSTMENT".equals(request.getActionType())) {
+            throw new IllegalStateException("Yêu cầu loại " + request.getActionType()
+                    + " phải được phê duyệt tại hàng đợi Rút tiền / Hoàn tiền tương ứng");
+        }
+
         // Enforce maker != checker rule
         request.approve(checkerId);
         repository.save(request);
@@ -129,6 +134,11 @@ public class MakerCheckerService {
     public void reject(String requestId, String checkerId, String reason) {
         MakerCheckerRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu duyệt: " + requestId));
+
+        if (!"MANUAL_ADJUSTMENT".equals(request.getActionType())) {
+            throw new IllegalStateException("Yêu cầu loại " + request.getActionType()
+                    + " phải được từ chối tại hàng đợi Rút tiền / Hoàn tiền tương ứng");
+        }
 
         request.reject(checkerId, reason);
         repository.save(request);

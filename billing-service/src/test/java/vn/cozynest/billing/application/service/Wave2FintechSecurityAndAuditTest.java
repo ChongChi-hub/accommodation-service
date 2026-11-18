@@ -176,6 +176,14 @@ class Wave2FintechSecurityAndAuditTest {
                 null, "cnt-held", "l1", 1_500_000L, "VCB", "11223344", "TRAN MINH T", null, "654321", "Move out"));
         assertThat(completedRefund.status()).isEqualTo("COMPLETED");
         assertThat(heldEscrow.getStatus()).isEqualTo("REFUNDED");
+
+        // MakerCheckerService must refuse approving PAYOUT_APPROVAL directly via manual adjustment endpoint
+        MakerCheckerRequest payoutMc = MakerCheckerRequest.create("l1", "PAYOUT_APPROVAL", 12_000_000L, "High payout", "{}");
+        when(mcRepo.findById(payoutMc.getId())).thenReturn(Optional.of(payoutMc));
+        MakerCheckerService mcService = new MakerCheckerService(mcRepo, ledger, new ObjectMapper());
+        assertThatThrownBy(() -> mcService.approve(payoutMc.getId(), "admin-2"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PAYOUT_APPROVAL");
     }
 
     @Test

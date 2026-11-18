@@ -121,6 +121,13 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(paymentService.getManualInterventionQueue()));
     }
 
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PaymentDto.AdminIntentResponse>>> listAllAdminIntents(
+            @RequestParam(defaultValue = "100") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(paymentService.getAllAdminIntents(limit)));
+    }
+
     @PostMapping("/reconcile")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PaymentReconciliationService.GatewayReconciliationReport>> reconcilePayments() {

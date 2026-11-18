@@ -55,6 +55,11 @@ public class SagaController {
         return ResponseEntity.ok(ApiResponse.success(orchestrator.getSaga(sagaId)));
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<java.util.List<SagaInstance>>> listAllSagas() {
+        return ResponseEntity.ok(ApiResponse.success(orchestrator.getAllSagas()));
+    }
+
     @GetMapping("/manual-queue")
     public ResponseEntity<ApiResponse<java.util.List<SagaInstance>>> getManualQueue() {
         return ResponseEntity.ok(ApiResponse.success(orchestrator.getManualInterventionSagas()));

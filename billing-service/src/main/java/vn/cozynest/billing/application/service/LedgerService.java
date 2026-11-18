@@ -149,6 +149,35 @@ public class LedgerService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<LedgerDto.JournalEntryDetailResponse> getRecentJournalEntries(int limit) {
+        Map<String, String> idToAccNum = new HashMap<>();
+        for (LedgerAccount acc : accountRepository.findAll()) {
+            idToAccNum.put(acc.getId(), acc.getAccountNumber());
+        }
+        int cap = Math.max(1, Math.min(limit, 500));
+        return journalEntryRepository.findAll().stream()
+                .sorted(Comparator.comparing(JournalEntry::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(cap)
+                .map(je -> new LedgerDto.JournalEntryDetailResponse(
+                        je.getId(),
+                        je.getEntryNumber(),
+                        je.getDescription(),
+                        je.getReferenceType(),
+                        je.getReferenceId(),
+                        je.getTotalAmount(),
+                        je.getStatus(),
+                        je.getCreatedBy(),
+                        je.getCreatedAt(),
+                        je.getPostings().stream()
+                                .map(p -> new LedgerDto.PostingItem(
+                                        idToAccNum.getOrDefault(p.getAccountId(), p.getAccountId()),
+                                        p.getDirection(),
+                                        p.getAmount()))
+                                .toList()))
+                .toList();
+    }
+
     public LedgerDto.IntegrityReportResponse verifyLedgerIntegrity() { return reconciliationService.verifyLedgerIntegrity(); }
     public LedgerDto.ComprehensiveIntegrityReport runDailyReconciliation() { return reconciliationService.runDailyReconciliation(); }
     public String exportLedgerReportCsv() { return exportService.exportLedgerReportCsv(); }
