@@ -16,7 +16,7 @@ import vn.cozynest.identity.application.usecase.LandlordKycUseCase;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/api/v1/landlord/kyc")
+@RequestMapping({"/api/v1/landlord/kyc", "/api/v1/me/kyc"})
 @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
 public class LandlordKycController {
 
