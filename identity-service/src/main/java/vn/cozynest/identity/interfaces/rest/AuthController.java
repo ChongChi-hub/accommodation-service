@@ -109,6 +109,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(profile));
     }
 
+    @PostMapping("/change-password/send-otp")
+    public ResponseEntity<ApiResponse<Void>> sendChangePasswordOtp(Authentication authentication, HttpServletRequest request) {
+        String userId = (String) authentication.getPrincipal();
+        changePasswordUseCase.sendOtp(userId, request.getRemoteAddr());
+        return ResponseEntity.ok(ApiResponse.message("Mã xác thực đổi mật khẩu gồm 6 chữ số đã được gửi đến email của bạn."));
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<ApiResponse<Void>> changePassword(Authentication authentication,
                                                            @Valid @RequestBody ChangePasswordCommand command,

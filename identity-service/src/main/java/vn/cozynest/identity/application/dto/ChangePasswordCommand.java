@@ -23,7 +23,16 @@ public class ChangePasswordCommand {
     @ToString.Exclude
     private String newPassword;
 
+    private String otp;
+
     private String currentTokenHash;
 
     private String ipAddress;
+
+    public ChangePasswordCommand(String currentPassword, String newPassword, String currentTokenHash, String ipAddress) {
+        this.currentPassword = currentPassword;
+        this.newPassword = newPassword;
+        this.currentTokenHash = currentTokenHash;
+        this.ipAddress = ipAddress;
+    }
 }

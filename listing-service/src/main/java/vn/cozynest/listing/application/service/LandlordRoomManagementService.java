@@ -12,6 +12,7 @@ import vn.cozynest.listing.domain.model.Room;
 import vn.cozynest.listing.domain.model.RoomImage;
 import vn.cozynest.listing.domain.model.RoomStatusHistory;
 import vn.cozynest.listing.domain.port.KycVerificationPort;
+import vn.cozynest.listing.domain.port.ListingNotificationPort;
 import vn.cozynest.listing.domain.port.RoomUsagePort;
 import vn.cozynest.listing.domain.repository.RoomImageRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
@@ -36,7 +37,7 @@ public class LandlordRoomManagementService {
     private final KycVerificationPort kycVerificationPort;
     private final Optional<AntiFraudService> antiFraudService;
     private final Optional<TrustScoreCalculatorService> trustScoreCalculatorService;
-    private final Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient;
+    private final Optional<ListingNotificationPort> notificationClient;
 
     @Value("${toam.listing.min-images-for-review:3}")
     private int minImagesForReview = 3;
@@ -61,7 +62,7 @@ public class LandlordRoomManagementService {
             KycVerificationPort kycVerificationPort,
             Optional<AntiFraudService> antiFraudService,
             Optional<TrustScoreCalculatorService> trustScoreCalculatorService,
-            Optional<vn.cozynest.listing.infrastructure.client.ListingNotificationClient> notificationClient
+            Optional<ListingNotificationPort> notificationClient
     ) {
         this.roomRepository = roomRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;

@@ -39,6 +39,17 @@ public class InternalUserController {
         }
     }
 
+    @GetMapping("/{id}/verification-status")
+    public ResponseEntity<ApiResponse<vn.cozynest.identity.application.dto.InternalUserVerificationStatusResponse>> getVerificationStatus(
+            @PathVariable("id") String userId,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(internalUserService.getVerificationStatus(userId)));
+    }
+
     @GetMapping("/{id}/kyc-status")
     public ResponseEntity<ApiResponse<InternalKycStatusResponse>> getKycStatus(
             @PathVariable("id") String userId,

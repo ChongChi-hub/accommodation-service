@@ -50,6 +50,21 @@ public class ContractSigningCoordinator {
         if ("CANCELLED".equals(contract.getStatus()) || "TERMINATED".equals(contract.getStatus())) {
             throw new IllegalStateException("Hop dong da huy hoac cham dut, khong the ky");
         }
+
+        IdentityVerificationPort.UserVerificationStatus verStatus = identityVerificationPort.getVerificationStatus(userId);
+        if (verStatus != null) {
+            if (!verStatus.emailVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Vui lòng xác minh địa chỉ email trước khi ký hợp đồng thuê.", "EMAIL_NOT_VERIFIED"
+                );
+            }
+            if (!verStatus.kycVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Vui lòng hoàn tất xác thực CCCD (KYC) trước khi ký hợp đồng thuê.", "KYC_NOT_VERIFIED"
+                );
+            }
+        }
+
         verifyOtpForUser(userId, otpCode);
 
         if (isLandlord) {

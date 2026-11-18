@@ -11,9 +11,11 @@ import java.text.Normalizer;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import vn.cozynest.listing.domain.port.CloudinaryStoragePort;
+
 @Slf4j
 @Service
-public class CloudinaryStorageService {
+public class CloudinaryStorageService implements CloudinaryStoragePort {
 
     private final Cloudinary cloudinary;
 

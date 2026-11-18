@@ -104,6 +104,10 @@ public class LandlordRoomController {
     public ResponseEntity<ApiResponse<LandlordRoomListItemDto>> createRoom(
             @Valid @RequestBody CreateRoomRequest request
     ) {
+        if (!contextResolver.isCurrentLandlordFaceVerified()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Vui lòng hoàn tất xác thực khuôn mặt để được quyền đăng phòng trọ mới.", "FACE_NOT_VERIFIED"));
+        }
         Long landlordId = getRequiredLandlordId();
         String actorId = contextResolver.getCurrentActorId();
         String resolvedLandlordName = (request.getLandlordName() != null && !request.getLandlordName().isBlank())

@@ -48,6 +48,33 @@ public class HttpIdentityVerificationAdapter implements IdentityVerificationPort
     }
 
     @Override
+    public UserVerificationStatus getVerificationStatus(String userId) {
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/internal/users/{id}/verification-status", userId)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data) {
+                boolean emailVerified = Boolean.TRUE.equals(data.get("emailVerified"));
+                boolean kycVerified = Boolean.TRUE.equals(data.get("kycVerified"));
+                boolean faceVerified = Boolean.TRUE.equals(data.get("faceVerified"));
+                String role = data.get("role") != null ? String.valueOf(data.get("role")) : "TENANT";
+                return new UserVerificationStatus(emailVerified, kycVerified, faceVerified, role);
+            }
+            return new UserVerificationStatus(false, false, false, "TENANT");
+        }, () -> {
+            if (sandboxBypassAllowed) {
+                log.warn("Identity verification status fell back to sandbox bypass for userId={}", userId);
+                return new UserVerificationStatus(true, true, true, "TENANT");
+            }
+            log.error("Identity verification status check failed/open circuit for userId={}; failing closed", userId);
+            return new UserVerificationStatus(false, false, false, "TENANT");
+        });
+    }
+
+    @Override
     public boolean isPhoneVerified(String userId) {
         return circuitBreaker.executeWithFallback(2, () -> {
             Map<String, Object> body = restClient.get()

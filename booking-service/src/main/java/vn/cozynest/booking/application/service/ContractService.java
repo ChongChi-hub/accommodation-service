@@ -34,6 +34,7 @@ public class ContractService {
     private final AppointmentEventOutboxRepository outboxRepository;
     private final Optional<BookingListingPort> listingPort;
     private final Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort;
+    private final Optional<vn.cozynest.booking.application.port.IdentityVerificationPort> identityVerificationPort;
 
     public ContractService(
             ContractRepository contractRepository,
@@ -42,7 +43,7 @@ public class ContractService {
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository
     ) {
-        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty(), Optional.empty());
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty(), Optional.empty(), null);
     }
 
     public ContractService(
@@ -53,7 +54,7 @@ public class ContractService {
             AppointmentEventOutboxRepository outboxRepository,
             Optional<BookingListingPort> listingPort
     ) {
-        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, Optional.empty());
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, Optional.empty(), null);
     }
 
     @Autowired
@@ -64,7 +65,8 @@ public class ContractService {
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository,
             Optional<BookingListingPort> listingPort,
-            Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort
+            Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort,
+            @Autowired(required = false) vn.cozynest.booking.application.port.IdentityVerificationPort identityVerificationPort
     ) {
         this.contractRepository = contractRepository;
         this.amendmentRepository = amendmentRepository;
@@ -73,12 +75,21 @@ public class ContractService {
         this.outboxRepository = outboxRepository;
         this.listingPort = listingPort != null ? listingPort : Optional.empty();
         this.billingPort = billingPort != null ? billingPort : Optional.empty();
+        this.identityVerificationPort = Optional.ofNullable(identityVerificationPort);
     }
 
     public ContractDto createContract(CreateContractDto dto) {
         if (!dto.endDate().isAfter(dto.startDate())) {
             throw new IllegalArgumentException("Ngay ket thuc hop dong phai sau ngay bat dau");
         }
+        identityVerificationPort.ifPresent(port -> {
+            vn.cozynest.booking.application.port.IdentityVerificationPort.UserVerificationStatus verStatus = port.getVerificationStatus(dto.landlordId());
+            if (!verStatus.faceVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Chủ trọ chưa hoàn tất xác thực khuôn mặt (Face Verification). Vui lòng xác thực khuôn mặt trước khi tạo hợp đồng.", "FACE_NOT_VERIFIED"
+                );
+            }
+        });
         String code = "HD-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         Contract saved = contractRepository.save(Contract.create(
                 code, dto.roomId(), dto.tenantId(), dto.landlordId(),

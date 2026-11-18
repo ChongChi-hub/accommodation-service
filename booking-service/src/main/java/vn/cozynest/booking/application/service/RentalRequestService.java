@@ -104,6 +104,19 @@ public class RentalRequestService {
                 return RentalRequestDto.from(existing.get());
             }
         }
+        IdentityVerificationPort.UserVerificationStatus verStatus = identityVerificationPort.getVerificationStatus(tenantId);
+        if (verStatus != null) {
+            if (!verStatus.emailVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Vui lòng xác minh địa chỉ email trước khi gửi yêu cầu thuê phòng.", "EMAIL_NOT_VERIFIED"
+                );
+            }
+            if (!verStatus.kycVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Vui lòng hoàn tất xác thực CCCD (KYC) trước khi gửi yêu cầu thuê phòng.", "KYC_NOT_VERIFIED"
+                );
+            }
+        }
         if (!identityVerificationPort.isPhoneVerified(tenantId)) {
             throw new IllegalStateException("Vui long xac thuc so dien thoai truoc khi gui yeu cau thue phong");
         }

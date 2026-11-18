@@ -24,6 +24,8 @@ public class JwtTokenProvider implements TokenProviderPort {
 
     private final RsaKeyProvider rsaKeyProvider;
     private final long expirationMs;
+    private vn.cozynest.identity.domain.repository.UserVerificationRepository userVerificationRepository;
+    private vn.cozynest.identity.domain.repository.FaceVerificationRepository faceVerificationRepository;
 
     public JwtTokenProvider(RsaKeyProvider rsaKeyProvider) {
         this(rsaKeyProvider, 900000L);
@@ -37,6 +39,16 @@ public class JwtTokenProvider implements TokenProviderPort {
         this.expirationMs = expirationMs;
     }
 
+    @Autowired(required = false)
+    public void setUserVerificationRepository(vn.cozynest.identity.domain.repository.UserVerificationRepository userVerificationRepository) {
+        this.userVerificationRepository = userVerificationRepository;
+    }
+
+    @Autowired(required = false)
+    public void setFaceVerificationRepository(vn.cozynest.identity.domain.repository.FaceVerificationRepository faceVerificationRepository) {
+        this.faceVerificationRepository = faceVerificationRepository;
+    }
+
     @Override
     public String generateAccessToken(User user) {
         Date now = new Date();
@@ -46,6 +58,12 @@ public class JwtTokenProvider implements TokenProviderPort {
                 .map(Enum::name)
                 .collect(Collectors.joining(","));
 
+        boolean emailVerified = user.getEmailVerifiedAt() != null;
+        boolean kycVerified = userVerificationRepository != null && userVerificationRepository.findByUserId(user.getId())
+                .map(v -> v.getStatus() == vn.cozynest.identity.domain.model.KycStatus.APPROVED).orElse(false);
+        boolean faceVerified = faceVerificationRepository != null && faceVerificationRepository.findByUserId(user.getId())
+                .map(f -> f.getStatus() == vn.cozynest.identity.domain.model.FaceVerificationStatus.PASSED).orElse(false);
+
         return Jwts.builder()
                 .header().keyId(rsaKeyProvider.getKeyId()).and()
                 .issuer(ISSUER)
@@ -54,6 +72,9 @@ public class JwtTokenProvider implements TokenProviderPort {
                 .claim("email", user.getEmail())
                 .claim("fullName", user.getFullName())
                 .claim("roles", rolesString)
+                .claim("email_verified", emailVerified)
+                .claim("kyc_verified", kycVerified)
+                .claim("face_verified", faceVerified)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(rsaKeyProvider.getPrivateKey(), Jwts.SIG.RS256)

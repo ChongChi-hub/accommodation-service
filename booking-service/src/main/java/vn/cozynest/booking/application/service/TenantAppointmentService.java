@@ -35,9 +35,18 @@ public class TenantAppointmentService {
     private final Optional<AppointmentStatusHistoryRepository> historyRepository;
     private final Optional<AppointmentEventOutboxRepository> outboxRepository;
     private final Optional<ObjectMapper> objectMapper;
+    private final Optional<vn.cozynest.booking.application.port.IdentityVerificationPort> identityVerificationPort;
 
     public TenantAppointmentService(ViewingAppointmentRepository appointmentRepository) {
-        this(appointmentRepository, null, null, null);
+        this(appointmentRepository, null, null, null, null);
+    }
+
+    public TenantAppointmentService(
+            ViewingAppointmentRepository appointmentRepository,
+            AppointmentStatusHistoryRepository historyRepository,
+            AppointmentEventOutboxRepository outboxRepository,
+            ObjectMapper objectMapper) {
+        this(appointmentRepository, historyRepository, outboxRepository, objectMapper, null);
     }
 
     @Autowired
@@ -45,12 +54,14 @@ public class TenantAppointmentService {
             ViewingAppointmentRepository appointmentRepository,
             AppointmentStatusHistoryRepository historyRepository,
             AppointmentEventOutboxRepository outboxRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            @Autowired(required = false) vn.cozynest.booking.application.port.IdentityVerificationPort identityVerificationPort
     ) {
         this.appointmentRepository = appointmentRepository;
         this.historyRepository = Optional.ofNullable(historyRepository);
         this.outboxRepository = Optional.ofNullable(outboxRepository);
         this.objectMapper = Optional.ofNullable(objectMapper);
+        this.identityVerificationPort = Optional.ofNullable(identityVerificationPort);
     }
 
     public Page<ViewingAppointmentListItemDto> getTenantAppointments(String tenantId, int page, int size) {
@@ -66,6 +77,15 @@ public class TenantAppointmentService {
 
     @Transactional
     public ViewingAppointmentListItemDto createAppointment(String tenantId, CreateAppointmentRequest req) {
+        identityVerificationPort.ifPresent(port -> {
+            vn.cozynest.booking.application.port.IdentityVerificationPort.UserVerificationStatus status = port.getVerificationStatus(tenantId);
+            if (status != null && !status.emailVerified()) {
+                throw new vn.cozynest.booking.application.exception.VerificationRequirementException(
+                        "Vui lòng xác minh địa chỉ email trước khi đặt lịch hẹn xem phòng.", "EMAIL_NOT_VERIFIED"
+                );
+            }
+        });
+
         Instant now = Instant.now();
         if (req.scheduledStart().isBefore(now.minusSeconds(60))) {
             throw new IllegalArgumentException("Thoi gian dat lich xem phong phai o tuong lai");

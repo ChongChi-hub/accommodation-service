@@ -18,5 +18,8 @@ public interface SpringDataEmailVerificationTokenRepository extends JpaRepositor
     @Modifying
     @Query("DELETE FROM EmailVerificationTokenJpaEntity e WHERE e.userId = :userId AND e.verifiedAt IS NULL")
     void invalidateAllActiveTokens(@Param("userId") String userId);
+
+    @Query("SELECT COUNT(e) FROM EmailVerificationTokenJpaEntity e WHERE e.userId = :userId AND e.createdAt >= :after")
+    long countTokensCreatedAfter(@Param("userId") String userId, @Param("after") java.time.Instant after);
 }
 

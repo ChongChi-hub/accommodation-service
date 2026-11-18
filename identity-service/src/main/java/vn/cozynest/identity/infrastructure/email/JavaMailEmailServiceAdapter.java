@@ -95,6 +95,12 @@ public class JavaMailEmailServiceAdapter implements EmailServicePort {
 
     @Override
     @Async
+    public void sendChangePasswordOtp(String toEmail, String fullName, String otpCode) {
+        sendPasswordResetOtp(toEmail, fullName, otpCode);
+    }
+
+    @Override
+    @Async
     public void sendPasswordChangedNotice(String toEmail, String fullName) {
         String htmlContent = loadTemplate("templates/email/password_changed.html")
                 .replace("{{fullName}}", fullName != null ? fullName : "Quý khách");

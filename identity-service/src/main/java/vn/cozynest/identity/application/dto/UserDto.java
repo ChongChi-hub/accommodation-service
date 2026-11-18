@@ -25,8 +25,11 @@ public class UserDto {
     private String dateOfBirth;
     private String status;
     private List<String> roles;
+    private String role;
     private List<String> permissions;
     private boolean emailVerified;
+    private boolean kycVerified;
+    private boolean faceVerified;
     private boolean phoneMissing;
     private boolean hasPassword;
     private LandlordApplicationSummaryDto landlordApplication;
@@ -38,7 +41,16 @@ public class UserDto {
     }
 
     public static UserDto fromDomain(User user, LandlordProfile landlordProfile) {
+        return fromDomain(user, landlordProfile, false, false);
+    }
+
+    public static UserDto fromDomain(User user, LandlordProfile landlordProfile, boolean kycVerified, boolean faceVerified) {
         List<String> roleNames = user.getRoles().stream().map(Enum::name).toList();
+        String primaryRole = roleNames.contains("ADMIN") ? "ADMIN"
+                : roleNames.contains("MODERATOR") ? "MODERATOR"
+                : roleNames.contains("LANDLORD") ? "LANDLORD"
+                : "TENANT";
+
         List<String> permissions = new ArrayList<>();
         if (roleNames.contains("ADMIN")) {
             permissions.add("admin:all");
@@ -56,15 +68,7 @@ public class UserDto {
             permissions.add("booking:create");
         }
 
-        String workspaceHint = "TENANT";
-        if (roleNames.contains("ADMIN")) {
-            workspaceHint = "ADMIN";
-        } else if (roleNames.contains("MODERATOR")) {
-            workspaceHint = "MODERATOR";
-        } else if (roleNames.contains("LANDLORD")) {
-            workspaceHint = "LANDLORD";
-        }
-
+        String workspaceHint = primaryRole;
         boolean phoneMissing = user.getPhone() == null || user.getPhone().isBlank();
         boolean emailVerified = user.getEmailVerifiedAt() != null;
 
@@ -78,8 +82,11 @@ public class UserDto {
                 .dateOfBirth(user.getDateOfBirth() != null ? user.getDateOfBirth().toString() : null)
                 .status(user.getStatus().name())
                 .roles(roleNames)
+                .role(primaryRole)
                 .permissions(permissions)
                 .emailVerified(emailVerified)
+                .kycVerified(kycVerified)
+                .faceVerified(faceVerified)
                 .phoneMissing(phoneMissing)
                 .hasPassword(user.hasPassword())
                 .landlordApplication(LandlordApplicationSummaryDto.fromDomain(landlordProfile))

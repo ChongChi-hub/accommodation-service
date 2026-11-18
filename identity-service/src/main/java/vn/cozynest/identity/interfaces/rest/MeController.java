@@ -53,12 +53,42 @@ public class MeController {
         return ResponseEntity.ok(ApiResponse.success("Cap nhat ho so ca nhan thanh cong", response));
     }
 
+    @PostMapping("/send-email-otp")
+    public ResponseEntity<ApiResponse<Void>> sendEmailOtp(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        verifyEmailUseCase.sendVerificationOtpForUser(userId);
+        return ResponseEntity.ok(ApiResponse.message("Mã xác thực 6 số đã được gửi đến hộp thư email của bạn."));
+    }
+
+    @PostMapping("/verify-email-otp")
+    public ResponseEntity<ApiResponse<UserDto>> verifyEmailOtp(
+            Authentication authentication,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        String userId = (String) authentication.getPrincipal();
+        String otp = body != null ? body.get("otp") : "";
+        if (otp == null || otp.trim().length() != 6) {
+            throw new vn.cozynest.identity.domain.exception.IdentityDomainException("Vui lòng nhập mã xác thực gồm 6 chữ số.", "ERR_AUTH_INVALID_OTP");
+        }
+        verifyEmailUseCase.verifyUserEmailWithOtp(userId, otp.trim());
+        UserDto profile = getProfileUseCase.execute(userId);
+        return ResponseEntity.ok(ApiResponse.success("Xác minh địa chỉ email thành công", profile));
+    }
+
     @PostMapping("/verify-email")
     public ResponseEntity<ApiResponse<UserDto>> verifyMyEmail(Authentication authentication) {
         String userId = (String) authentication.getPrincipal();
         verifyEmailUseCase.verifyUserEmail(userId);
         UserDto profile = getProfileUseCase.execute(userId);
         return ResponseEntity.ok(ApiResponse.success("Xác minh email thành công", profile));
+    }
+
+    @PostMapping("/upgrade-landlord")
+    public ResponseEntity<ApiResponse<UserDto>> upgradeToLandlord(Authentication authentication) {
+        String userId = (String) authentication.getPrincipal();
+        landlordApplicationUseCase.upgradeToLandlord(userId);
+        UserDto profile = getProfileUseCase.execute(userId);
+        return ResponseEntity.ok(ApiResponse.success("Nâng cấp lên Chủ trọ thành công! Chào mừng bạn đến với giao diện Chủ trọ.", profile));
     }
 
     @PostMapping("/landlord-application")

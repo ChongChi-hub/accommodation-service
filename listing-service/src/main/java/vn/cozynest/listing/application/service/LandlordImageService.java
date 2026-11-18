@@ -15,7 +15,7 @@ import vn.cozynest.listing.domain.repository.RoomImageRepository;
 import vn.cozynest.listing.domain.repository.RoomRepository;
 import vn.cozynest.listing.domain.repository.RoomStatusHistoryRepository;
 import vn.cozynest.listing.domain.repository.LandlordSnapshotRepository;
-import vn.cozynest.listing.infrastructure.storage.CloudinaryStorageService;
+import vn.cozynest.listing.domain.port.CloudinaryStoragePort;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -36,7 +36,7 @@ public class LandlordImageService {
     private final UploadRateLimiter rateLimiter;
     private final Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository;
     private final Optional<AntiFraudService> antiFraudService;
-    private final Optional<CloudinaryStorageService> cloudinaryStorageService;
+    private final Optional<CloudinaryStoragePort> cloudinaryStorageService;
     private final Optional<LandlordSnapshotRepository> landlordSnapshotRepository;
 
     public LandlordImageService(
@@ -66,7 +66,7 @@ public class LandlordImageService {
             UploadRateLimiter rateLimiter,
             Optional<RoomStatusHistoryRepository> roomStatusHistoryRepository,
             Optional<AntiFraudService> antiFraudService,
-            Optional<CloudinaryStorageService> cloudinaryStorageService,
+            Optional<CloudinaryStoragePort> cloudinaryStorageService,
             Optional<LandlordSnapshotRepository> landlordSnapshotRepository
     ) {
         this.roomRepository = roomRepository;

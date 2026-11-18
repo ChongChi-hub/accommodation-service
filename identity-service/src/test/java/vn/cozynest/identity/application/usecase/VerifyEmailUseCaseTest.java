@@ -144,7 +144,7 @@ class VerifyEmailUseCaseTest {
 
         assertThat(token.getVerifiedAt()).isNotNull();
         assertThat(user.getEmailVerifiedAt()).isNotNull();
-        verify(tokenRepository).save(token);
+        verify(tokenRepository, times(2)).save(token);
         verify(userRepository).save(user);
     }
 }

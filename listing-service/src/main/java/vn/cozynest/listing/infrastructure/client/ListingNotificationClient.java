@@ -8,11 +8,13 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import vn.cozynest.listing.domain.port.ListingNotificationPort;
+
 import java.util.List;
 import java.util.Map;
 
 @Component
-public class ListingNotificationClient {
+public class ListingNotificationClient implements ListingNotificationPort {
 
     private static final Logger log = LoggerFactory.getLogger(ListingNotificationClient.class);
     private static final String DEFAULT_INTERNAL_KEY = "CozyNestInternalServiceKeySecret2026";

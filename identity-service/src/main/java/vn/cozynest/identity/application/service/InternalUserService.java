@@ -63,6 +63,32 @@ public class InternalUserService {
 
     public record InternalUserSummaryDto(String id, String email, String fullName, String phone) {}
 
+    public vn.cozynest.identity.application.dto.InternalUserVerificationStatusResponse getVerificationStatus(String userId) {
+        if (userRepository == null) {
+            return new vn.cozynest.identity.application.dto.InternalUserVerificationStatusResponse(userId, false, false, false, "TENANT");
+        }
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return new vn.cozynest.identity.application.dto.InternalUserVerificationStatusResponse(userId, false, false, false, "TENANT");
+        }
+        User user = userOpt.get();
+        boolean emailVerified = user.getEmailVerifiedAt() != null;
+        boolean kycVerified = verificationRepository.findByUserId(userId)
+                .map(v -> v.getStatus() == KycStatus.APPROVED)
+                .orElse(false);
+        boolean faceVerified = faceRepository.findByUserId(userId)
+                .map(f -> f.getStatus() == FaceVerificationStatus.PASSED)
+                .orElse(false);
+        String role = user.getRoles().stream().map(Enum::name)
+                .filter(r -> "LANDLORD".equals(r) || "ADMIN".equals(r))
+                .findFirst()
+                .orElse("TENANT");
+
+        return new vn.cozynest.identity.application.dto.InternalUserVerificationStatusResponse(
+                userId, emailVerified, kycVerified, faceVerified, role
+        );
+    }
+
     public Optional<InternalUserSummaryDto> getUserById(String userId) {
         if (userRepository == null) {
             return Optional.empty();

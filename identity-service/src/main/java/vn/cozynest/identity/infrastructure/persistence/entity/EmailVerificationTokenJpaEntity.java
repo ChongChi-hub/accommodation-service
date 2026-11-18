@@ -33,6 +33,10 @@ public class EmailVerificationTokenJpaEntity {
     @Column(name = "verified_at")
     private Instant verifiedAt;
 
+    @Column(name = "attempt_count", nullable = false)
+    @Builder.Default
+    private int attemptCount = 0;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 }

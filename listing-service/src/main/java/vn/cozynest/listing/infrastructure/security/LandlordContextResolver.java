@@ -89,6 +89,21 @@ public class LandlordContextResolver {
         return null;
     }
 
+    public boolean isCurrentLandlordFaceVerified() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof DownstreamJwtVerifier.VerifiedPrincipal vp) {
+            Boolean verified = vp.claims().get("face_verified", Boolean.class);
+            if (verified != null) {
+                return verified;
+            }
+        }
+        String actor = getCurrentActorId();
+        if (DEMO_LANDLORD_MAPPING.containsKey(actor) || "u-landlord-01".equals(actor)) {
+            return true;
+        }
+        return false;
+    }
+
     public boolean isPrivilegedModeratorOrAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
