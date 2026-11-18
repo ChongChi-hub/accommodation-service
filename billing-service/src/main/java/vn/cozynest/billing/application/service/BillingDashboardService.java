@@ -109,8 +109,12 @@ public class BillingDashboardService {
         long platformFeeRevenue = ledgerService.getAccountBalance(LedgerService.ACC_REVENUE);
         long totalEscrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
         long totalGatewayCash = ledgerService.getAccountBalance(LedgerService.ACC_GATEWAY);
-        int totalTransactions = journalEntryRepository.findAll().size();
-        long totalGmv = totalGatewayCash + platformFeeRevenue;
+        List<vn.cozynest.billing.domain.model.JournalEntry> entries = journalEntryRepository.findAll();
+        int totalTransactions = entries.size();
+        long totalGmv = entries.stream()
+                .filter(e -> "DEPOSIT".equals(e.getReferenceType()) || "INVOICE_PAYMENT".equals(e.getReferenceType()))
+                .mapToLong(vn.cozynest.billing.domain.model.JournalEntry::getTotalAmount)
+                .sum();
 
         return new DashboardStatsDto.AdminFinancialStats(
                 totalGmv, platformFeeRevenue, totalEscrowBalance, totalGatewayCash, totalTransactions

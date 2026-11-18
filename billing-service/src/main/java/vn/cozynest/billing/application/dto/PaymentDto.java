@@ -29,6 +29,19 @@ public class PaymentDto {
             Instant expiresAt
     ) {}
 
+    public record AdminIntentResponse(
+            String id,
+            String paymentCode,
+            String payerId,
+            String orderType,
+            String orderId,
+            long amount,
+            long paidAmount,
+            String status,
+            Instant expiresAt,
+            Instant createdAt
+    ) {}
+
     public record WebhookPayload(
             String paymentCode,
             long amount,

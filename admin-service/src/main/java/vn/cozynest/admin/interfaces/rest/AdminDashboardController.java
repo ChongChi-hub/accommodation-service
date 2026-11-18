@@ -1,8 +1,12 @@
 package vn.cozynest.admin.interfaces.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import vn.cozynest.admin.application.service.AdminAuditService;
 import vn.cozynest.common.dto.ApiResponse;
 
 import java.util.*;
@@ -12,9 +16,16 @@ import java.util.*;
 public class AdminDashboardController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final Optional<AdminAuditService> auditService;
 
     public AdminDashboardController(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, Optional.empty());
+    }
+
+    @Autowired
+    public AdminDashboardController(JdbcTemplate jdbcTemplate, Optional<AdminAuditService> auditService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.auditService = auditService != null ? auditService : Optional.empty();
     }
 
     @GetMapping("/stats")
@@ -115,15 +126,28 @@ public class AdminDashboardController {
     }
 
     @PostMapping("/reports/{id}/resolve")
-    public ResponseEntity<ApiResponse<Void>> resolveReport(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<Void>> resolveReport(
+            @PathVariable String id,
+            Authentication auth,
+            HttpServletRequest req) {
         try {
             jdbcTemplate.update("UPDATE reports SET status = 'RESOLVED', resolved_at = NOW() WHERE id = ? OR id LIKE ?", id, "%" + id);
         } catch (Exception ignored) {}
+        String actor = auth != null ? String.valueOf(auth.getPrincipal()) : "u-admin-01";
+        auditService.ifPresent(a -> a.record(actor, "ADMIN", "REPORT_RESOLVE", "REPORT", id,
+                extractIp(req), req != null ? req.getHeader("User-Agent") : null, "{\"status\":\"RESOLVED\"}"));
         return ResponseEntity.ok(ApiResponse.message("Da xu ly bao cao vi pham"));
     }
 
     @GetMapping("/audit-logs")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAuditLogs() {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAuditLogs(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String action,
+            @RequestParam(defaultValue = "100") int limit) {
+        if (auditService.isPresent()) {
+            return ResponseEntity.ok(ApiResponse.success(auditService.get().getAuditLogs(search, source, action, limit)));
+        }
         List<Map<String, Object>> list = new ArrayList<>();
         try {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
@@ -170,7 +194,10 @@ public class AdminDashboardController {
     }
 
     @PutMapping("/settings")
-    public ResponseEntity<ApiResponse<Void>> updateSettings(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<ApiResponse<Void>> updateSettings(
+            @RequestBody Map<String, Object> body,
+            Authentication auth,
+            HttpServletRequest req) {
         if (body != null) {
             for (Map.Entry<String, Object> entry : body.entrySet()) {
                 try {
@@ -181,8 +208,17 @@ public class AdminDashboardController {
                     );
                 } catch (Exception ignored) {}
             }
+            String actor = auth != null ? String.valueOf(auth.getPrincipal()) : "u-admin-01";
+            auditService.ifPresent(a -> a.record(actor, "ADMIN", "SYSTEM_CONFIG_UPDATE", "SYSTEM_SETTING",
+                    String.join(",", body.keySet()), extractIp(req), req != null ? req.getHeader("User-Agent") : null, null));
         }
         return ResponseEntity.ok(ApiResponse.message("Da luu cau hinh he thong thanh cong"));
+    }
+
+    private String extractIp(HttpServletRequest request) {
+        if (request == null) return "127.0.0.1";
+        String fwd = request.getHeader("X-Forwarded-For");
+        return (fwd != null && !fwd.isBlank()) ? fwd.split(",")[0].trim() : request.getRemoteAddr();
     }
 
     @GetMapping("/analytics")

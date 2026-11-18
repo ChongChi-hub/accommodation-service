@@ -167,6 +167,19 @@ public class PaymentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PaymentDto.AdminIntentResponse> getAllAdminIntents(int limit) {
+        int cap = Math.max(1, Math.min(limit, 500));
+        return paymentIntentRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(PaymentIntent::getCreatedAt, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .limit(cap)
+                .map(i -> new PaymentDto.AdminIntentResponse(
+                        i.getId(), i.getPaymentCode(), i.getPayerId(),
+                        i.getOrderType(), i.getOrderId(), i.getAmount(),
+                        i.getPaidAmount(), i.getStatus(), i.getExpiresAt(), i.getCreatedAt()))
+                .toList();
+    }
+
     @Transactional
     public PaymentDto.IntentResponse simulateSandboxWebhook(String paymentCode, long amount, String actorId, boolean isAdmin) {
         PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)

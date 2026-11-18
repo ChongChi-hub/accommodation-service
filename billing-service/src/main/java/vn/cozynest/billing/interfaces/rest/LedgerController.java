@@ -51,6 +51,13 @@ public class LedgerController {
         return ResponseEntity.ok(ApiResponse.success(ledgerService.getAllAccounts()));
     }
 
+    @GetMapping("/entries")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<LedgerDto.JournalEntryDetailResponse>>> getJournalEntries(
+            @RequestParam(defaultValue = "100") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(ledgerService.getRecentJournalEntries(limit)));
+    }
+
     @GetMapping("/integrity")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<LedgerDto.IntegrityReportResponse>> verifyIntegrity() {

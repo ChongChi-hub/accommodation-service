@@ -70,6 +70,57 @@ public class InternalBillingEscrowController {
         return ResponseEntity.ok(ApiResponse.success("Da xu ly boi hoan/huy ky quy saga", Map.of("compensated", true)));
     }
 
+    @PostMapping("/{contractId}/freeze")
+    public ResponseEntity<ApiResponse<EscrowHold>> freezeEscrow(
+            @PathVariable String contractId,
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey
+    ) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        String actorId = body != null ? body.getOrDefault("actorId", "SYSTEM_ADMIN") : "SYSTEM_ADMIN";
+        String reason = body != null ? body.getOrDefault("reason", "Dong bang tranh chap") : "Dong bang tranh chap";
+        return ResponseEntity.ok(ApiResponse.success(escrowService.freezeForDispute(contractId, actorId, true, reason)));
+    }
+
+    @PostMapping("/{contractId}/release")
+    public ResponseEntity<ApiResponse<EscrowHold>> releaseEscrow(
+            @PathVariable String contractId,
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey
+    ) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        String actorId = body != null ? body.getOrDefault("actorId", "SYSTEM_ADMIN") : "SYSTEM_ADMIN";
+        EscrowHold hold = escrowService.getHoldForParticipant(contractId, actorId, true);
+        if ("DISPUTE_FROZEN".equals(hold.getStatus())) {
+            escrowService.unfreezeDispute(contractId);
+        }
+        escrowService.disburseDeposit(contractId, hold.getLandlordId(), hold.getAmount(), actorId);
+        return ResponseEntity.ok(ApiResponse.success(escrowService.getHoldForParticipant(contractId, actorId, true)));
+    }
+
+    @PostMapping("/{contractId}/refund")
+    public ResponseEntity<ApiResponse<EscrowHold>> refundEscrow(
+            @PathVariable String contractId,
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey
+    ) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        String actorId = body != null ? body.getOrDefault("actorId", "SYSTEM_ADMIN") : "SYSTEM_ADMIN";
+        String reason = body != null ? body.getOrDefault("reason", "Hoan coc tranh chap") : "Hoan coc tranh chap";
+        EscrowHold hold = escrowService.getHoldForParticipant(contractId, actorId, true);
+        escrowService.refundDeposit(contractId, hold.getTenantId(), hold.getAmount(), reason, actorId);
+        return ResponseEntity.ok(ApiResponse.success(escrowService.getHoldForParticipant(contractId, actorId, true)));
+    }
+
     private boolean isKeyValid(String serviceKey) {
         if (expectedServiceKey == null) return false;
         return MessageDigest.isEqual(

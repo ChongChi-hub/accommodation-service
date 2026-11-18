@@ -316,6 +316,38 @@ public class ContractService {
         return amendmentRepository.findByContractId(contractId).stream().map(ContractAmendmentDto::from).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ContractDto> getAllContractsForAdmin(String status, String search) {
+        String normalizedStatus = status != null ? status.trim().toUpperCase() : "";
+        String query = search != null ? search.trim().toLowerCase() : "";
+        return contractRepository.findAll().stream()
+                .filter(c -> normalizedStatus.isEmpty() || "ALL".equals(normalizedStatus)
+                        || normalizedStatus.equalsIgnoreCase(c.getStatus()))
+                .filter(c -> query.isEmpty()
+                        || (c.getContractCode() != null && c.getContractCode().toLowerCase().contains(query))
+                        || (c.getId() != null && c.getId().toLowerCase().contains(query))
+                        || (c.getRoomId() != null && c.getRoomId().toLowerCase().contains(query))
+                        || (c.getTenantId() != null && c.getTenantId().toLowerCase().contains(query))
+                        || (c.getLandlordId() != null && c.getLandlordId().toLowerCase().contains(query)))
+                .sorted(Comparator.comparing(Contract::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(ContractDto::from)
+                .toList();
+    }
+
+    public ContractDto adminTerminateContract(String contractId, String adminId, String reason) {
+        Contract contract = findContractOrThrow(contractId);
+        if ("TERMINATED".equals(contract.getStatus())) {
+            return ContractDto.from(contract);
+        }
+        contract.terminate();
+        Contract saved = contractRepository.save(contract);
+        emitContractEvent("CONTRACT_ADMIN_TERMINATED", saved);
+        listingPort.ifPresent(port -> port.releaseRoomHold(saved.getRoomId()));
+        billingPort.ifPresent(port -> port.refundOrReleaseOnCompensation(
+                saved.getId(), reason != null && !reason.isBlank() ? reason : "Admin terminated contract by " + adminId));
+        return ContractDto.from(saved);
+    }
+
     private Contract findContractOrThrow(String contractId) {
         return contractRepository.findById(contractId)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay hop dong: " + contractId));

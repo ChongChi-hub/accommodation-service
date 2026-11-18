@@ -44,4 +44,14 @@ cozynest:
   broker:
     enabled: ${COZYNEST_BROKER_ENABLED:false}
 
+app:
+  identity-service:
+    url: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+  booking-service:
+    url: ${BOOKING_SERVICE_URL:http://localhost:8083}
+  billing-service:
+    url: ${BILLING_SERVICE_URL:http://localhost:8084}
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}
+
 spring.rabbitmq.listener.simple.auto-startup: ${COZYNEST_BROKER_ENABLED:false}

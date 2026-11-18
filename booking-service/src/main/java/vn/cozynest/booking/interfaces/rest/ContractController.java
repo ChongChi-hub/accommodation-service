@@ -198,6 +198,26 @@ public class ContractController {
         return ResponseEntity.ok(ApiResponse.success(contractService.getContractsByLandlord(userContextResolver.getCurrentUserId())));
     }
 
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<ContractDto>>> getAdminContracts(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(contractService.getAllContractsForAdmin(status, search)));
+    }
+
+    @PostMapping("/{id}/admin-terminate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ContractDto>> adminTerminateContract(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(ApiResponse.success("Da cham dut hop dong boi quan tri vien",
+                contractService.adminTerminateContract(id, userContextResolver.getCurrentUserId(), reason)));
+    }
+
     private String extractIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
