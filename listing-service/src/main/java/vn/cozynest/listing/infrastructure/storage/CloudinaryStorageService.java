@@ -53,13 +53,16 @@ public class CloudinaryStorageService implements CloudinaryStoragePort {
                     "folder", targetFolder,
                     "public_id", publicId,
                     "overwrite", true,
-                    "resource_type", "image"
+                    "resource_type", "image",
+                    "connect_timeout", 5000,
+                    "timeout", 8000,
+                    "connection_request_timeout", 3000
             ));
             String secureUrl = (String) uploadResult.get("secure_url");
             log.info("Uploaded room image to Cloudinary folder {}: {}", targetFolder, secureUrl);
             return secureUrl;
-        } catch (IOException e) {
-            log.error("Failed to upload image to Cloudinary: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.warn("Failed to upload image to Cloudinary (will use local storage fallback): {}", e.getMessage());
             return null;
         }
     }

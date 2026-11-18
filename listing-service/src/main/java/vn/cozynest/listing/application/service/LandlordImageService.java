@@ -173,12 +173,6 @@ public class LandlordImageService {
                 }
 
                 String finalImageUrl = "/api/v1/media/" + largeKey;
-                if (cloudinaryStorageService.isPresent()) {
-                    String cloudUrl = cloudinaryStorageService.get().uploadRoomImage(largeBytes, landlordName, fileUuid + "_large");
-                    if (cloudUrl != null && !cloudUrl.isBlank()) {
-                        finalImageUrl = cloudUrl;
-                    }
-                }
 
                 // If room currently has 0 images, first uploaded image defaults to cover
                 boolean isCover = (currentCount + successful == 0);
@@ -208,6 +202,29 @@ public class LandlordImageService {
 
                 RoomImage saved = roomImageRepository.save(roomImage);
                 successful++;
+
+                // Asynchronously sync to Cloudinary in the background without blocking the user
+                if (cloudinaryStorageService.isPresent()) {
+                    final Long savedImageId = saved.getId();
+                    final Long targetRoomId = roomId;
+                    final String cLandlordName = landlordName;
+                    final String cFileUuid = fileUuid;
+                    final byte[] cLargeBytes = largeBytes;
+                    java.util.concurrent.CompletableFuture.runAsync(() -> {
+                        try {
+                            String cloudUrl = cloudinaryStorageService.get().uploadRoomImage(cLargeBytes, cLandlordName, cFileUuid + "_large");
+                            if (cloudUrl != null && !cloudUrl.isBlank()) {
+                                roomImageRepository.findByIdAndRoomId(savedImageId, targetRoomId).ifPresent(img -> {
+                                    img.setImageUrl(cloudUrl);
+                                    roomImageRepository.save(img);
+                                    log.info("Async Cloudinary sync completed for room image #{}: {}", savedImageId, cloudUrl);
+                                });
+                            }
+                        } catch (Exception ex) {
+                            log.warn("Async Cloudinary sync skipped for image #{}: {}", savedImageId, ex.getMessage());
+                        }
+                    });
+                }
 
                 results.add(ImageUploadResponse.ImageUploadItemResult.builder()
                         .imageId(saved.getId())
