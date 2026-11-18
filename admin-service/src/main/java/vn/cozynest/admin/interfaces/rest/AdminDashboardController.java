@@ -123,7 +123,16 @@ public class AdminDashboardController {
                 item.put("reporterName", repName);
                 item.put("reason", String.valueOf(r.getOrDefault("reason", "")));
                 item.put("description", r.get("description") != null ? String.valueOf(r.get("description")) : "");
-                item.put("evidenceUrls", r.get("evidence_urls_json") != null ? String.valueOf(r.get("evidence_urls_json")) : "[]");
+                List<String> evidenceList = new ArrayList<>();
+                if (r.get("evidence_urls_json") != null) {
+                    try {
+                        evidenceList = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                                String.valueOf(r.get("evidence_urls_json")),
+                                new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {}
+                        );
+                    } catch (Exception ignored) {}
+                }
+                item.put("evidenceUrls", evidenceList);
                 item.put("status", String.valueOf(r.getOrDefault("status", "PENDING")));
                 item.put("createdAt", String.valueOf(r.getOrDefault("created_at", "")));
                 list.add(item);
