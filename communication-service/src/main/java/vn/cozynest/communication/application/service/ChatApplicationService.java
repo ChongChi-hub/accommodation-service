@@ -30,12 +30,19 @@ public class ChatApplicationService {
     public static String resolveCanonicalUserId(String userId) {
         if (userId == null || userId.isBlank()) return userId;
         String trimmed = userId.trim();
-        if ("2122472122".equals(trimmed) || "u-landlord-2122472122".equals(trimmed)
-                || "1".equals(trimmed) || "u-landlord-01".equals(trimmed) || "u-landlord-1".equals(trimmed)) {
-            return "u-huy-01";
+        if ("1".equals(trimmed) || "u-landlord-1".equals(trimmed)
+                || "2122472122".equals(trimmed) || "u-landlord-2122472122".equals(trimmed)
+                || "u-landlord-01".equals(trimmed)) {
+            return "u-landlord-01";
         }
-        if ("2".equals(trimmed) || "u-landlord-02".equals(trimmed) || "u-landlord-2".equals(trimmed)) {
-            return "u-hao-01";
+        if ("2".equals(trimmed) || "u-landlord-2".equals(trimmed) || "u-landlord-02".equals(trimmed)) {
+            return "u-landlord-02";
+        }
+        if ("u-tenant-1".equals(trimmed) || "u-tenant-01".equals(trimmed)) {
+            return "u-tenant-01";
+        }
+        if ("u-tenant-2".equals(trimmed) || "u-tenant-02".equals(trimmed)) {
+            return "u-tenant-02";
         }
         return trimmed;
     }
@@ -47,16 +54,24 @@ public class ChatApplicationService {
         set.add(trimmed);
         String canonical = resolveCanonicalUserId(trimmed);
         set.add(canonical);
-        if ("u-huy-01".equals(canonical)) {
+        if ("u-landlord-01".equals(canonical)) {
+            set.add("1");
+            set.add("u-landlord-1");
+            set.add("u-landlord-01");
             set.add("2122472122");
             set.add("u-landlord-2122472122");
-            set.add("1");
-            set.add("u-landlord-01");
-            set.add("u-landlord-1");
-        } else if ("u-hao-01".equals(canonical)) {
+            set.add("u-huy-01");
+        } else if ("u-landlord-02".equals(canonical)) {
             set.add("2");
-            set.add("u-landlord-02");
             set.add("u-landlord-2");
+            set.add("u-landlord-02");
+            set.add("u-hao-01");
+        } else if ("u-tenant-01".equals(canonical)) {
+            set.add("u-tenant-1");
+            set.add("u-tenant-01");
+        } else if ("u-tenant-02".equals(canonical)) {
+            set.add("u-tenant-2");
+            set.add("u-tenant-02");
         }
         return set;
     }

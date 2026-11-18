@@ -45,7 +45,7 @@ public class ReviewController {
             return null;
         }
         String principal = authentication.getName();
-        if ("u-tenant-01".equals(principal) || "tenant@cozynest.vn".equals(principal) || "u-hao-01".equals(principal)) {
+        if ("u-tenant-01".equals(principal) || "tenant@cozynest.vn".equals(principal)) {
             return 1L;
         }
         if ("u-tenant-02".equals(principal) || "tenant2@cozynest.vn".equals(principal)) {
@@ -69,26 +69,21 @@ public class ReviewController {
                 return fullName;
             }
         }
-        if (authentication != null && "u-hao-01".equals(authentication.getName())) {
-            return "Lê Hữu Nhật Hảo";
-        }
-        if (authentication != null && "u-huy-01".equals(authentication.getName())) {
-            return "Đoàn Gia Huy";
-        }
         return "Khách thuê";
     }
 
     private String resolveLandlordUserId(Long landlordId) {
-        if (landlordId == null) return "u-huy-01";
-        if (landlordId == 2122472122L) return "u-huy-01";
-        if (landlordId == 1L) return "u-huy-01";
-        return "u-huy-01";
+        if (landlordId == null) return "u-landlord-01";
+        if (landlordId == 1L) return "u-landlord-01";
+        if (landlordId == 2L) return "u-landlord-02";
+        return landlordId < 10 ? "u-landlord-0" + landlordId : "u-landlord-" + landlordId;
     }
 
     private String resolveTenantUserId(Long tenantId) {
-        if (tenantId == null) return "u-hao-01";
-        if (tenantId == 1L) return "u-hao-01";
-        return "u-hao-01";
+        if (tenantId == null) return "u-tenant-01";
+        if (tenantId == 1L) return "u-tenant-01";
+        if (tenantId == 2L) return "u-tenant-02";
+        return tenantId < 10 ? "u-tenant-0" + tenantId : "u-tenant-" + tenantId;
     }
 
     @GetMapping
