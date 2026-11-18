@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.dto.CreateRentalRequestDto;
 import vn.cozynest.booking.application.dto.RentalRequestDto;
+import vn.cozynest.booking.application.exception.RentalRequestInvalidStateException;
+import vn.cozynest.booking.application.exception.RentalRequestNotFoundException;
 import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.application.port.IdentityVerificationPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
@@ -131,17 +133,40 @@ public class RentalRequestService {
         if (LandlordIdentityResolver.matches(tenantId, targetLandlordId)) {
             throw new IllegalArgumentException("Chu tro khong the gui yeu cau thue phong cua chinh minh");
         }
+        String snapshotRoomTitle = resolveRoomTitleSnapshot(dto.roomId());
+        String snapshotTenantName = identityVerificationPort != null
+                ? identityVerificationPort.resolveUserFullName(tenantId) : null;
         RentalRequest saved = rentalRequestRepository.save(RentalRequest.create(
-                dto.roomId(), tenantId, targetLandlordId,
+                dto.roomId(), snapshotRoomTitle, tenantId, snapshotTenantName, targetLandlordId,
                 dto.proposedMoveInDate(), dto.numOccupants(), dto.message(), dto.idempotencyKey()));
         publishOutbox("RENTAL_REQUEST_CREATED", saved);
         return RentalRequestDto.from(saved);
     }
 
+    private String resolveRoomTitleSnapshot(String roomId) {
+        if (listingPort.isEmpty() || roomId == null || roomId.isBlank()) {
+            return null;
+        }
+        try {
+            BookingListingPort.RoomContractSnapshot snap = listingPort.get().getRoomContractSnapshot(roomId);
+            if (snap != null && snap.roomTitle() != null && !snap.roomTitle().isBlank()) {
+                return snap.roomTitle().trim();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     public RentalRequestDto approveRequest(String landlordId, String requestId, String contractId) {
         RentalRequest request = findOrThrow(requestId);
         if (!matchesLandlord(request.getLandlordId(), landlordId)) {
-            throw new AccessDeniedException("Ban khong co quyen duyet yeu cau thue nay");
+            throw new RentalRequestNotFoundException(requestId);
+        }
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RentalRequestInvalidStateException(
+                    request.getStatus(),
+                    "Yeu cau thue phong khong o trang thai cho duyet (hien tai: " + request.getStatus() + ")"
+            );
         }
 
         String resolvedContractId = contractId;
@@ -208,12 +233,24 @@ public class RentalRequestService {
     }
 
     public RentalRequestDto rejectRequest(String landlordId, String requestId) {
+        return rejectRequest(landlordId, requestId, null);
+    }
+
+    public RentalRequestDto rejectRequest(String landlordId, String requestId, String reason) {
         RentalRequest request = findOrThrow(requestId);
         if (!matchesLandlord(request.getLandlordId(), landlordId)) {
-            throw new AccessDeniedException("Ban khong co quyen tu choi yeu cau thue nay");
+            throw new RentalRequestNotFoundException(requestId);
         }
-        request.reject();
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new RentalRequestInvalidStateException(
+                    request.getStatus(),
+                    "Chi co the tu choi yeu cau dang cho duyet (hien tai: " + request.getStatus() + ")"
+            );
+        }
+        request.reject(reason);
         RentalRequest saved = rentalRequestRepository.save(request);
+        listingPort.ifPresent(port -> port.releaseRoomHold(saved.getRoomId()));
+        log.info("Rejected rental request id={} by landlord={} reason={}", saved.getId(), landlordId, saved.getRejectionReason());
         publishOutbox("RENTAL_REQUEST_REJECTED", saved);
         return RentalRequestDto.from(saved);
     }
@@ -274,19 +311,13 @@ public class RentalRequestService {
 
     private RentalRequest findOrThrow(String requestId) {
         return rentalRequestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay yeu cau thue: " + requestId));
+                .orElseThrow(() -> new RentalRequestNotFoundException(requestId));
     }
 
     private void publishOutbox(String eventType, RentalRequest req) {
-        String roomTitle = null;
-        if (listingPort.isPresent() && req.getRoomId() != null) {
-            try {
-                BookingListingPort.RoomContractSnapshot snap = listingPort.get().getRoomContractSnapshot(req.getRoomId());
-                if (snap != null && snap.roomTitle() != null && !snap.roomTitle().isBlank()) {
-                    roomTitle = snap.roomTitle();
-                }
-            } catch (Exception ignored) {
-            }
+        String roomTitle = req.getRoomTitle();
+        if ((roomTitle == null || roomTitle.isBlank()) && listingPort.isPresent() && req.getRoomId() != null) {
+            roomTitle = resolveRoomTitleSnapshot(req.getRoomId());
         }
         StringBuilder sb = new StringBuilder("{");
         sb.append("\"requestId\":\"").append(escapeJson(req.getId())).append("\"");
@@ -297,6 +328,9 @@ public class RentalRequestService {
         sb.append(",\"tenantId\":\"").append(escapeJson(req.getTenantId())).append("\"");
         sb.append(",\"landlordId\":\"").append(escapeJson(req.getLandlordId())).append("\"");
         sb.append(",\"status\":\"").append(req.getStatus() != null ? escapeJson(req.getStatus()) : "").append("\"");
+        if (req.getRejectionReason() != null && !req.getRejectionReason().isBlank()) {
+            sb.append(",\"rejectionReason\":\"").append(escapeJson(req.getRejectionReason())).append("\"");
+        }
         if (req.getProposedMoveInDate() != null) {
             sb.append(",\"proposedMoveInDate\":\"").append(req.getProposedMoveInDate().toString()).append("\"");
         }

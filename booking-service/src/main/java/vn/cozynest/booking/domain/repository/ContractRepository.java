@@ -13,6 +13,7 @@ public interface ContractRepository {
     List<Contract> findByLandlordId(String landlordId);
     Optional<Contract> findActiveByRoomId(String roomId);
     List<Contract> findExpiringBetween(LocalDate start, LocalDate end);
+    default Optional<Contract> findByRequestId(String requestId) { return Optional.empty(); }
     default List<Contract> findAll() { return List.of(); }
     Contract save(Contract contract);
 }

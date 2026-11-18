@@ -150,5 +150,25 @@ public class HttpIdentityVerificationAdapter implements IdentityVerificationPort
             return trimmed;
         });
     }
+
+    @Override
+    public String resolveUserFullName(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/internal/users/{id}/profile", userId)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data && data.get("fullName") != null) {
+                String name = String.valueOf(data.get("fullName")).trim();
+                return name.isEmpty() ? null : name;
+            }
+            return null;
+        }, () -> null);
+    }
 }
 

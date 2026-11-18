@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.booking.application.dto.CreateRentalRequestDto;
+import vn.cozynest.booking.application.dto.RejectRentalRequestDto;
 import vn.cozynest.booking.application.dto.RentalRequestDto;
 import vn.cozynest.booking.application.service.RentalRequestService;
 import vn.cozynest.booking.infrastructure.security.UserContextResolver;
@@ -45,9 +46,13 @@ public class RentalRequestController {
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
-    public ResponseEntity<ApiResponse<RentalRequestDto>> rejectRentalRequest(@PathVariable String id) {
+    public ResponseEntity<ApiResponse<RentalRequestDto>> rejectRentalRequest(
+            @PathVariable String id,
+            @RequestBody(required = false) @Valid RejectRentalRequestDto body
+    ) {
         String landlordId = userContextResolver.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.rejectRequest(landlordId, id)));
+        String reason = body != null ? body.reason() : null;
+        return ResponseEntity.ok(ApiResponse.success(rentalRequestService.rejectRequest(landlordId, id, reason)));
     }
 
     @PostMapping("/{id}/cancel")

@@ -15,6 +15,10 @@ public interface IdentityVerificationPort {
         return rawLandlordId;
     }
 
+    default String resolveUserFullName(String userId) {
+        return null;
+    }
+
     record UserVerificationStatus(boolean emailVerified, boolean kycVerified, boolean faceVerified, String role) {}
 }
 

@@ -8,9 +8,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.cozynest.booking.application.exception.AppointmentNotFoundException;
+import vn.cozynest.booking.application.exception.ContractAlreadyExistsException;
 import vn.cozynest.booking.application.exception.OptimisticLockConflictException;
+import vn.cozynest.booking.application.exception.RentalRequestInvalidStateException;
+import vn.cozynest.booking.application.exception.RentalRequestNotFoundException;
 import vn.cozynest.booking.application.exception.TimeConflictException;
 import vn.cozynest.booking.application.exception.VerificationRequirementException;
+import vn.cozynest.booking.domain.exception.AppointmentNotStartedException;
 import vn.cozynest.booking.domain.exception.InvalidAppointmentStateException;
 import vn.cozynest.common.dto.ApiResponse;
 
@@ -37,6 +41,30 @@ public class AppointmentExceptionHandler {
                 .data(data)
                 .build();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(AppointmentNotStartedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAppointmentNotStarted(AppointmentNotStartedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_APPOINTMENT_NOT_STARTED"));
+    }
+
+    @ExceptionHandler(RentalRequestNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRentalRequestNotFound(RentalRequestNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_RENTAL_REQUEST_NOT_FOUND"));
+    }
+
+    @ExceptionHandler(RentalRequestInvalidStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRentalRequestInvalidState(RentalRequestInvalidStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_RENTAL_REQUEST_INVALID_STATE"));
+    }
+
+    @ExceptionHandler(ContractAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleContractAlreadyExists(ContractAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_CONTRACT_ALREADY_EXISTS"));
     }
 
     @ExceptionHandler(AppointmentNotFoundException.class)

@@ -13,6 +13,7 @@ import java.util.Optional;
 @Repository
 public interface SpringDataContractRepository extends JpaRepository<ContractJpaEntity, String> {
     Optional<ContractJpaEntity> findByContractCode(String contractCode);
+    Optional<ContractJpaEntity> findByRequestId(String requestId);
     List<ContractJpaEntity> findByTenantId(String tenantId);
     List<ContractJpaEntity> findByLandlordId(String landlordId);
 

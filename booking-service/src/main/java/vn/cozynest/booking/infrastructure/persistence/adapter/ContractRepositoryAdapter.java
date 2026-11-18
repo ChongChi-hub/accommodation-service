@@ -30,6 +30,11 @@ public class ContractRepositoryAdapter implements ContractRepository {
     }
 
     @Override
+    public Optional<Contract> findByRequestId(String requestId) {
+        return repository.findByRequestId(requestId).map(ContractPersistenceMapper::toDomain);
+    }
+
+    @Override
     public List<Contract> findByTenantId(String tenantId) {
         return repository.findByTenantId(tenantId).stream().map(ContractPersistenceMapper::toDomain).toList();
     }

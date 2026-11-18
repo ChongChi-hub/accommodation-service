@@ -2,6 +2,7 @@ package vn.cozynest.booking.application.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,9 +19,11 @@ import vn.cozynest.booking.domain.repository.AppointmentEventOutboxRepository;
 import vn.cozynest.booking.domain.repository.AppointmentStatusHistoryRepository;
 import vn.cozynest.booking.domain.repository.ViewingAppointmentRepository;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +36,7 @@ public class LandlordAppointmentService {
     private final AppointmentStatusHistoryRepository historyRepository;
     private final AppointmentEventOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     public LandlordAppointmentService(
             ViewingAppointmentRepository appointmentRepository,
@@ -40,10 +44,22 @@ public class LandlordAppointmentService {
             AppointmentEventOutboxRepository outboxRepository,
             ObjectMapper objectMapper
     ) {
+        this(appointmentRepository, historyRepository, outboxRepository, objectMapper, Clock.systemUTC());
+    }
+
+    @Autowired
+    public LandlordAppointmentService(
+            ViewingAppointmentRepository appointmentRepository,
+            AppointmentStatusHistoryRepository historyRepository,
+            AppointmentEventOutboxRepository outboxRepository,
+            ObjectMapper objectMapper,
+            Clock clock
+    ) {
         this.appointmentRepository = appointmentRepository;
         this.historyRepository = historyRepository;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
     @Transactional(readOnly = true)
@@ -193,17 +209,30 @@ public class LandlordAppointmentService {
 
     public ViewingAppointmentDetailDto completeAppointment(String landlordId, String appointmentId, CompleteAppointmentRequest req) {
         ViewingAppointment appointment = findOrThrow(landlordId, appointmentId);
+        AppointmentStatus targetOutcome = req != null && req.outcome() != null ? req.outcome() : AppointmentStatus.COMPLETED;
+        String note = req != null ? req.note() : null;
+
+        // Idempotent: repeating COMPLETED on COMPLETED or NO_SHOW on NO_SHOW returns 200 without duplicate outbox/audit
+        if ((targetOutcome == AppointmentStatus.COMPLETED || targetOutcome == AppointmentStatus.NO_SHOW)
+                && appointment.getStatus() == targetOutcome) {
+            return getDetail(landlordId, appointmentId);
+        }
+
         checkVersion(req != null ? req.version() : null, appointment.getVersion());
 
-        appointment.complete(landlordId, req.outcome(), req.note());
+        appointment.complete(landlordId, targetOutcome, note, clock.instant());
         appointmentRepository.save(appointment);
 
-        recordAudit(appointment.getId(), "CONFIRMED", req.outcome().name(), landlordId, "LANDLORD", req.note());
-        recordOutbox("APPOINTMENT_" + req.outcome().name(), appointment.getId(), Map.of(
-                "appointmentId", appointment.getId(),
-                "outcome", req.outcome().name(),
-                "note", req.note() != null ? req.note() : ""
-        ));
+        recordAudit(appointment.getId(), "CONFIRMED", targetOutcome.name(), landlordId, "LANDLORD", note);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("appointmentId", appointment.getId());
+        payload.put("landlordId", landlordId);
+        if (appointment.getTenantId() != null) payload.put("tenantId", appointment.getTenantId());
+        if (appointment.getRoomId() != null) payload.put("roomId", appointment.getRoomId());
+        if (appointment.getRoomTitle() != null) payload.put("roomTitle", appointment.getRoomTitle());
+        payload.put("outcome", targetOutcome.name());
+        payload.put("note", note != null ? note : "");
+        recordOutbox("APPOINTMENT_" + targetOutcome.name(), appointment.getId(), payload);
 
         return getDetail(landlordId, appointmentId);
     }

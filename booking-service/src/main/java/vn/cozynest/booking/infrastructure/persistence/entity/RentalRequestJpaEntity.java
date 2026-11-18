@@ -25,8 +25,14 @@ public class RentalRequestJpaEntity {
     @Column(name = "room_id", nullable = false, length = 64)
     private String roomId;
 
+    @Column(name = "room_title", length = 255)
+    private String roomTitle;
+
     @Column(name = "tenant_id", nullable = false, length = 36)
     private String tenantId;
+
+    @Column(name = "tenant_name", length = 150)
+    private String tenantName;
 
     @Column(name = "landlord_id", nullable = false, length = 36)
     private String landlordId;
@@ -44,6 +50,9 @@ public class RentalRequestJpaEntity {
     @Column(nullable = false, length = 30)
     @Builder.Default
     private String status = "PENDING";
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
     @Column(name = "contract_id", length = 36)
     private String contractId;

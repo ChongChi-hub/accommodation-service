@@ -60,7 +60,7 @@ class RentalRequestServiceTest {
         when(repo.findById(req.getId())).thenReturn(Optional.of(req));
 
         assertThatThrownBy(() -> service.approveRequest("l2", req.getId(), "c1"))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(vn.cozynest.booking.application.exception.RentalRequestNotFoundException.class);
         assertThatThrownBy(() -> service.getRequestById(req.getId(), "stranger", false))
                 .isInstanceOf(AccessDeniedException.class);
         assertThat(service.getRequestById(req.getId(), "t1", false).id()).isEqualTo(req.getId());

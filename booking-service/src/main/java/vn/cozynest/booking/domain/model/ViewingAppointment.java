@@ -1,5 +1,6 @@
 package vn.cozynest.booking.domain.model;
 
+import vn.cozynest.booking.domain.exception.AppointmentNotStartedException;
 import vn.cozynest.booking.domain.exception.InvalidAppointmentStateException;
 
 import java.time.Instant;
@@ -80,21 +81,26 @@ public class ViewingAppointment {
     }
 
     public void complete(String actorId, AppointmentStatus outcome, String note) {
+        complete(actorId, outcome, note, Instant.now());
+    }
+
+    public void complete(String actorId, AppointmentStatus outcome, String note, Instant now) {
         if (this.status != AppointmentStatus.CONFIRMED) {
             throw new InvalidAppointmentStateException(this.status, outcome);
         }
         if (outcome != AppointmentStatus.COMPLETED && outcome != AppointmentStatus.NO_SHOW) {
             throw new InvalidAppointmentStateException(this.status, outcome);
         }
-        if (Instant.now().isBefore(this.scheduledStart)) {
-            throw new IllegalStateException("Khong the cap nhat ket qua truoc gio hen bat dau");
+        Instant effectiveNow = now != null ? now : Instant.now();
+        if (this.scheduledStart != null && effectiveNow.isBefore(this.scheduledStart)) {
+            throw new AppointmentNotStartedException(this.scheduledStart);
         }
         this.status = outcome;
-        this.completedAt = Instant.now();
+        this.completedAt = effectiveNow;
         if (note != null && !note.isBlank()) {
             this.landlordNote = note.trim();
         }
-        this.updatedAt = Instant.now();
+        this.updatedAt = effectiveNow;
     }
 
     public void expire() {

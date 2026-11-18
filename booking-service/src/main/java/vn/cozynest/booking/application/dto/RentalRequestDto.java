@@ -8,12 +8,15 @@ import java.time.LocalDate;
 public record RentalRequestDto(
         String id,
         String roomId,
+        String roomTitle,
         String tenantId,
+        String tenantName,
         String landlordId,
         LocalDate proposedMoveInDate,
         int numOccupants,
         String message,
         String status,
+        String rejectionReason,
         String contractId,
         Instant holdingExpiresAt,
         Instant createdAt
@@ -23,16 +26,18 @@ public record RentalRequestDto(
         return new RentalRequestDto(
                 r.getId(),
                 r.getRoomId(),
+                r.getRoomTitle(),
                 r.getTenantId(),
+                r.getTenantName(),
                 r.getLandlordId(),
                 r.getProposedMoveInDate(),
                 r.getNumOccupants(),
                 r.getMessage(),
                 r.getStatus(),
+                r.getRejectionReason(),
                 r.getContractId(),
                 r.getHoldingExpiresAt(),
                 r.getCreatedAt()
         );
     }
 }
-

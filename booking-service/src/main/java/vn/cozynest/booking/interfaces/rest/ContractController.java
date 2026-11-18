@@ -30,7 +30,8 @@ public class ContractController {
     @PostMapping
     @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
     public ResponseEntity<ApiResponse<ContractDto>> createContract(@Valid @RequestBody CreateContractDto dto) {
-        return ResponseEntity.ok(ApiResponse.success(contractService.createContract(dto)));
+        return ResponseEntity.ok(ApiResponse.success(contractService.createContract(
+                dto, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"))));
     }
 
     @PutMapping("/{id}/draft")

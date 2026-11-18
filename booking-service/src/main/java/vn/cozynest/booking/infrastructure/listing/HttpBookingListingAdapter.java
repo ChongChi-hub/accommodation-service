@@ -111,6 +111,24 @@ public class HttpBookingListingAdapter implements BookingListingPort {
     }
 
     @Override
+    public String getRoomOwnerId(String roomId) {
+        if (roomId == null || !roomId.matches("\\d+")) {
+            return null;
+        }
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/api/v1/rooms/{id}", roomId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data && data.get("landlordId") != null) {
+                return String.valueOf(data.get("landlordId"));
+            }
+            return null;
+        }, () -> null);
+    }
+
+    @Override
     public void releaseRoomHold(String roomId) {
         log.info("Saga compensation notified listing hold release for roomId={}", roomId);
     }

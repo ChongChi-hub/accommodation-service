@@ -13,6 +13,10 @@ public interface BookingListingPort {
 
     RoomContractSnapshot getRoomContractSnapshot(String roomId);
 
+    default String getRoomOwnerId(String roomId) {
+        return null;
+    }
+
     record RoomAvailabilityCheck(boolean available, int maxOccupants, String status, String reason) {}
 
     record RoomContractSnapshot(

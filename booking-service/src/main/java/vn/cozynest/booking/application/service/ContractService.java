@@ -1,19 +1,25 @@
 package vn.cozynest.booking.application.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.dto.*;
+import vn.cozynest.booking.application.exception.ContractAlreadyExistsException;
+import vn.cozynest.booking.application.exception.RentalRequestInvalidStateException;
+import vn.cozynest.booking.application.exception.RentalRequestNotFoundException;
 import vn.cozynest.booking.application.port.BookingListingPort;
 import vn.cozynest.booking.domain.model.AppointmentEventOutbox;
 import vn.cozynest.booking.domain.model.Contract;
 import vn.cozynest.booking.domain.model.ContractAmendment;
 import vn.cozynest.booking.domain.model.ContractOccupant;
+import vn.cozynest.booking.domain.model.RentalRequest;
 import vn.cozynest.booking.domain.repository.AppointmentEventOutboxRepository;
 import vn.cozynest.booking.domain.repository.ContractAmendmentRepository;
 import vn.cozynest.booking.domain.repository.ContractOccupantRepository;
 import vn.cozynest.booking.domain.repository.ContractRepository;
+import vn.cozynest.booking.domain.repository.RentalRequestRepository;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -35,6 +41,7 @@ public class ContractService {
     private final Optional<BookingListingPort> listingPort;
     private final Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort;
     private final Optional<vn.cozynest.booking.application.port.IdentityVerificationPort> identityVerificationPort;
+    private final Optional<RentalRequestRepository> rentalRequestRepository;
 
     public ContractService(
             ContractRepository contractRepository,
@@ -43,7 +50,7 @@ public class ContractService {
             ContractSigningCoordinator signingCoordinator,
             AppointmentEventOutboxRepository outboxRepository
     ) {
-        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty(), Optional.empty(), null);
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, Optional.empty(), Optional.empty(), null, Optional.empty());
     }
 
     public ContractService(
@@ -54,7 +61,20 @@ public class ContractService {
             AppointmentEventOutboxRepository outboxRepository,
             Optional<BookingListingPort> listingPort
     ) {
-        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, Optional.empty(), null);
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, Optional.empty(), null, Optional.empty());
+    }
+
+    public ContractService(
+            ContractRepository contractRepository,
+            ContractAmendmentRepository amendmentRepository,
+            ContractOccupantRepository occupantRepository,
+            ContractSigningCoordinator signingCoordinator,
+            AppointmentEventOutboxRepository outboxRepository,
+            Optional<BookingListingPort> listingPort,
+            Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort,
+            vn.cozynest.booking.application.port.IdentityVerificationPort identityVerificationPort
+    ) {
+        this(contractRepository, amendmentRepository, occupantRepository, signingCoordinator, outboxRepository, listingPort, billingPort, identityVerificationPort, Optional.empty());
     }
 
     @Autowired
@@ -66,7 +86,8 @@ public class ContractService {
             AppointmentEventOutboxRepository outboxRepository,
             Optional<BookingListingPort> listingPort,
             Optional<vn.cozynest.booking.application.port.BookingBillingPort> billingPort,
-            @Autowired(required = false) vn.cozynest.booking.application.port.IdentityVerificationPort identityVerificationPort
+            @Autowired(required = false) vn.cozynest.booking.application.port.IdentityVerificationPort identityVerificationPort,
+            Optional<RentalRequestRepository> rentalRequestRepository
     ) {
         this.contractRepository = contractRepository;
         this.amendmentRepository = amendmentRepository;
@@ -76,12 +97,18 @@ public class ContractService {
         this.listingPort = listingPort != null ? listingPort : Optional.empty();
         this.billingPort = billingPort != null ? billingPort : Optional.empty();
         this.identityVerificationPort = Optional.ofNullable(identityVerificationPort);
+        this.rentalRequestRepository = rentalRequestRepository != null ? rentalRequestRepository : Optional.empty();
     }
 
     public ContractDto createContract(CreateContractDto dto) {
+        return createContract(dto, dto.landlordId(), false);
+    }
+
+    public ContractDto createContract(CreateContractDto dto, String actorId, boolean isAdmin) {
         if (!dto.endDate().isAfter(dto.startDate())) {
             throw new IllegalArgumentException("Ngay ket thuc hop dong phai sau ngay bat dau");
         }
+        RentalRequest linkedRequest = validateCreateContractEligibility(dto, actorId, isAdmin);
         identityVerificationPort.ifPresent(port -> {
             vn.cozynest.booking.application.port.IdentityVerificationPort.UserVerificationStatus verStatus = port.getVerificationStatus(dto.landlordId());
             if (!verStatus.faceVerified()) {
@@ -91,16 +118,76 @@ public class ContractService {
             }
         });
         String code = "HD-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        Contract saved = contractRepository.save(Contract.create(
-                code, dto.roomId(), dto.tenantId(), dto.landlordId(),
-                dto.requestId(), dto.startDate(), dto.endDate(),
-                dto.monthlyRent(), dto.depositAmount(), dto.terms(),
-                dto.initialElectricityReading(), dto.initialWaterReading(),
-                dto.electricityRate(), dto.waterRate()
-        ));
+        String normalizedRequestId = (dto.requestId() != null && !dto.requestId().isBlank()) ? dto.requestId().trim() : null;
+        Contract saved;
+        try {
+            saved = contractRepository.save(Contract.create(
+                    code, dto.roomId(), dto.tenantId(), dto.landlordId(),
+                    normalizedRequestId, dto.startDate(), dto.endDate(),
+                    dto.monthlyRent(), dto.depositAmount(), dto.terms(),
+                    dto.initialElectricityReading(), dto.initialWaterReading(),
+                    dto.electricityRate(), dto.waterRate()
+            ));
+        } catch (DataIntegrityViolationException ex) {
+            if (normalizedRequestId != null) {
+                throw new ContractAlreadyExistsException(normalizedRequestId);
+            }
+            throw ex;
+        }
+        if (linkedRequest != null && rentalRequestRepository.isPresent()) {
+            linkedRequest.linkContract(saved.getId());
+            rentalRequestRepository.get().save(linkedRequest);
+        }
         emitContractEvent("CONTRACT_CREATED", saved);
         billingPort.ifPresent(p -> p.openEscrowHold(saved.getId(), saved.getTenantId(), saved.getLandlordId(), saved.getDepositAmount()));
         return ContractDto.from(saved);
+    }
+
+    private RentalRequest validateCreateContractEligibility(CreateContractDto dto, String actorId, boolean isAdmin) {
+        String requestId = dto.requestId() != null ? dto.requestId().trim() : null;
+        if (requestId != null && !requestId.isBlank()) {
+            if (rentalRequestRepository.isPresent()) {
+                RentalRequest req = rentalRequestRepository.get().findById(requestId)
+                        .orElseThrow(() -> new RentalRequestNotFoundException(requestId));
+                if (!isAdmin && actorId != null && !LandlordIdentityResolver.matches(req.getLandlordId(), actorId)) {
+                    throw new RentalRequestNotFoundException(requestId);
+                }
+                if (!"APPROVED".equals(req.getStatus())) {
+                    throw new RentalRequestInvalidStateException(
+                            req.getStatus(),
+                            "Chi co the tao hop dong tu yeu cau thue da duoc duyet (trang thai hien tai: " + req.getStatus() + ")"
+                    );
+                }
+                if ((req.getContractId() != null && !req.getContractId().isBlank())
+                        || contractRepository.findByRequestId(requestId).isPresent()) {
+                    throw new ContractAlreadyExistsException(requestId);
+                }
+                return req;
+            }
+            if (contractRepository.findByRequestId(requestId).isPresent()) {
+                throw new ContractAlreadyExistsException(requestId);
+            }
+            return null;
+        }
+        // Direct contract creation (no requestId): verify room belongs to calling landlord
+        if (!isAdmin && actorId != null) {
+            if (dto.landlordId() != null && !LandlordIdentityResolver.matches(dto.landlordId(), actorId)) {
+                throw new AccessDeniedException("Chi chu tro so huu phong moi duoc tao hop dong truc tiep");
+            }
+            if (listingPort.isPresent()) {
+                String ownerId = listingPort.get().getRoomOwnerId(dto.roomId());
+                if (ownerId != null && !ownerId.isBlank()) {
+                    String resolvedOwner = ownerId;
+                    if (ownerId.matches("^\\d+$") && identityVerificationPort.isPresent()) {
+                        resolvedOwner = identityVerificationPort.get().resolveLandlordUserId(ownerId);
+                    }
+                    if (!LandlordIdentityResolver.matches(resolvedOwner, actorId)) {
+                        throw new RentalRequestNotFoundException(dto.roomId());
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     public ContractDto signContract(String contractId, String userId, String otpCode, boolean isLandlord, String ip, String ua) {

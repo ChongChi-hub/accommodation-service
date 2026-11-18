@@ -93,4 +93,34 @@ public class LandlordAppointmentController {
         ViewingAppointmentDetailDto detail = landlordAppointmentService.completeAppointment(landlordId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Cap nhat ket qua lich hen thanh cong", detail));
     }
+
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<ApiResponse<ViewingAppointmentDetailDto>> patchCompleteAppointment(
+            @PathVariable String id,
+            @RequestBody(required = false) CompleteAppointmentRequest request
+    ) {
+        String landlordId = userContextResolver.getCurrentUserId();
+        CompleteAppointmentRequest effective = new CompleteAppointmentRequest(
+                AppointmentStatus.COMPLETED,
+                request != null ? request.note() : null,
+                request != null ? request.version() : null
+        );
+        ViewingAppointmentDetailDto detail = landlordAppointmentService.completeAppointment(landlordId, id, effective);
+        return ResponseEntity.ok(ApiResponse.success("Hoan thanh lich hen thanh cong", detail));
+    }
+
+    @PatchMapping("/{id}/no-show")
+    public ResponseEntity<ApiResponse<ViewingAppointmentDetailDto>> patchNoShowAppointment(
+            @PathVariable String id,
+            @RequestBody(required = false) CompleteAppointmentRequest request
+    ) {
+        String landlordId = userContextResolver.getCurrentUserId();
+        CompleteAppointmentRequest effective = new CompleteAppointmentRequest(
+                AppointmentStatus.NO_SHOW,
+                request != null ? request.note() : null,
+                request != null ? request.version() : null
+        );
+        ViewingAppointmentDetailDto detail = landlordAppointmentService.completeAppointment(landlordId, id, effective);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat khach khong den thanh cong", detail));
+    }
 }
