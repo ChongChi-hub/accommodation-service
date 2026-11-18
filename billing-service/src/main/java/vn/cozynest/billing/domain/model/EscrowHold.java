@@ -9,13 +9,13 @@ public class EscrowHold {
     private final String contractId;
     private final String tenantId;
     private final String landlordId;
-    private final long amount;
+    private long amount;
     private String status;
     private final boolean sandboxMode;
     private boolean tenantConfirmedMoveIn;
     private boolean landlordConfirmedMoveIn;
     private Instant moveInConfirmedAt;
-    private final Instant inspectionEndsAt;
+    private Instant inspectionEndsAt;
     private String disputeReason;
     private Instant releasedAt;
     private final Instant createdAt;
@@ -57,6 +57,36 @@ public class EscrowHold {
         return new EscrowHold(UUID.randomUUID().toString(), contractId, tenantId, landlordId,
                 amount, "HELD", sandboxMode, now.plus(Math.max(1, inspectionHours), ChronoUnit.HOURS),
                 null, null, now, now);
+    }
+
+    public static EscrowHold createPendingHold(String contractId, String tenantId, String landlordId,
+                                               long amount, boolean sandboxMode, long inspectionHours) {
+        if (amount <= 0) throw new IllegalArgumentException("So tien ky quy phai lon hon 0");
+        Instant now = Instant.now();
+        return new EscrowHold(UUID.randomUUID().toString(), contractId, tenantId, landlordId,
+                amount, "AWAITING_DEPOSIT", sandboxMode, now.plus(Math.max(1, inspectionHours), ChronoUnit.HOURS),
+                null, null, now, now);
+    }
+
+    public void activateFromDeposit(long paidAmount, long inspectionHours) {
+        if ("AWAITING_DEPOSIT".equals(status)) {
+            if (paidAmount > 0) {
+                this.amount = paidAmount;
+            }
+            this.status = "HELD";
+            Instant now = Instant.now();
+            this.inspectionEndsAt = now.plus(Math.max(1, inspectionHours), ChronoUnit.HOURS);
+            this.updatedAt = now;
+        }
+    }
+
+    public void cancelPending(String reason) {
+        if (!"AWAITING_DEPOSIT".equals(status)) {
+            throw new IllegalStateException("Chi co the huy khoan ky quy chua thanh toan");
+        }
+        this.status = "CANCELLED";
+        this.disputeReason = reason;
+        this.updatedAt = Instant.now();
     }
 
     public void freezeForDispute(String reason) {
@@ -103,7 +133,8 @@ public class EscrowHold {
     }
 
     public void confirmMoveIn(boolean isTenant, boolean isLandlord) {
-        if ("DISPUTE_FROZEN".equals(status) || "RELEASED".equals(status) || "REFUNDED".equals(status)) {
+        if ("AWAITING_DEPOSIT".equals(status) || "CANCELLED".equals(status)
+                || "DISPUTE_FROZEN".equals(status) || "RELEASED".equals(status) || "REFUNDED".equals(status)) {
             throw new IllegalStateException("Trang thai ky quy khong cho phep xac nhan nhan phong: " + status);
         }
         if (isTenant) {

@@ -4,9 +4,22 @@
 -- ============================================================================
 
 -- Clean existing face seed records
-DELETE FROM face_access_logs WHERE face_verification_id IN ('fv-l01', 'fv-l02', 'fv-l06');
-DELETE FROM face_verification_frames WHERE face_verification_id IN ('fv-l01', 'fv-l02', 'fv-l06');
-DELETE FROM face_verifications WHERE id IN ('fv-l01', 'fv-l02', 'fv-l06');
+DELETE FROM face_access_logs WHERE face_verification_id IN ('fv-l01', 'fv-l02', 'fv-l06', 'fv-t01');
+DELETE FROM face_verification_frames WHERE face_verification_id IN ('fv-l01', 'fv-l02', 'fv-l06', 'fv-t01');
+DELETE FROM face_verifications WHERE id IN ('fv-l01', 'fv-l02', 'fv-l06', 'fv-t01');
+
+-- 0. Tenant 01 (u-tenant-01) -> PASSED (Overall KYC APPROVED for refund verification)
+INSERT INTO face_verifications (
+    id, user_id, kyc_id, provider, status, liveness_client_flag,
+    challenge_json, challenge_nonce, challenge_expires_at, attempt_no,
+    consent_at, consent_version, reviewed_by, reviewed_at,
+    reject_reason_code, reject_reason_note, version, created_at, updated_at
+) VALUES (
+    'fv-t01', 'u-tenant-01', 'uv-001', 'manual', 'PASSED', TRUE,
+    '["CHOP_MAT","QUAY_TRAI"]', NULL, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY, 1,
+    CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY - INTERVAL 1 HOUR, 'v1.0', 'u-mod-01', CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY,
+    NULL, NULL, 1, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY - INTERVAL 1 HOUR, CURRENT_TIMESTAMP(3) - INTERVAL 14 DAY
+);
 
 -- 1. Landlord 01 (u-landlord-01) -> PASSED (Overall KYC APPROVED)
 INSERT INTO face_verifications (

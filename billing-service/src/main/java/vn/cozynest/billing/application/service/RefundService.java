@@ -10,6 +10,7 @@ import vn.cozynest.billing.application.dto.RefundDto;
 import vn.cozynest.billing.application.port.BillingIdentityVerificationPort;
 import vn.cozynest.billing.domain.model.*;
 import vn.cozynest.billing.domain.repository.BillingEventOutboxRepository;
+import vn.cozynest.billing.domain.repository.EscrowHoldRepository;
 import vn.cozynest.billing.domain.repository.MakerCheckerRepository;
 import vn.cozynest.billing.domain.repository.PaymentIntentRepository;
 import vn.cozynest.billing.domain.repository.RefundRequestRepository;
@@ -29,6 +30,7 @@ public class RefundService {
     private final BillingIdentityVerificationPort identityVerificationPort;
     private final PaymentIntentRepository paymentIntentRepository;
     private final BillingEventOutboxRepository outboxRepository;
+    private final EscrowHoldRepository escrowHoldRepository;
     private final String fintechMode;
     private final boolean liveDisbursementEnabled;
 
@@ -44,7 +46,20 @@ public class RefundService {
                          String fintechMode,
                          boolean liveDisbursementEnabled) {
         this(refundRepository, makerCheckerRepository, ledgerService,
-                Optional.empty(), Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+                fintechMode, liveDisbursementEnabled);
+    }
+
+    public RefundService(RefundRequestRepository refundRepository,
+                         MakerCheckerRepository makerCheckerRepository,
+                         LedgerService ledgerService,
+                         Optional<BillingIdentityVerificationPort> identityVerificationPort,
+                         Optional<PaymentIntentRepository> paymentIntentRepository,
+                         Optional<BillingEventOutboxRepository> outboxRepository,
+                         String fintechMode,
+                         boolean liveDisbursementEnabled) {
+        this(refundRepository, makerCheckerRepository, ledgerService,
+                identityVerificationPort, paymentIntentRepository, outboxRepository, Optional.empty(),
                 fintechMode, liveDisbursementEnabled);
     }
 
@@ -55,6 +70,7 @@ public class RefundService {
                          Optional<BillingIdentityVerificationPort> identityVerificationPort,
                          Optional<PaymentIntentRepository> paymentIntentRepository,
                          Optional<BillingEventOutboxRepository> outboxRepository,
+                         Optional<EscrowHoldRepository> escrowHoldRepository,
                          @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
                          @Value("${fintech.disbursement.live-enabled:false}") boolean liveDisbursementEnabled) {
         this.refundRepository = refundRepository;
@@ -63,6 +79,7 @@ public class RefundService {
         this.identityVerificationPort = identityVerificationPort != null ? identityVerificationPort.orElse(null) : null;
         this.paymentIntentRepository = paymentIntentRepository != null ? paymentIntentRepository.orElse(null) : null;
         this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
+        this.escrowHoldRepository = escrowHoldRepository != null ? escrowHoldRepository.orElse(null) : null;
         this.fintechMode = fintechMode;
         this.liveDisbursementEnabled = liveDisbursementEnabled;
     }
@@ -105,6 +122,32 @@ public class RefundService {
             if (alreadyRefunded + cmd.amount() > intent.getPaidAmount()) {
                 throw new IllegalArgumentException("Tong so tien hoan (" + (alreadyRefunded + cmd.amount())
                         + ") vuot qua so tien da thanh toan (" + intent.getPaidAmount() + ")");
+            }
+        }
+
+        if (escrowHoldRepository != null) {
+            Optional<EscrowHold> holdOpt = escrowHoldRepository.findByContractId(cmd.contractId());
+            if (holdOpt.isPresent()) {
+                EscrowHold hold = holdOpt.get();
+                if (!hold.getTenantId().equals(tenantId)) {
+                    throw new AccessDeniedException("Khong co quyen yeu cau hoan tien cho khoan ky quy cua nguoi khac");
+                }
+                if (!"HELD".equals(hold.getStatus()) && !"DISPUTE_FROZEN".equals(hold.getStatus())) {
+                    throw new IllegalStateException("Trang thai khoan ky quy khong hop le de hoan tien: " + hold.getStatus());
+                }
+                long alreadyRefundedForContract = refundRepository.findByTenantId(tenantId).stream()
+                        .filter(r -> cmd.contractId().equals(r.getContractId()))
+                        .filter(r -> !"REJECTED".equals(r.getStatus()) && !"FAILED".equals(r.getStatus()))
+                        .mapToLong(RefundRequest::getAmount)
+                        .sum();
+                if (alreadyRefundedForContract + cmd.amount() > hold.getAmount()) {
+                    throw new IllegalArgumentException("Tong so tien hoan (" + (alreadyRefundedForContract + cmd.amount())
+                            + ") vuot qua so tien ky quy dang giu (" + hold.getAmount() + ")");
+                }
+            }
+            long escrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
+            if (escrowBalance < cmd.amount()) {
+                throw new IllegalStateException("So du tai khoan ky quy he thong khong du de hoan tien");
             }
         }
 
@@ -214,6 +257,14 @@ public class RefundService {
                         new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.CREDIT, refund.getAmount())
                 )
         );
+        if (escrowHoldRepository != null) {
+            escrowHoldRepository.findByContractId(refund.getContractId()).ifPresent(hold -> {
+                if ("HELD".equals(hold.getStatus()) || "DISPUTE_FROZEN".equals(hold.getStatus())) {
+                    hold.refund(refund.getReason());
+                    escrowHoldRepository.save(hold);
+                }
+            });
+        }
         refund.markCompleted();
         emitOutbox("REFUND_COMPLETED", refund);
     }

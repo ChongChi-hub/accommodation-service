@@ -152,6 +152,30 @@ class Wave2FintechSecurityAndAuditTest {
                 "pi-1", "cnt-1", "l1", 4_000_000L, "VCB", "11223344", "TRAN MINH T", null, "654321", "Over")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("vuot qua");
+
+        // Escrow guard prevents refunding AWAITING_DEPOSIT hold and transitions HELD -> REFUNDED on completion
+        EscrowHoldRepository escrowHoldRepo = mock(EscrowHoldRepository.class);
+        EscrowHold unpaidHold = EscrowHold.createPendingHold("cnt-unpaid", "t1", "l1", 2_000_000L, true, 72);
+        when(escrowHoldRepo.findByContractId("cnt-unpaid")).thenReturn(Optional.of(unpaidHold));
+        RefundService escrowGuardedRefund = new RefundService(
+                refRepo, mcRepo, ledger, Optional.of(idPort), Optional.of(piRepo), Optional.empty(),
+                Optional.of(escrowHoldRepo), "SANDBOX_ONLY", false);
+        assertThatThrownBy(() -> escrowGuardedRefund.requestRefund("t1", new RefundDto.CreateRefundCommand(
+                null, "cnt-unpaid", "l1", 1_000_000L, "VCB", "11223344", "TRAN MINH T", null, "654321", "Move out")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("AWAITING_DEPOSIT");
+
+        EscrowHold heldEscrow = EscrowHold.createHold("cnt-held", "t1", "l1", 2_000_000L, true, 72);
+        LedgerAccount escrowAcc = LedgerAccount.create(LedgerService.ACC_ESCROW, "Escrow", AccountType.LIABILITY, null);
+        escrowAcc.applyPosting(PostingDirection.CREDIT, 2_000_000L);
+        when(accRepo.findByAccountNumber(LedgerService.ACC_ESCROW)).thenReturn(Optional.of(escrowAcc));
+        when(accRepo.findByAccountNumberForUpdate(LedgerService.ACC_ESCROW)).thenReturn(Optional.of(escrowAcc));
+        when(escrowHoldRepo.findByContractId("cnt-held")).thenReturn(Optional.of(heldEscrow));
+        when(escrowHoldRepo.save(any())).thenAnswer(i -> i.getArgument(0));
+        RefundDto.RefundResponse completedRefund = escrowGuardedRefund.requestRefund("t1", new RefundDto.CreateRefundCommand(
+                null, "cnt-held", "l1", 1_500_000L, "VCB", "11223344", "TRAN MINH T", null, "654321", "Move out"));
+        assertThat(completedRefund.status()).isEqualTo("COMPLETED");
+        assertThat(heldEscrow.getStatus()).isEqualTo("REFUNDED");
     }
 
     @Test

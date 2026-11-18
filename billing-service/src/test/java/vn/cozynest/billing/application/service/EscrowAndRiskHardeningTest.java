@@ -44,6 +44,27 @@ class EscrowAndRiskHardeningTest {
         assertThat(hold.getStatus()).isEqualTo("HELD");
         // Cannot auto-release before 72h inspection expires
         assertThatThrownBy(() -> hold.release(false)).isInstanceOf(IllegalStateException.class);
+
+        // Unpaid contract init creates AWAITING_DEPOSIT; compensating it cancels without touching ledger
+        EscrowHoldRepository pendingRepo = mock(EscrowHoldRepository.class);
+        java.util.concurrent.atomic.AtomicReference<EscrowHold> storedHold = new java.util.concurrent.atomic.AtomicReference<>();
+        when(pendingRepo.findByContractId("cnt-pending")).thenAnswer(i -> Optional.ofNullable(storedHold.get()));
+        when(pendingRepo.save(any())).thenAnswer(i -> {
+            EscrowHold h = i.getArgument(0);
+            storedHold.set(h);
+            return h;
+        });
+        EscrowService pendingService = new EscrowService(ledger, pendingRepo, "SANDBOX_ONLY", false);
+        EscrowHold pending = pendingService.openHold("cnt-pending", "t-1", "l-1", 3_000_000L, 72);
+        assertThat(pending.getStatus()).isEqualTo("AWAITING_DEPOSIT");
+        pendingService.compensateHold("cnt-pending", "Saga rollback", "SYSTEM_SAGA");
+        assertThat(storedHold.get().getStatus()).isEqualTo("CANCELLED");
+
+        storedHold.set(null);
+        pendingService.openHold("cnt-pending", "t-1", "l-1", 3_000_000L, 72);
+        EscrowHold activated = pendingService.recordDepositPaid("cnt-pending", "t-1", "l-1", 2_500_000L, 72);
+        assertThat(activated.getStatus()).isEqualTo("HELD");
+        assertThat(activated.getAmount()).isEqualTo(2_500_000L);
     }
 
     @Test

@@ -53,11 +53,11 @@ public class EscrowService {
     public EscrowHold openHold(String contractId, String tenantId, String landlordId, long amount, long inspectionHours) {
         assertSandboxOrSignedOff();
         if (escrowHoldRepository == null) {
-            return EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours);
+            return EscrowHold.createPendingHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours);
         }
         return escrowHoldRepository.findByContractId(contractId)
                 .orElseGet(() -> escrowHoldRepository.save(
-                        EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours)));
+                        EscrowHold.createPendingHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours)));
     }
 
     @Transactional
@@ -67,10 +67,37 @@ public class EscrowService {
             return EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours);
         }
         EscrowHold hold = escrowHoldRepository.findByContractId(contractId)
+                .map(existing -> {
+                    existing.activateFromDeposit(amount, inspectionHours);
+                    return existing;
+                })
                 .orElseGet(() -> EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours));
         EscrowHold saved = escrowHoldRepository.save(hold);
         emitOutbox("ESCROW_DEPOSIT_PAID", saved);
         return saved;
+    }
+
+    @Transactional
+    public void compensateHold(String contractId, String reason, String actorId) {
+        assertSandboxOrSignedOff();
+        if (escrowHoldRepository == null) {
+            return;
+        }
+        Optional<EscrowHold> opt = escrowHoldRepository.findByContractId(contractId);
+        if (opt.isEmpty()) {
+            return;
+        }
+        EscrowHold hold = opt.get();
+        if ("AWAITING_DEPOSIT".equals(hold.getStatus())) {
+            hold.cancelPending(reason != null ? reason : "Saga compensation truoc khi dat coc");
+            escrowHoldRepository.save(hold);
+            emitOutbox("ESCROW_CANCELLED", hold);
+            return;
+        }
+        if ("HELD".equals(hold.getStatus()) || "DISPUTE_FROZEN".equals(hold.getStatus())) {
+            refundDeposit(contractId, hold.getTenantId(), hold.getAmount(),
+                    reason != null ? reason : "Saga compensation hoan coc", actorId);
+        }
     }
 
     @Transactional(readOnly = true)

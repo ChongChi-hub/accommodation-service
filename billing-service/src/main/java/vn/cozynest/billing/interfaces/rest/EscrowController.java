@@ -20,6 +20,7 @@ public class EscrowController {
     }
 
     @PostMapping("/init")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<EscrowHold>> initEscrowHold(@RequestBody Map<String, Object> body) {
         String contractId = String.valueOf(body.getOrDefault("contractId", ""));
         String tenantId = String.valueOf(body.getOrDefault("tenantId", ""));
