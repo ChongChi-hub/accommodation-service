@@ -124,5 +124,31 @@ public class HttpIdentityVerificationAdapter implements IdentityVerificationPort
             return false;
         });
     }
+
+    @Override
+    public String resolveLandlordUserId(String rawLandlordId) {
+        if (rawLandlordId == null || rawLandlordId.isBlank()) {
+            return rawLandlordId;
+        }
+        String trimmed = rawLandlordId.trim();
+        if (!trimmed.matches("^\\d+$")) {
+            return trimmed;
+        }
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/internal/users/resolve-landlord/{id}", trimmed)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data && data.get("landlordUserId") != null) {
+                return String.valueOf(data.get("landlordUserId"));
+            }
+            return trimmed;
+        }, () -> {
+            log.warn("Landlord ID resolution fell back to local value for rawLandlordId={}", trimmed);
+            return trimmed;
+        });
+    }
 }
 

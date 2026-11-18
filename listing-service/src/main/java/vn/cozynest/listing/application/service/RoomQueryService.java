@@ -128,15 +128,17 @@ public class RoomQueryService {
 
     public List<ReviewDto> getReviewsByRoom(Long roomId) {
         return reviewRepository.findByRoomIdOrderByCreatedAtDesc(roomId).stream()
+                .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
                 .map(r -> ReviewDto.builder()
                         .id(r.getId())
                         .roomId(r.getRoomId())
                         .tenantId(r.getTenantId())
                         .tenantName(r.getTenantName())
-                        .tenantAvatar(r.getTenantAvatar())
+                        .tenantAvatar(r.getTenantAvatar() != null ? r.getTenantAvatar() : "/uploads/avatars/default.png")
                         .rating(r.getRating())
                         .comment(r.getComment())
                         .landlordReply(r.getLandlordReply())
+                        .status(r.getStatus() != null ? r.getStatus() : "VISIBLE")
                         .createdAt(r.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());

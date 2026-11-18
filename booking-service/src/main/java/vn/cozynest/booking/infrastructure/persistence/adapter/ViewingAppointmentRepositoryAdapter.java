@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
+import vn.cozynest.booking.application.service.LandlordIdentityResolver;
 import vn.cozynest.booking.domain.model.AppointmentStatus;
 import vn.cozynest.booking.domain.model.ViewingAppointment;
 import vn.cozynest.booking.domain.repository.ViewingAppointmentRepository;
@@ -34,7 +35,7 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
 
     @Override
     public Optional<ViewingAppointment> findByIdAndLandlordId(String id, String landlordId) {
-        return springDataRepository.findByIdAndLandlordId(id, landlordId)
+        return springDataRepository.findByIdAndLandlordIdIn(id, LandlordIdentityResolver.resolveAliases(landlordId))
                 .map(AppointmentPersistenceMapper::toDomain);
     }
 
@@ -54,7 +55,8 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
     @Override
     public List<ViewingAppointment> findOverlappingConfirmed(
             String landlordId, Instant start, Instant end, String excludeId) {
-        return springDataRepository.findOverlappingConfirmed(landlordId, start, end, excludeId)
+        return springDataRepository.findOverlappingConfirmed(
+                        LandlordIdentityResolver.resolveAliases(landlordId), start, end, excludeId)
                 .stream().map(AppointmentPersistenceMapper::toDomain).toList();
     }
 
@@ -83,17 +85,20 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
 
     @Override
     public long countByLandlordIdAndStatus(String landlordId, AppointmentStatus status) {
-        return springDataRepository.countByLandlordIdAndStatus(landlordId, status);
+        return springDataRepository.countByLandlordIdInAndStatus(
+                LandlordIdentityResolver.resolveAliases(landlordId), status);
     }
 
     @Override
     public long countNeedingOutcomeUpdate(String landlordId, Instant now) {
-        return springDataRepository.countNeedingOutcomeUpdate(landlordId, now);
+        return springDataRepository.countNeedingOutcomeUpdate(
+                LandlordIdentityResolver.resolveAliases(landlordId), now);
     }
 
     @Override
     public long countTodayAppointments(String landlordId, Instant start, Instant end) {
-        return springDataRepository.countTodayAppointments(landlordId, start, end);
+        return springDataRepository.countTodayAppointments(
+                LandlordIdentityResolver.resolveAliases(landlordId), start, end);
     }
 
     @Override
@@ -152,7 +157,7 @@ public class ViewingAppointmentRepositoryAdapter implements ViewingAppointmentRe
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("landlordId"), landlordId));
+            predicates.add(root.get("landlordId").in(LandlordIdentityResolver.resolveAliases(landlordId)));
 
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));

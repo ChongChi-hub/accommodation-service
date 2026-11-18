@@ -334,7 +334,7 @@ public class AdminListingController {
                     .filter(r -> r.getStatus() == null || "VISIBLE".equalsIgnoreCase(r.getStatus()))
                     .toList();
             int count = roomReviews.size();
-            double avg = roomReviews.isEmpty() ? 5.0 : roomReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(5.0);
+            double avg = roomReviews.isEmpty() ? 0.0 : roomReviews.stream().mapToInt(ReviewJpaEntity::getRating).average().orElse(0.0);
             room.setReviewCount(count);
             room.setRatingAvg(Math.round(avg * 10.0) / 10.0);
             roomRepository.save(room);

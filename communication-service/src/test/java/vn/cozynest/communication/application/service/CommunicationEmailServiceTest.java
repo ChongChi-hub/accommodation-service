@@ -199,4 +199,35 @@ class CommunicationEmailServiceTest {
                 argThat(html -> html.contains("Yêu cầu thuê phòng không thành công"))
         );
     }
+
+    @Test
+    @DisplayName("Gửi email thông báo cho chủ nhà khi khách thuê hủy lịch hẹn xem phòng")
+    void sendsEmailToLandlordOnAppointmentCancelledByTenant() {
+        CommunicationEmailService.AppointmentEmailPayload payload = new CommunicationEmailService.AppointmentEmailPayload(
+                "appt-002",
+                "room-101",
+                "Phòng Studio Láng Hạ",
+                "Số 42 Láng Hạ",
+                "u-tenant-01",
+                "u-landlord-01",
+                "",
+                "",
+                "",
+                null,
+                null,
+                "2026-11-28T03:30:00Z",
+                null,
+                "Bận đột xuất"
+        );
+
+        emailService.sendAppointmentCancelledByTenantNotification(payload);
+
+        verify(emailServicePort).sendEmail(
+                eq("landlord@cozynest.vn"),
+                contains("Khách thuê đã hủy lịch hẹn"),
+                contains("Nguyễn Văn Thuê"),
+                argThat(html -> html.contains("Phòng Studio Láng Hạ")
+                        && html.contains("Bận đột xuất"))
+        );
+    }
 }

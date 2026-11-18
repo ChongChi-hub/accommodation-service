@@ -72,29 +72,18 @@ public class RentalRequestService {
     }
 
     private String normalizeLandlordId(String landlordId) {
-        if (landlordId == null)
+        if (landlordId == null) {
             return null;
-        if ("1".equals(landlordId))
-            return "u-landlord-01";
-        if ("2".equals(landlordId))
-            return "u-landlord-02";
-        if ("3".equals(landlordId))
-            return "u-landlord-03";
-        if ("4".equals(landlordId))
-            return "u-landlord-04";
-        if ("5".equals(landlordId))
-            return "u-landlord-05";
-        if ("6".equals(landlordId))
-            return "u-landlord-06";
-        return landlordId;
+        }
+        String legacy = LandlordIdentityResolver.normalizeLegacy(landlordId);
+        if (legacy != null && legacy.matches("^\\d+$") && identityVerificationPort != null) {
+            return identityVerificationPort.resolveLandlordUserId(legacy);
+        }
+        return legacy;
     }
 
     private boolean matchesLandlord(String expected, String actual) {
-        if (expected == null || actual == null)
-            return false;
-        if (expected.equals(actual))
-            return true;
-        return normalizeLandlordId(expected).equals(normalizeLandlordId(actual));
+        return LandlordIdentityResolver.matches(expected, actual);
     }
 
     public RentalRequestDto createRequest(String tenantId, CreateRentalRequestDto dto) {
@@ -139,6 +128,9 @@ public class RentalRequestService {
         });
 
         String targetLandlordId = normalizeLandlordId(dto.landlordId());
+        if (LandlordIdentityResolver.matches(tenantId, targetLandlordId)) {
+            throw new IllegalArgumentException("Chu tro khong the gui yeu cau thue phong cua chinh minh");
+        }
         RentalRequest saved = rentalRequestRepository.save(RentalRequest.create(
                 dto.roomId(), tenantId, targetLandlordId,
                 dto.proposedMoveInDate(), dto.numOccupants(), dto.message(), dto.idempotencyKey()));
@@ -253,15 +245,7 @@ public class RentalRequestService {
 
     @Transactional(readOnly = true)
     public List<RentalRequestDto> getLandlordRequests(String landlordId) {
-        Set<String> searchIds = new HashSet<>();
-        searchIds.add(landlordId);
-        searchIds.add(normalizeLandlordId(landlordId));
-        if ("u-landlord-01".equals(landlordId))
-            searchIds.add("1");
-        if ("u-landlord-02".equals(landlordId))
-            searchIds.add("2");
-        if ("u-landlord-03".equals(landlordId))
-            searchIds.add("3");
+        Set<String> searchIds = LandlordIdentityResolver.resolveAliases(landlordId);
 
         List<RentalRequest> all = new ArrayList<>();
         for (String id : searchIds) {
@@ -294,9 +278,22 @@ public class RentalRequestService {
     }
 
     private void publishOutbox(String eventType, RentalRequest req) {
+        String roomTitle = null;
+        if (listingPort.isPresent() && req.getRoomId() != null) {
+            try {
+                BookingListingPort.RoomContractSnapshot snap = listingPort.get().getRoomContractSnapshot(req.getRoomId());
+                if (snap != null && snap.roomTitle() != null && !snap.roomTitle().isBlank()) {
+                    roomTitle = snap.roomTitle();
+                }
+            } catch (Exception ignored) {
+            }
+        }
         StringBuilder sb = new StringBuilder("{");
         sb.append("\"requestId\":\"").append(escapeJson(req.getId())).append("\"");
         sb.append(",\"roomId\":\"").append(escapeJson(req.getRoomId())).append("\"");
+        if (roomTitle != null) {
+            sb.append(",\"roomTitle\":\"").append(escapeJson(roomTitle)).append("\"");
+        }
         sb.append(",\"tenantId\":\"").append(escapeJson(req.getTenantId())).append("\"");
         sb.append(",\"landlordId\":\"").append(escapeJson(req.getLandlordId())).append("\"");
         sb.append(",\"status\":\"").append(req.getStatus() != null ? escapeJson(req.getStatus()) : "").append("\"");
