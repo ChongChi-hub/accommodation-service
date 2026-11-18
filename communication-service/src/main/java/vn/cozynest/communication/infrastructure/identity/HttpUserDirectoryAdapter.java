@@ -77,10 +77,32 @@ public class HttpUserDirectoryAdapter implements UserDirectoryPort {
     }
 
     private String normalizeUserId(String userId) {
-        if ("1".equals(userId)) return "u-landlord-01";
-        if ("2".equals(userId)) return "u-landlord-02";
-        if ("3".equals(userId)) return "u-landlord-03";
-        return userId.trim();
+        String trimmed = userId.trim();
+        switch (trimmed) {
+            case "1": return "u-landlord-01";
+            case "2": return "u-landlord-02";
+            case "3": return "u-landlord-03";
+            case "4": return "u-landlord-04";
+            case "5": return "u-landlord-05";
+            case "6": return "u-landlord-06";
+            default: break;
+        }
+        if (trimmed.matches("^\\d+$")) {
+            try {
+                Map<String, Object> body = restClient.get()
+                        .uri("/internal/users/resolve-landlord/{id}", trimmed)
+                        .header("X-Internal-Service-Key", internalServiceKey)
+                        .retrieve()
+                        .body(new ParameterizedTypeReference<>() {});
+                Object dataObj = body != null ? body.get("data") : null;
+                if (dataObj instanceof Map<?, ?> data && data.get("landlordUserId") != null) {
+                    return String.valueOf(data.get("landlordUserId"));
+                }
+            } catch (Exception ex) {
+                log.debug("Could not resolve numeric landlordId {}: {}", trimmed, ex.getMessage());
+            }
+        }
+        return trimmed;
     }
 
     private Optional<UserSummary> fallbackForDemoUser(String userId) {

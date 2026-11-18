@@ -274,6 +274,7 @@ services:
       DB_USER: ${BOOKING_DB_USER:-booking_user}
       DB_PASSWORD: ${BOOKING_DB_PASSWORD:?BOOKING_DB_PASSWORD must be set in .env}
       IDENTITY_SERVICE_URL: http://identity-service:8081
+      LISTING_SERVICE_URL: http://listing-service:8082
       COMMUNICATION_SERVICE_URL: http://communication-service:8085
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672

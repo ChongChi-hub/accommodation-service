@@ -89,6 +89,18 @@ public class InternalUserController {
         return ResponseEntity.ok(ApiResponse.success(internalUserService.getPhoneStatus(userId)));
     }
 
+    @GetMapping("/resolve-landlord/{id}")
+    public ResponseEntity<ApiResponse<Map<String, String>>> resolveLandlordUserId(
+            @PathVariable("id") String rawLandlordId,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap bi tu choi: Khoa xac thuc dich vu noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        String resolved = internalUserService.resolveLandlordUserId(rawLandlordId);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("landlordUserId", resolved != null ? resolved : rawLandlordId)));
+    }
+
     @PostMapping("/{id}/verify-otp")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> verifyOtp(
             @PathVariable("id") String userId,

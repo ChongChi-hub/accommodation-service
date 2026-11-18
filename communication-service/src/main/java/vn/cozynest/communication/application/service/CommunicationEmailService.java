@@ -28,8 +28,7 @@ public class CommunicationEmailService {
     public CommunicationEmailService(
             EmailServicePort emailServicePort,
             UserDirectoryPort userDirectoryPort,
-            @Value("${app.web.base-url:http://localhost:3000}") String webBaseUrl
-    ) {
+            @Value("${app.web.base-url:http://localhost:3000}") String webBaseUrl) {
         this.emailServicePort = emailServicePort;
         this.userDirectoryPort = userDirectoryPort;
         this.webBaseUrl = webBaseUrl != null && !webBaseUrl.isBlank() ? webBaseUrl : "http://localhost:3000";
@@ -49,8 +48,8 @@ public class CommunicationEmailService {
             String landlordNote,
             String scheduledStart,
             String scheduledEnd,
-            String reasonNote
-    ) {}
+            String reasonNote) {
+    }
 
     public record RentalRequestEmailPayload(
             String requestId,
@@ -60,16 +59,36 @@ public class CommunicationEmailService {
             String proposedMoveInDate,
             int numOccupants,
             String message,
-            String contractId
-    ) {}
+            String contractId,
+            String roomTitle) {
+        public RentalRequestEmailPayload(
+                String requestId,
+                String roomId,
+                String tenantId,
+                String landlordId,
+                String proposedMoveInDate,
+                int numOccupants,
+                String message,
+                String contractId) {
+            this(requestId, roomId, tenantId, landlordId, proposedMoveInDate, numOccupants, message, contractId, null);
+        }
+    }
 
     public void sendAppointmentCreatedNotification(AppointmentEmailPayload payload) {
         Optional<UserDirectoryPort.UserSummary> landlordOpt = userDirectoryPort.findUserById(payload.landlordId());
         String toEmail = landlordOpt.map(UserDirectoryPort.UserSummary::email).orElse("landlord@cozynest.vn");
         String landlordName = landlordOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Quý chủ trọ");
 
+        Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
+        String tenantName = firstNonBlank(payload.contactName(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse(null), "Khách thuê");
+        String tenantPhone = firstNonBlank(payload.contactPhone(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::phone).orElse(null), "-");
+        String tenantEmail = firstNonBlank(payload.contactEmail(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::email).orElse(null), "-");
+
         String formattedTime = formatTimestamp(payload.scheduledStart());
-        String title = payload.roomTitle() != null && !payload.roomTitle().isBlank() ? payload.roomTitle() : "Phòng #" + payload.roomId();
+        String title = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
         String subject = "[Tổ Ấm] Có người đặt lịch hẹn xem phòng mới - " + title;
 
         String contentHtml = """
@@ -88,93 +107,146 @@ public class CommunicationEmailService {
                 <div style="text-align: center; margin: 28px 0;">
                     <a href="%s/dashboard/landlord/appointments" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Quản lý lịch hẹn</a>
                 </div>
-                """.formatted(
-                escapeHtml(landlordName),
-                escapeHtml(payload.contactName() != null ? payload.contactName() : "Khách thuê"),
-                escapeHtml(title),
-                escapeHtml(payload.contactName() != null ? payload.contactName() : "-"),
-                escapeHtml(payload.contactPhone() != null ? payload.contactPhone() : "-"),
-                escapeHtml(payload.contactEmail() != null ? payload.contactEmail() : "-"),
-                escapeHtml(formattedTime),
-                escapeHtml(payload.roomAddress() != null ? payload.roomAddress() : "-"),
-                payload.tenantNote() != null && !payload.tenantNote().isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>Ghi chú của khách:</strong> <em>" + escapeHtml(payload.tenantNote()) + "</em></p>"
-                        : "",
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(landlordName),
+                        escapeHtml(tenantName),
+                        escapeHtml(title),
+                        escapeHtml(tenantName),
+                        escapeHtml(tenantPhone),
+                        escapeHtml(tenantEmail),
+                        escapeHtml(formattedTime),
+                        escapeHtml(firstNonBlank(payload.roomAddress(), "-")),
+                        payload.tenantNote() != null && !payload.tenantNote().isBlank()
+                                ? "<p style='margin: 4px 0;'><strong>Ghi chú của khách:</strong> <em>"
+                                        + escapeHtml(payload.tenantNote()) + "</em></p>"
+                                : "",
+                        webBaseUrl);
 
-        String text = "Lịch hẹn xem phòng mới từ " + payload.contactName() + " vào lúc " + formattedTime + " cho phòng " + title + ". Xem tại: " + webBaseUrl + "/dashboard/landlord/appointments";
+        String text = "Lịch hẹn xem phòng mới từ " + tenantName + " vào lúc " + formattedTime + " cho phòng " + title
+                + ". Xem tại: " + webBaseUrl + "/dashboard/landlord/appointments";
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
     }
 
     public void sendAppointmentConfirmedNotification(AppointmentEmailPayload payload) {
+        Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
         String toEmail = resolveTenantEmail(payload.contactEmail(), payload.tenantId());
-        String tenantName = payload.contactName() != null && !payload.contactName().isBlank() ? payload.contactName() : "Quý khách";
+        String tenantName = firstNonBlank(payload.contactName(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse(null), "Quý khách");
+
+        Optional<UserDirectoryPort.UserSummary> landlordOpt = userDirectoryPort.findUserById(payload.landlordId());
+        String landlordName = landlordOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Chủ trọ");
+        String landlordPhone = firstNonBlank(landlordOpt.map(UserDirectoryPort.UserSummary::phone).orElse(null), "-");
 
         String formattedTime = formatTimestamp(payload.scheduledStart());
-        String title = payload.roomTitle() != null && !payload.roomTitle().isBlank() ? payload.roomTitle() : "Phòng #" + payload.roomId();
+        String title = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
+        String address = firstNonBlank(payload.roomAddress(), "-");
         String subject = "[Tổ Ấm] Chủ nhà đã đồng ý lịch hẹn xem phòng - " + title;
 
         String contentHtml = """
                 <h3 style="color: #0f766e; margin-top: 0;">Lịch hẹn xem phòng đã được chấp thuận!</h3>
                 <p>Xin chào <strong>%s</strong>,</p>
-                <p>Chủ trọ đã đồng ý lịch hẹn xem phòng <strong>%s</strong> của bạn.</p>
+                <p>Chủ trọ <strong>%s</strong> đã đồng ý lịch hẹn xem phòng <strong>%s</strong> của bạn.</p>
                 <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.6;">
                     <p style="margin: 4px 0;"><strong>Thời gian hẹn:</strong> <span style="color: #15803d; font-weight: bold;">%s</span></p>
                     <p style="margin: 4px 0;"><strong>Địa điểm:</strong> %s</p>
+                    <p style="margin: 4px 0;"><strong>SĐT chủ trọ:</strong> %s</p>
                     %s
                 </div>
                 <p>Vui lòng sắp xếp thời gian đến đúng giờ để buổi xem phòng diễn ra thuận lợi.</p>
                 <div style="text-align: center; margin: 28px 0;">
                     <a href="%s/dashboard/tenant/appointments" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Xem lịch hẹn của tôi</a>
                 </div>
-                """.formatted(
-                escapeHtml(tenantName),
-                escapeHtml(title),
-                escapeHtml(formattedTime),
-                escapeHtml(payload.roomAddress() != null ? payload.roomAddress() : "-"),
-                payload.landlordNote() != null && !payload.landlordNote().isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>Ghi chú từ chủ nhà:</strong> <em>" + escapeHtml(payload.landlordNote()) + "</em></p>"
-                        : "",
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(tenantName),
+                        escapeHtml(landlordName),
+                        escapeHtml(title),
+                        escapeHtml(formattedTime),
+                        escapeHtml(address),
+                        escapeHtml(landlordPhone),
+                        payload.landlordNote() != null && !payload.landlordNote().isBlank()
+                                ? "<p style='margin: 4px 0;'><strong>Ghi chú từ chủ nhà:</strong> <em>"
+                                        + escapeHtml(payload.landlordNote()) + "</em></p>"
+                                : "",
+                        webBaseUrl);
 
-        String text = "Lịch hẹn xem phòng " + title + " của bạn đã được chủ nhà đồng ý vào lúc " + formattedTime + ". Địa điểm: " + payload.roomAddress();
+        String text = "Lịch hẹn xem phòng " + title + " của bạn đã được chủ nhà đồng ý vào lúc " + formattedTime
+                + ". Địa điểm: " + address;
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
     }
 
     public void sendAppointmentDeclinedNotification(AppointmentEmailPayload payload) {
+        Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
         String toEmail = resolveTenantEmail(payload.contactEmail(), payload.tenantId());
-        String tenantName = payload.contactName() != null && !payload.contactName().isBlank() ? payload.contactName() : "Quý khách";
+        String tenantName = firstNonBlank(payload.contactName(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse(null), "Quý khách");
 
         String formattedTime = formatTimestamp(payload.scheduledStart());
-        String title = payload.roomTitle() != null && !payload.roomTitle().isBlank() ? payload.roomTitle() : "Phòng #" + payload.roomId();
+        String title = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
         String subject = "[Tổ Ấm] Lịch hẹn xem phòng đã bị từ chối - " + title;
 
-        String reason = payload.reasonNote() != null && !payload.reasonNote().isBlank()
-                ? payload.reasonNote()
-                : "Chủ trọ bận khung giờ này hoặc phòng đã có người đặt cọc.";
+        String reason = firstNonBlank(payload.reasonNote(),
+                "Chủ trọ bận khung giờ này hoặc phòng đã có người đặt cọc.");
 
         String contentHtml = """
                 <h3 style="color: #b91c1c; margin-top: 0;">Lịch hẹn xem phòng không thể thực hiện</h3>
                 <p>Xin chào <strong>%s</strong>,</p>
-                <p>Rất tiếc, lịch hẹn xem phòng <strong>%s</strong> vào lúc %s của bạn đã bị chủ nhà từ chối.</p>
+                <p>Rất tiếc, lịch hẹn xem phòng <strong>%s</strong> vào lúc %s của bạn đã bị chủ nhà từ chối hoặc hủy lịch.</p>
                 <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.6;">
-                    <p style="margin: 4px 0;"><strong>Lý do từ chối:</strong> %s</p>
+                    <p style="margin: 4px 0;"><strong>Lý do:</strong> %s</p>
                 </div>
                 <p>Bạn có thể chọn một khung giờ khác hoặc tìm kiếm các phòng trọ phù hợp khác trên hệ thống Tổ Ấm.</p>
                 <div style="text-align: center; margin: 28px 0;">
                     <a href="%s/rooms" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Khám phá phòng trọ khác</a>
                 </div>
-                """.formatted(
-                escapeHtml(tenantName),
-                escapeHtml(title),
-                escapeHtml(formattedTime),
-                escapeHtml(reason),
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(tenantName),
+                        escapeHtml(title),
+                        escapeHtml(formattedTime),
+                        escapeHtml(reason),
+                        webBaseUrl);
 
-        String text = "Lịch hẹn xem phòng " + title + " của bạn vào lúc " + formattedTime + " đã bị chủ nhà từ chối. Lý do: " + reason;
+        String text = "Lịch hẹn xem phòng " + title + " của bạn vào lúc " + formattedTime
+                + " đã bị chủ nhà từ chối. Lý do: " + reason;
+        emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
+    }
+
+    public void sendAppointmentCancelledByTenantNotification(AppointmentEmailPayload payload) {
+        Optional<UserDirectoryPort.UserSummary> landlordOpt = userDirectoryPort.findUserById(payload.landlordId());
+        String toEmail = landlordOpt.map(UserDirectoryPort.UserSummary::email).orElse("landlord@cozynest.vn");
+        String landlordName = landlordOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Quý chủ trọ");
+
+        Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
+        String tenantName = firstNonBlank(payload.contactName(),
+                tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse(null), "Khách thuê");
+        String formattedTime = formatTimestamp(payload.scheduledStart());
+        String title = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
+        String reason = firstNonBlank(payload.reasonNote(), "Khách thuê bận đột xuất.");
+        String subject = "[Tổ Ấm] Khách thuê đã hủy lịch hẹn xem phòng - " + title;
+
+        String contentHtml = """
+                <h3 style="color: #b45309; margin-top: 0;">Thông báo hủy lịch hẹn xem phòng</h3>
+                <p>Xin chào <strong>%s</strong>,</p>
+                <p>Khách thuê <strong>%s</strong> vừa hủy lịch hẹn xem phòng <strong>%s</strong> vào lúc %s.</p>
+                <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.6;">
+                    <p style="margin: 4px 0;"><strong>Lý do hủy:</strong> %s</p>
+                </div>
+                <div style="text-align: center; margin: 28px 0;">
+                    <a href="%s/dashboard/landlord/appointments" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Xem danh sách lịch hẹn</a>
+                </div>
+                """
+                .formatted(
+                        escapeHtml(landlordName),
+                        escapeHtml(tenantName),
+                        escapeHtml(title),
+                        escapeHtml(formattedTime),
+                        escapeHtml(reason),
+                        webBaseUrl);
+
+        String text = "Khách thuê " + tenantName + " đã hủy lịch hẹn xem phòng " + title + " vào lúc " + formattedTime
+                + ".";
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
     }
 
@@ -184,19 +256,22 @@ public class CommunicationEmailService {
         String landlordName = landlordOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Quý chủ trọ");
 
         Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
-        String tenantName = tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Khách thuê #" + payload.tenantId());
-        String tenantPhone = tenantOpt.map(UserDirectoryPort.UserSummary::phone).orElse("-");
-        String tenantEmail = tenantOpt.map(UserDirectoryPort.UserSummary::email).orElse("-");
+        String tenantName = tenantOpt.map(UserDirectoryPort.UserSummary::fullName)
+                .orElse("Khách thuê #" + payload.tenantId());
+        String tenantPhone = firstNonBlank(tenantOpt.map(UserDirectoryPort.UserSummary::phone).orElse(null), "-");
+        String tenantEmail = firstNonBlank(tenantOpt.map(UserDirectoryPort.UserSummary::email).orElse(null), "-");
+        String roomLabel = firstNonBlank(payload.roomTitle(), "phòng #" + payload.roomId());
 
-        String subject = "[Tổ Ấm] Yêu cầu thuê phòng mới - Phòng #" + payload.roomId();
+        String subject = "[Tổ Ấm] Yêu cầu thuê phòng mới - "
+                + firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
 
         String contentHtml = """
                 <h3 style="color: #0f766e; margin-top: 0;">Yêu cầu thuê phòng mới</h3>
                 <p>Xin chào <strong>%s</strong>,</p>
-                <p>Bạn vừa nhận được một yêu cầu thuê phòng mới cho <strong>Phòng #%s</strong>.</p>
+                <p>Bạn vừa nhận được một yêu cầu thuê phòng mới cho <strong>%s</strong>.</p>
                 <div style="background-color: #f5f5f4; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.6;">
                     <p style="margin: 4px 0;"><strong>Khách thuê:</strong> %s (SĐT: %s, Email: %s)</p>
-                    <p style="margin: 4px 0;"><strong>Mã phòng:</strong> #%s</p>
+                    <p style="margin: 4px 0;"><strong>Phòng:</strong> %s (#%s)</p>
                     <p style="margin: 4px 0;"><strong>Ngày dự kiến dọn vào:</strong> %s</p>
                     <p style="margin: 4px 0;"><strong>Số lượng người ở:</strong> %d người</p>
                     %s
@@ -205,22 +280,25 @@ public class CommunicationEmailService {
                 <div style="text-align: center; margin: 28px 0;">
                     <a href="%s/dashboard/landlord/rental-requests" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Xem yêu cầu thuê phòng</a>
                 </div>
-                """.formatted(
-                escapeHtml(landlordName),
-                escapeHtml(payload.roomId()),
-                escapeHtml(tenantName),
-                escapeHtml(tenantPhone),
-                escapeHtml(tenantEmail),
-                escapeHtml(payload.roomId()),
-                escapeHtml(payload.proposedMoveInDate() != null ? payload.proposedMoveInDate() : "Thỏa thuận"),
-                payload.numOccupants() > 0 ? payload.numOccupants() : 1,
-                payload.message() != null && !payload.message().isBlank()
-                        ? "<p style='margin: 4px 0;'><strong>Lời nhắn:</strong> <em>" + escapeHtml(payload.message()) + "</em></p>"
-                        : "",
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(landlordName),
+                        escapeHtml(roomLabel),
+                        escapeHtml(tenantName),
+                        escapeHtml(tenantPhone),
+                        escapeHtml(tenantEmail),
+                        escapeHtml(roomLabel),
+                        escapeHtml(payload.roomId()),
+                        escapeHtml(firstNonBlank(payload.proposedMoveInDate(), "Thỏa thuận")),
+                        payload.numOccupants() > 0 ? payload.numOccupants() : 1,
+                        payload.message() != null && !payload.message().isBlank()
+                                ? "<p style='margin: 4px 0;'><strong>Lời nhắn:</strong> <em>"
+                                        + escapeHtml(payload.message()) + "</em></p>"
+                                : "",
+                        webBaseUrl);
 
-        String text = "Bạn nhận được yêu cầu thuê phòng #" + payload.roomId() + " từ khách thuê " + tenantName + ". Xem chi tiết tại: " + webBaseUrl + "/dashboard/landlord/rental-requests";
+        String text = "Bạn nhận được yêu cầu thuê " + roomLabel + " từ khách thuê " + tenantName
+                + ". Xem chi tiết tại: " + webBaseUrl + "/dashboard/landlord/rental-requests";
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
     }
 
@@ -228,29 +306,33 @@ public class CommunicationEmailService {
         Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
         String toEmail = tenantOpt.map(UserDirectoryPort.UserSummary::email).orElse("tenant@cozynest.vn");
         String tenantName = tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Quý khách");
+        String roomLabel = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
 
-        String subject = "[Tổ Ấm] Yêu cầu thuê phòng #" + payload.roomId() + " đã được chấp thuận!";
+        String subject = "[Tổ Ấm] Yêu cầu thuê " + roomLabel + " đã được chấp thuận!";
 
         String contentHtml = """
                 <h3 style="color: #0f766e; margin-top: 0;">Yêu cầu thuê phòng đã được chấp thuận!</h3>
                 <p>Xin chào <strong>%s</strong>,</p>
-                <p>Tin vui! Chủ nhà đã đồng ý yêu cầu thuê phòng <strong>#%s</strong> của bạn.</p>
+                <p>Tin vui! Chủ nhà đã đồng ý yêu cầu thuê <strong>%s</strong> của bạn.</p>
                 <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.6;">
-                    <p style="margin: 4px 0;"><strong>Mã phòng:</strong> #%s</p>
+                    <p style="margin: 4px 0;"><strong>Phòng:</strong> %s (#%s)</p>
                     <p style="margin: 4px 0;"><strong>Hạn giữ chỗ:</strong> <span style="color: #b45309; font-weight: bold;">24 giờ kể từ thời điểm duyệt</span></p>
                     <p style="margin: 4px 0; color: #4b5563;">Hợp đồng thuê phòng đã được khởi tạo tự động. Vui lòng kiểm tra và hoàn tất đặt cọc giữ chỗ để chính thức ký kết.</p>
                 </div>
                 <div style="text-align: center; margin: 28px 0;">
-                    <a href="%s/dashboard/contracts" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Kiểm tra hợp đồng ngay</a>
+                    <a href="%s/dashboard/tenant/contracts" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Kiểm tra hợp đồng ngay</a>
                 </div>
-                """.formatted(
-                escapeHtml(tenantName),
-                escapeHtml(payload.roomId()),
-                escapeHtml(payload.roomId()),
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(tenantName),
+                        escapeHtml(roomLabel),
+                        escapeHtml(roomLabel),
+                        escapeHtml(payload.roomId()),
+                        webBaseUrl);
 
-        String text = "Yêu cầu thuê phòng #" + payload.roomId() + " của bạn đã được chủ nhà chấp thuận. Vui lòng vào hệ thống kiểm tra hợp đồng giữ chỗ trong 24h: " + webBaseUrl + "/dashboard/contracts";
+        String text = "Yêu cầu thuê " + roomLabel
+                + " của bạn đã được chủ nhà chấp thuận. Vui lòng vào hệ thống kiểm tra hợp đồng giữ chỗ trong 24h: "
+                + webBaseUrl + "/dashboard/tenant/contracts";
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
     }
 
@@ -258,25 +340,38 @@ public class CommunicationEmailService {
         Optional<UserDirectoryPort.UserSummary> tenantOpt = userDirectoryPort.findUserById(payload.tenantId());
         String toEmail = tenantOpt.map(UserDirectoryPort.UserSummary::email).orElse("tenant@cozynest.vn");
         String tenantName = tenantOpt.map(UserDirectoryPort.UserSummary::fullName).orElse("Quý khách");
+        String roomLabel = firstNonBlank(payload.roomTitle(), "Phòng #" + payload.roomId());
 
-        String subject = "[Tổ Ấm] Yêu cầu thuê phòng #" + payload.roomId() + " không được chấp thuận";
+        String subject = "[Tổ Ấm] Yêu cầu thuê " + roomLabel + " không được chấp thuận";
 
         String contentHtml = """
                 <h3 style="color: #b91c1c; margin-top: 0;">Yêu cầu thuê phòng không thành công</h3>
                 <p>Xin chào <strong>%s</strong>,</p>
-                <p>Rất tiếc, yêu cầu thuê phòng <strong>#%s</strong> của bạn đã bị chủ nhà từ chối hoặc phòng đã có người hoàn tất thủ tục trước.</p>
+                <p>Rất tiếc, yêu cầu thuê <strong>%s</strong> của bạn đã bị chủ nhà từ chối hoặc phòng đã có người hoàn tất thủ tục trước.</p>
                 <p>Bạn có thể tiếp tục tìm kiếm và liên hệ với các chủ trọ có phòng tương tự trên nền tảng Tổ Ấm.</p>
                 <div style="text-align: center; margin: 28px 0;">
                     <a href="%s/rooms" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Khám phá phòng trọ khác</a>
                 </div>
-                """.formatted(
-                escapeHtml(tenantName),
-                escapeHtml(payload.roomId()),
-                webBaseUrl
-        );
+                """
+                .formatted(
+                        escapeHtml(tenantName),
+                        escapeHtml(roomLabel),
+                        webBaseUrl);
 
-        String text = "Yêu cầu thuê phòng #" + payload.roomId() + " của bạn đã bị từ chối. Bạn có thể tìm phòng khác tại " + webBaseUrl + "/rooms";
+        String text = "Yêu cầu thuê " + roomLabel + " của bạn đã bị từ chối. Bạn có thể tìm phòng khác tại "
+                + webBaseUrl + "/rooms";
         emailServicePort.sendEmail(toEmail, subject, text, wrapInEmailLayout(subject, contentHtml));
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null)
+            return "";
+        for (String val : values) {
+            if (val != null && !val.isBlank()) {
+                return val.trim();
+            }
+        }
+        return "";
     }
 
     private String resolveTenantEmail(String contactEmail, String tenantId) {
@@ -292,7 +387,8 @@ public class CommunicationEmailService {
     }
 
     private String formatTimestamp(String iso) {
-        if (iso == null || iso.isBlank()) return "-";
+        if (iso == null || iso.isBlank())
+            return "-";
         try {
             Instant instant = Instant.parse(iso);
             return DATE_TIME_FORMATTER.format(instant.atZone(VN_ZONE));
@@ -302,7 +398,8 @@ public class CommunicationEmailService {
     }
 
     private String escapeHtml(String input) {
-        if (input == null) return "";
+        if (input == null)
+            return "";
         return input.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
@@ -335,6 +432,7 @@ public class CommunicationEmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(escapeHtml(heading), innerHtml);
+                """
+                .formatted(escapeHtml(heading), innerHtml);
     }
 }

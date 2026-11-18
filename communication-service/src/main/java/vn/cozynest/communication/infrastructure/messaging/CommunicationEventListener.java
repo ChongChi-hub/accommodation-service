@@ -116,10 +116,12 @@ public class CommunicationEventListener {
 
         if (!recipientId.isBlank()) {
             notificationService.createInternalNotification(recipientId, envelope.aggregateType(), title, content, linkUrl);
+            triggerEmailNotificationIfApplicable(envelope, payload);
             return;
         }
         if (!userId.isBlank()) {
             notificationService.createInternalNotification(userId, envelope.aggregateType(), title, content, linkUrl);
+            triggerEmailNotificationIfApplicable(envelope, payload);
             return;
         }
 
@@ -207,6 +209,30 @@ public class CommunicationEventListener {
                     );
                     svc.sendAppointmentDeclinedNotification(apptPayload);
                 }
+                case "APPOINTMENT_CANCELLED" -> {
+                    String cancelledBy = payload.path("cancelledBy").asString("");
+                    CommunicationEmailService.AppointmentEmailPayload apptPayload = new CommunicationEmailService.AppointmentEmailPayload(
+                            envelope.aggregateId(),
+                            payload.path("roomId").asString(""),
+                            payload.path("roomTitle").asString(""),
+                            payload.path("roomAddress").asString(""),
+                            payload.path("tenantId").asString(""),
+                            payload.path("landlordId").asString(""),
+                            payload.path("contactName").asString(""),
+                            payload.path("contactPhone").asString(""),
+                            payload.path("contactEmail").asString(""),
+                            null,
+                            null,
+                            payload.path("scheduledStart").asString(""),
+                            null,
+                            payload.path("reasonNote").asString(payload.path("reasonCode").asString(""))
+                    );
+                    if ("TENANT".equalsIgnoreCase(cancelledBy)) {
+                        svc.sendAppointmentCancelledByTenantNotification(apptPayload);
+                    } else {
+                        svc.sendAppointmentDeclinedNotification(apptPayload);
+                    }
+                }
                 case "RENTAL_REQUEST_CREATED" -> {
                     CommunicationEmailService.RentalRequestEmailPayload rentalPayload = new CommunicationEmailService.RentalRequestEmailPayload(
                             envelope.aggregateId(),
@@ -216,7 +242,8 @@ public class CommunicationEventListener {
                             payload.path("proposedMoveInDate").asString(""),
                             payload.path("numOccupants").asInt(1),
                             payload.path("message").asString(""),
-                            null
+                            null,
+                            payload.path("roomTitle").asString("")
                     );
                     svc.sendRentalRequestCreatedNotification(rentalPayload);
                 }
@@ -229,7 +256,8 @@ public class CommunicationEventListener {
                             payload.path("proposedMoveInDate").asString(""),
                             payload.path("numOccupants").asInt(1),
                             payload.path("message").asString(""),
-                            payload.path("contractId").asString("")
+                            payload.path("contractId").asString(""),
+                            payload.path("roomTitle").asString("")
                     );
                     svc.sendRentalRequestApprovedNotification(rentalPayload);
                 }
@@ -242,7 +270,8 @@ public class CommunicationEventListener {
                             payload.path("proposedMoveInDate").asString(""),
                             payload.path("numOccupants").asInt(1),
                             payload.path("message").asString(""),
-                            null
+                            null,
+                            payload.path("roomTitle").asString("")
                     );
                     svc.sendRentalRequestRejectedNotification(rentalPayload);
                 }
@@ -278,7 +307,9 @@ public class CommunicationEventListener {
     private String resolveTitle(String eventType) {
         if (eventType == null) return "Thông báo hệ thống Tổ Ấm";
         return switch (eventType) {
+            case "APPOINTMENT_CREATED" -> "Có khách hẹn xem phòng mới";
             case "APPOINTMENT_CONFIRMED" -> "Lịch hẹn xem phòng đã được xác nhận";
+            case "APPOINTMENT_DECLINED" -> "Lịch hẹn xem phòng bị từ chối";
             case "APPOINTMENT_CANCELLED" -> "Lịch hẹn xem phòng đã bị hủy";
             case "APPOINTMENT_EXPIRED" -> "Lịch hẹn xem phòng đã hết hạn";
             case "RENTAL_REQUEST_CREATED" -> "Yêu cầu thuê phòng mới";

@@ -95,7 +95,7 @@ public class TenantAppointmentService {
             throw new IllegalArgumentException("Thoi gian ket thuc phai sau thoi gian bat dau");
         }
         String targetLandlordId = normalizeLandlordId(req.landlordId());
-        if (tenantId.equals(targetLandlordId)) {
+        if (LandlordIdentityResolver.matches(tenantId, targetLandlordId)) {
             throw new IllegalArgumentException("Chu tro khong the tu dat lich xem phong cua chinh minh");
         }
 
@@ -156,23 +156,33 @@ public class TenantAppointmentService {
 
         historyRepository.ifPresent(repo -> repo.save(new AppointmentStatusHistory(
                 saved.getId(), initialStatus, "CANCELLED", tenantId, "TENANT", note)));
-        recordOutbox("APPOINTMENT_CANCELLED", saved.getId(), Map.of(
-                "appointmentId", saved.getId(),
-                "cancelledBy", "TENANT",
-                "reasonCode", code.name()
-        ));
+        Map<String, Object> cancelPayload = new java.util.HashMap<>();
+        cancelPayload.put("appointmentId", saved.getId());
+        cancelPayload.put("roomId", saved.getRoomId());
+        cancelPayload.put("tenantId", tenantId);
+        cancelPayload.put("landlordId", saved.getLandlordId());
+        cancelPayload.put("cancelledBy", "TENANT");
+        cancelPayload.put("reasonCode", code.name());
+        cancelPayload.put("reasonNote", note != null ? note : "");
+        if (saved.getRoomTitle() != null) cancelPayload.put("roomTitle", saved.getRoomTitle());
+        if (saved.getRoomAddress() != null) cancelPayload.put("roomAddress", saved.getRoomAddress());
+        if (saved.getScheduledStart() != null) cancelPayload.put("scheduledStart", saved.getScheduledStart().toString());
+        if (saved.getContactName() != null) cancelPayload.put("contactName", saved.getContactName());
+        if (saved.getContactPhone() != null) cancelPayload.put("contactPhone", saved.getContactPhone());
+        if (saved.getContactEmail() != null) cancelPayload.put("contactEmail", saved.getContactEmail());
+        recordOutbox("APPOINTMENT_CANCELLED", saved.getId(), cancelPayload);
         return ViewingAppointmentListItemDto.fromEntity(saved);
     }
 
     private String normalizeLandlordId(String landlordId) {
         if (landlordId == null) return null;
-        if ("1".equals(landlordId)) return "u-landlord-01";
-        if ("2".equals(landlordId)) return "u-landlord-02";
-        if ("3".equals(landlordId)) return "u-landlord-03";
-        if ("4".equals(landlordId)) return "u-landlord-04";
-        if ("5".equals(landlordId)) return "u-landlord-05";
-        if ("6".equals(landlordId)) return "u-landlord-06";
-        return landlordId.trim();
+        String legacy = LandlordIdentityResolver.normalizeLegacy(landlordId);
+        if (legacy != null && legacy.matches("^\\d+$")) {
+            return identityVerificationPort
+                    .map(port -> port.resolveLandlordUserId(legacy))
+                    .orElse(legacy);
+        }
+        return legacy;
     }
 
     private void recordOutbox(String eventType, String aggregateId, Object payload) {

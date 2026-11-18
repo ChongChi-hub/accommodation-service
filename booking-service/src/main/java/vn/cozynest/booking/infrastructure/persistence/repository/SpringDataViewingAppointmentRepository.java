@@ -15,6 +15,7 @@ import vn.cozynest.booking.domain.model.AppointmentStatus;
 import vn.cozynest.booking.infrastructure.persistence.entity.ViewingAppointmentJpaEntity;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,20 +25,22 @@ public interface SpringDataViewingAppointmentRepository
 
     Optional<ViewingAppointmentJpaEntity> findByIdAndLandlordId(String id, String landlordId);
 
+    Optional<ViewingAppointmentJpaEntity> findByIdAndLandlordIdIn(String id, Collection<String> landlordIds);
+
     Optional<ViewingAppointmentJpaEntity> findByIdAndTenantId(String id, String tenantId);
 
     Page<ViewingAppointmentJpaEntity> findByTenantId(String tenantId, Pageable pageable);
 
     @Query("""
         SELECT a FROM ViewingAppointmentJpaEntity a
-        WHERE a.landlordId = :landlordId
+        WHERE a.landlordId IN :landlordIds
           AND a.status = vn.cozynest.booking.domain.model.AppointmentStatus.CONFIRMED
           AND (:excludeId IS NULL OR a.id <> :excludeId)
           AND a.scheduledStart < :end
           AND a.scheduledEnd > :start
     """)
     List<ViewingAppointmentJpaEntity> findOverlappingConfirmed(
-            @Param("landlordId") String landlordId,
+            @Param("landlordIds") Collection<String> landlordIds,
             @Param("start") Instant start,
             @Param("end") Instant end,
             @Param("excludeId") String excludeId
@@ -94,24 +97,24 @@ public interface SpringDataViewingAppointmentRepository
     """)
     int atomicallyExpirePending(@Param("id") String id, @Param("now") Instant now);
 
-    long countByLandlordIdAndStatus(String landlordId, AppointmentStatus status);
+    long countByLandlordIdInAndStatus(Collection<String> landlordIds, AppointmentStatus status);
 
     @Query("""
         SELECT COUNT(a) FROM ViewingAppointmentJpaEntity a
-        WHERE a.landlordId = :landlordId
+        WHERE a.landlordId IN :landlordIds
           AND a.status = vn.cozynest.booking.domain.model.AppointmentStatus.CONFIRMED
           AND a.scheduledStart <= :now
     """)
-    long countNeedingOutcomeUpdate(@Param("landlordId") String landlordId, @Param("now") Instant now);
+    long countNeedingOutcomeUpdate(@Param("landlordIds") Collection<String> landlordIds, @Param("now") Instant now);
 
     @Query("""
         SELECT COUNT(a) FROM ViewingAppointmentJpaEntity a
-        WHERE a.landlordId = :landlordId
+        WHERE a.landlordId IN :landlordIds
           AND a.scheduledStart >= :start
           AND a.scheduledStart < :end
     """)
     long countTodayAppointments(
-            @Param("landlordId") String landlordId,
+            @Param("landlordIds") Collection<String> landlordIds,
             @Param("start") Instant start,
             @Param("end") Instant end
     );
