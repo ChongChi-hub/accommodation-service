@@ -291,10 +291,10 @@ public class AdminListingController {
     }
 
     private String resolveLandlordUserId(Long landlordId) {
-        if (landlordId == null) return "u-huy-01";
-        if (landlordId == 1L) return "u-huy-01";
-        if (landlordId == 2L) return "u-hao-01";
-        return "u-huy-01";
+        if (landlordId == null) return "u-landlord-01";
+        if (landlordId == 1L) return "u-landlord-01";
+        if (landlordId == 2L) return "u-landlord-02";
+        return landlordId < 10 ? "u-landlord-0" + landlordId : "u-landlord-" + landlordId;
     }
 
     @GetMapping("/reviews")

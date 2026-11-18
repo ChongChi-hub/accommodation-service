@@ -30,6 +30,9 @@ public class AuthController {
     private final GoogleAuthUseCase googleAuthUseCase;
     private final boolean isProduction;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private vn.cozynest.identity.application.service.UserPresenceService userPresenceService;
+
     public AuthController(RegisterUseCase registerUseCase,
                           LoginUseCase loginUseCase,
                           RefreshTokenUseCase refreshTokenUseCase,
@@ -76,6 +79,9 @@ public class AuthController {
             command.setDeviceInfo(request.getHeader("User-Agent"));
         }
         AuthResult result = loginUseCase.execute(command);
+        if (userPresenceService != null && result.getUser() != null) {
+            userPresenceService.recordHeartbeat(result.getUser().getId());
+        }
 
         ResponseCookie cookie = ResponseCookie.from("cozynest_token", result.getToken())
                 .httpOnly(true)
@@ -99,6 +105,9 @@ public class AuthController {
             command.setDeviceInfo(request.getHeader("User-Agent"));
         }
         AuthResult result = refreshTokenUseCase.execute(command);
+        if (userPresenceService != null && result.getUser() != null) {
+            userPresenceService.recordHeartbeat(result.getUser().getId());
+        }
         return ResponseEntity.ok(ApiResponse.success("Làm mới token thành công", result));
     }
 
