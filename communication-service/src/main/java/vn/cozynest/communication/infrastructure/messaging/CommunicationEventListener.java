@@ -309,6 +309,8 @@ public class CommunicationEventListener {
         return switch (eventType) {
             case "APPOINTMENT_CREATED" -> "Có khách hẹn xem phòng mới";
             case "APPOINTMENT_CONFIRMED" -> "Lịch hẹn xem phòng đã được xác nhận";
+            case "APPOINTMENT_COMPLETED" -> "Lịch hẹn xem phòng đã hoàn thành";
+            case "APPOINTMENT_NO_SHOW" -> "Khách không đến theo lịch hẹn xem phòng";
             case "APPOINTMENT_DECLINED" -> "Lịch hẹn xem phòng bị từ chối";
             case "APPOINTMENT_CANCELLED" -> "Lịch hẹn xem phòng đã bị hủy";
             case "APPOINTMENT_EXPIRED" -> "Lịch hẹn xem phòng đã hết hạn";
@@ -342,6 +344,23 @@ public class CommunicationEventListener {
     }
 
     private String resolveContent(DomainEventEnvelope envelope, JsonNode payload) {
+        String rejectionReason = payload.path("rejectionReason").asString("");
+        if ("RENTAL_REQUEST_REJECTED".equals(envelope.eventType()) && !rejectionReason.isBlank()) {
+            String roomTitle = payload.path("roomTitle").asString("");
+            return (!roomTitle.isBlank() ? roomTitle + " - " : "") + "Lý do: " + rejectionReason;
+        }
+        if ("APPOINTMENT_COMPLETED".equals(envelope.eventType())) {
+            String roomTitle = payload.path("roomTitle").asString("");
+            return !roomTitle.isBlank()
+                    ? "Buổi xem phòng " + roomTitle + " đã hoàn thành. Bạn có thể gửi yêu cầu thuê phòng."
+                    : "Buổi xem phòng đã hoàn thành. Bạn có thể gửi yêu cầu thuê phòng.";
+        }
+        if ("APPOINTMENT_NO_SHOW".equals(envelope.eventType())) {
+            String roomTitle = payload.path("roomTitle").asString("");
+            return !roomTitle.isBlank()
+                    ? "Lịch hẹn xem phòng " + roomTitle + " được ghi nhận khách không đến."
+                    : "Lịch hẹn xem phòng được ghi nhận khách không đến.";
+        }
         String msg = payload.path("message").asString("");
         if (!msg.isBlank()) {
             return msg;
