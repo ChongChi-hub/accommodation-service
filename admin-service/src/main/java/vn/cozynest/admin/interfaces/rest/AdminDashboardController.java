@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.admin.application.service.AdminAuditService;
+import vn.cozynest.admin.application.service.AdminPlatformStatsService;
 import vn.cozynest.common.dto.ApiResponse;
 
 import java.util.*;
@@ -17,87 +18,40 @@ public class AdminDashboardController {
 
     private final JdbcTemplate jdbcTemplate;
     private final Optional<AdminAuditService> auditService;
+    private final Optional<AdminPlatformStatsService> platformStatsService;
 
     public AdminDashboardController(JdbcTemplate jdbcTemplate) {
-        this(jdbcTemplate, Optional.empty());
+        this(jdbcTemplate, Optional.empty(), Optional.empty());
+    }
+
+    public AdminDashboardController(JdbcTemplate jdbcTemplate, Optional<AdminAuditService> auditService) {
+        this(jdbcTemplate, auditService, Optional.empty());
     }
 
     @Autowired
-    public AdminDashboardController(JdbcTemplate jdbcTemplate, Optional<AdminAuditService> auditService) {
+    public AdminDashboardController(
+            JdbcTemplate jdbcTemplate,
+            Optional<AdminAuditService> auditService,
+            Optional<AdminPlatformStatsService> platformStatsService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService != null ? auditService : Optional.empty();
+        this.platformStatsService = platformStatsService != null ? platformStatsService : Optional.empty();
     }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        int totalUsers = 0;
-        int activeRooms = 0;
-        int pendingRooms = 0;
-        int pendingKyc = 0;
-        long totalRevenue = 0L;
-
-        try {
-            Number userCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM cozynest_identity.users", Number.class);
-            if (userCount != null) totalUsers = userCount.intValue();
-        } catch (Exception ignored) {}
-
-        try {
-            Number roomCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND hidden_at IS NULL AND is_approved = true AND status IN ('AVAILABLE', 'PUBLISHED')", 
-                Number.class
-            );
-            if (roomCount != null) activeRooms = roomCount.intValue();
-        } catch (Exception ignored) {}
-
-        try {
-            Number pendingCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND is_approved = false", 
-                Number.class
-            );
-            if (pendingCount != null) pendingRooms = pendingCount.intValue();
-        } catch (Exception ignored) {}
-
-        try {
-            Number kycCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT user_id) FROM (" +
-                "  SELECT user_id FROM cozynest_identity.user_verifications WHERE status = 'PENDING' " +
-                "  UNION " +
-                "  SELECT user_id FROM cozynest_identity.face_verifications WHERE status = 'PENDING'" +
-                ") AS pending_kyc_users", 
-                Number.class
-            );
-            if (kycCount != null) pendingKyc = kycCount.intValue();
-        } catch (Exception ignored) {}
-
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                    "SELECT total_users, active_rooms, pending_rooms, total_revenue FROM daily_statistics ORDER BY stat_date DESC LIMIT 1"
-            );
-            if (!rows.isEmpty()) {
-                Map<String, Object> row = rows.get(0);
-                if (row.get("total_users") != null) totalUsers = ((Number) row.get("total_users")).intValue();
-                if (row.get("active_rooms") != null) activeRooms = ((Number) row.get("active_rooms")).intValue();
-                if (row.get("pending_rooms") != null) pendingRooms = ((Number) row.get("pending_rooms")).intValue();
-                if (row.get("total_revenue") != null) totalRevenue = ((Number) row.get("total_revenue")).longValue();
-            }
-        } catch (Exception ignored) {}
-
-        result.put("totalUsers", totalUsers);
-        result.put("activeRooms", activeRooms);
-        result.put("pendingApprovals", pendingRooms);
-        result.put("pendingKyc", pendingKyc);
-        result.put("monthlyRevenue", totalRevenue);
-
-        Map<String, Boolean> health = new LinkedHashMap<>();
-        health.put("gateway", true);
-        health.put("identity", true);
-        health.put("listing", true);
-        health.put("booking", true);
-        health.put("billing", true);
-        result.put("servicesHealth", health);
-
-        return ResponseEntity.ok(ApiResponse.success(result));
+        if (platformStatsService.isPresent()) {
+            return ResponseEntity.ok(ApiResponse.success(platformStatsService.get().getLegacyStats()));
+        }
+        Map<String, Object> unavailable = new LinkedHashMap<>();
+        unavailable.put("degraded", true);
+        unavailable.put("totalUsers", null);
+        unavailable.put("activeRooms", null);
+        unavailable.put("pendingApprovals", null);
+        unavailable.put("pendingKyc", null);
+        unavailable.put("monthlyRevenue", null);
+        return ResponseEntity.ok(ApiResponse.success(unavailable));
     }
 
     @GetMapping("/reports")
@@ -251,6 +205,7 @@ public class AdminDashboardController {
     public ResponseEntity<ApiResponse<Void>> clearCache(
             Authentication auth,
             HttpServletRequest req) {
+        platformStatsService.ifPresent(AdminPlatformStatsService::clearCache);
         String actor = auth != null ? String.valueOf(auth.getPrincipal()) : "u-admin-01";
         auditService.ifPresent(a -> a.record(actor, "ADMIN", "CACHE_CLEAR", "SYSTEM_CACHE",
                 "ALL", extractIp(req), req != null ? req.getHeader("User-Agent") : null, "{\"action\":\"CLEAR_CACHE\"}"));
@@ -265,91 +220,16 @@ public class AdminDashboardController {
 
     @GetMapping("/analytics")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAnalytics() {
-        Map<String, Object> analytics = new LinkedHashMap<>();
-
-        // 1. Tỷ lệ thuê thành công sau xem phòng (%) - Tính động 100% từ DB
-        double successRate = 0.0;
-        try {
-            Number completedAppointments = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM cozynest_booking.viewing_appointments WHERE status = 'COMPLETED'",
-                Number.class
-            );
-            Number signedContracts = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM cozynest_booking.contracts WHERE status IN ('ACTIVE', 'COMPLETED')",
-                Number.class
-            );
-            if (completedAppointments != null && completedAppointments.intValue() > 0 && signedContracts != null) {
-                successRate = Math.round(((double) signedContracts.intValue() / completedAppointments.intValue()) * 1000.0) / 10.0;
-            } else {
-                Number totalRooms = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND is_approved = 1", 
-                    Number.class
-                );
-                Number occupiedRooms = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM cozynest_listing.rooms WHERE deleted_at IS NULL AND is_approved = 1 AND (occupancy_status = 'OCCUPIED' OR status = 'RENTED')", 
-                    Number.class
-                );
-                if (totalRooms != null && totalRooms.intValue() > 0 && occupiedRooms != null) {
-                    successRate = Math.round(((double) occupiedRooms.intValue() / totalRooms.intValue()) * 1000.0) / 10.0;
-                }
-            }
-        } catch (Exception ignored) {}
-        analytics.put("successRate", successRate);
-
-        // 2. Thời gian trung bình lấp đầy phòng (ngày) - Tính động 100% từ DATEDIFF giữa Hợp đồng và Lịch hẹn
-        double avgDays = 0.0;
-        try {
-            Double dbAvgDays = jdbcTemplate.queryForObject(
-                "SELECT AVG(DATEDIFF(c.created_at, va.created_at)) " +
-                "FROM cozynest_booking.contracts c " +
-                "JOIN cozynest_booking.viewing_appointments va ON c.room_id = va.room_id AND c.tenant_id = va.tenant_id",
-                Double.class
-            );
-            if (dbAvgDays != null && dbAvgDays > 0) {
-                avgDays = Math.round(dbAvgDays * 10.0) / 10.0;
-            }
-        } catch (Exception ignored) {}
-        analytics.put("avgTimeToFillDays", avgDays);
-
-        // 3. Tổng lượt tìm kiếm / quan tâm - Tính động 100% từ tổng view_count phòng trọ
-        long totalSearches = 0;
-        try {
-            Number viewCount = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(view_count), 0) FROM cozynest_listing.rooms WHERE deleted_at IS NULL", 
-                Number.class
-            );
-            if (viewCount != null) {
-                totalSearches = viewCount.longValue() * 5 + 8500;
-            }
-        } catch (Exception ignored) {}
-        analytics.put("totalSearches", totalSearches);
-
-        // 4. Top khu vực tìm kiếm / phân bố bài đăng - Tính động 100% từ bảng rooms
-        List<Map<String, Object>> topAreas = new ArrayList<>();
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT district_code, COUNT(*) as cnt " +
-                "FROM cozynest_listing.rooms " +
-                "WHERE deleted_at IS NULL AND district_code IN ('dong_da', 'cau_giay', 'binh_thanh') " +
-                "GROUP BY district_code " +
-                "ORDER BY cnt DESC"
-            );
-            long sumCnt = rows.stream().mapToLong(r -> ((Number) r.get("cnt")).longValue()).sum();
-            int idx = 1;
-            for (Map<String, Object> r : rows) {
-                long cnt = ((Number) r.get("cnt")).longValue();
-                int pct = sumCnt > 0 ? (int) Math.round(((double) cnt / sumCnt) * 100) : 0;
-                String dCode = String.valueOf(r.get("district_code")).toLowerCase();
-                String key = "areaCauGiay";
-                if (dCode.contains("dong_da") || dCode.contains("dongda")) key = "areaDongDa";
-                else if (dCode.contains("binh_thanh") || dCode.contains("binhthanh")) key = "areaBinhThanh";
-
-                topAreas.add(Map.of("id", String.valueOf(idx++), "key", key, "percent", pct));
-            }
-        } catch (Exception ignored) {}
-        analytics.put("topAreas", topAreas);
-
-        return ResponseEntity.ok(ApiResponse.success(analytics));
+        if (platformStatsService.isPresent()) {
+            return ResponseEntity.ok(ApiResponse.success(platformStatsService.get().getLegacyAnalytics()));
+        }
+        Map<String, Object> unavailable = new LinkedHashMap<>();
+        unavailable.put("degraded", true);
+        unavailable.put("successRate", null);
+        unavailable.put("avgTimeToFillDays", null);
+        unavailable.put("totalSearches", null);
+        unavailable.put("topAreas", List.of());
+        return ResponseEntity.ok(ApiResponse.success(unavailable));
     }
 }
 

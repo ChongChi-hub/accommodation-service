@@ -163,6 +163,17 @@ class ApiGatewayRoutingAndCorsTest {
         assertThat(avatarRoute.getOrder()).isLessThan(listingRoute.getOrder());
         assertThat(avatarRoute.getUri().toString()).contains("8081");
     }
+
+    @Test
+    @DisplayName("Verify live HTTP call to /internal/stats/** through API Gateway returns 404")
+    void testInternalStatsBlockedAtGatewayRuntime() {
+        if (webTestClient == null) return;
+
+        webTestClient.get()
+                .uri("/internal/stats/identity")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
 }
 
 
