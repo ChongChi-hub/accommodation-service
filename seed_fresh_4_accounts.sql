@@ -41,11 +41,11 @@ ON DUPLICATE KEY UPDATE name=name;
 
 -- 4 Seed Accounts (Default password: password123)
 -- BCrypt hash: $2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a
-INSERT INTO users (id, email, phone, password_hash, full_name, avatar_url, gender, status, created_at, updated_at) VALUES
-('u-admin-01', 'admin@cozynest.vn', '0903000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Quản Trị Viên (Admin)', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-mod-01', 'moderator@cozynest.vn', '0904000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Kiểm Duyệt Viên (Mod)', NULL, 'OTHER', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-huy-01', 'dgiahuy2911@gmail.com', '0901000001', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đoàn Gia Huy', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
-('u-hao-01', 'lehuunhathao2k6@gmail.com', '0902000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hữu Nhật Hào', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3));
+INSERT INTO users (id, email, phone, password_hash, full_name, avatar_url, gender, status, email_verified_at, created_at, updated_at) VALUES
+('u-admin-01', 'admin@cozynest.vn', '0903000003', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Quản Trị Viên (Admin)', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-mod-01', 'moderator@cozynest.vn', '0904000004', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Kiểm Duyệt Viên (Mod)', NULL, 'OTHER', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-huy-01', 'dgiahuy2911@gmail.com', '0901000001', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Đoàn Gia Huy', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
+('u-hao-01', 'lehuunhathao2k6@gmail.com', '0902000002', '$2a$12$P9cFdZr5xw1vTc5Dee7Fy.o.lFyfDcfmTyRtBrsYqyFdGA7ig4D2a', 'Lê Hữu Nhật Hào', NULL, 'MALE', 'ACTIVE', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3));
 
 -- User Roles (Strict Single-Role Architecture: Landlord != Tenant)
 INSERT INTO user_roles (user_id, role_id) VALUES
@@ -60,6 +60,10 @@ INSERT INTO user_profiles (id, user_id, full_name, phone, language, timezone, cr
 ('up-mod-01', 'u-mod-01', 'Kiểm Duyệt Viên (Mod)', '0904000004', 'vi', 'Asia/Ho_Chi_Minh', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 ('up-huy-01', 'u-huy-01', 'Đoàn Gia Huy', '0901000001', 'vi', 'Asia/Ho_Chi_Minh', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)),
 ('up-hao-01', 'u-hao-01', 'Lê Hữu Nhật Hào', '0902000002', 'vi', 'Asia/Ho_Chi_Minh', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3));
+
+-- Landlord Profile for dgiahuy2911@gmail.com
+INSERT INTO landlord_profiles (id, user_id, approval_status, applied_at, approved_at, version, created_at, updated_at) VALUES
+('lp-huy-01', 'u-huy-01', 'APPROVED', CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), 0, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3));
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -108,14 +112,12 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE deposit_transactions;
 TRUNCATE TABLE deposits;
-TRUNCATE TABLE escrow_holds;
+TRUNCATE TABLE contract_dispute_holds;
 TRUNCATE TABLE payout_requests;
-TRUNCATE TABLE refund_requests;
 TRUNCATE TABLE expenses;
 TRUNCATE TABLE invoice_items;
 TRUNCATE TABLE invoices;
 TRUNCATE TABLE ledger_postings;
-TRUNCATE TABLE ledger_daily_snapshots;
 TRUNCATE TABLE journal_entries;
 TRUNCATE TABLE maker_checker_requests;
 TRUNCATE TABLE payment_intents;
@@ -155,12 +157,10 @@ USE cozynest_admin;
 SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE audit_logs;
-TRUNCATE TABLE content_posts;
 TRUNCATE TABLE daily_statistics;
 TRUNCATE TABLE dispute_events;
 TRUNCATE TABLE disputes;
 TRUNCATE TABLE moderation_actions;
 TRUNCATE TABLE reports;
-TRUNCATE TABLE dead_letter_messages;
 
 SET FOREIGN_KEY_CHECKS = 1;
