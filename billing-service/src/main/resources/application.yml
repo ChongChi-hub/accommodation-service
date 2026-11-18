@@ -52,3 +52,14 @@ fintech:
     account-name: ${FINTECH_GATEWAY_ACCOUNT_NAME:LE THANH CUONG}
     kill-switch: ${FINTECH_GATEWAY_KILL_SWITCH:false}
 
+app:
+  identity-service:
+    url: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+  booking-service:
+    url: ${BOOKING_SERVICE_URL:http://localhost:8083}
+  billing:
+    identity:
+      allow-sandbox-bypass: ${BILLING_IDENTITY_ALLOW_SANDBOX_BYPASS:false}
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}
+

@@ -266,3 +266,8 @@ INSERT INTO kyc_access_logs (id, verification_id, actor_id, actor_role, action, 
 ('kal-006', 'uv-l03', 'u-mod-03', 'MODERATOR', 'VIEW_BACK', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR),
 ('kal-007', 'uv-l03', 'u-mod-03', 'MODERATOR', 'REJECT', '127.0.0.1', CURRENT_TIMESTAMP(3) - INTERVAL 22 HOUR);
 
+-- 5. Ensure demo tenant u-tenant-01 has verified full_name_on_id for KYC-matched refund flows
+UPDATE user_verifications
+SET full_name_on_id = 'Nguyễn Văn Thuê'
+WHERE id = 'uv-001' AND (full_name_on_id IS NULL OR full_name_on_id = '');
+

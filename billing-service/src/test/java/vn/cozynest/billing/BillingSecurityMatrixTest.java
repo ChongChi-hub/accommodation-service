@@ -44,6 +44,11 @@ class BillingSecurityMatrixTest {
                 org.springframework.security.core.Authentication.class).getAnnotation(PreAuthorize.class);
         assertThat(issueCredit).isNotNull();
         assertThat(issueCredit.value()).contains("LANDLORD");
+
+        PreAuthorize escrowInit = EscrowController.class.getMethod("initEscrowHold", java.util.Map.class)
+                .getAnnotation(PreAuthorize.class);
+        assertThat(escrowInit).isNotNull();
+        assertThat(escrowInit.value()).isEqualTo("hasRole('ADMIN')");
     }
 
     @Test
