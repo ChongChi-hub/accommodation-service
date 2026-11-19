@@ -136,7 +136,7 @@ public class PaymentService {
             if (!payerId.equals(snap.tenantId())) {
                 throw new WebhookSecurityException(404, "Khong tim thay hop dong hoac ban khong co quyen dat coc");
             }
-            if (!"AWAITING_DEPOSIT".equals(snap.status())) {
+            if (!"AWAITING_DEPOSIT".equals(snap.status()) && !"ACTIVE".equals(snap.status())) {
                 throw new IllegalStateException("Chi co the thanh toan coc khi hop dong o trang thai cho dat coc (hien tai: " + snap.status() + ")");
             }
             Instant now = Instant.now();

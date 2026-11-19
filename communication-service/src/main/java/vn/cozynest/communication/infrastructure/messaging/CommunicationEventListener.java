@@ -366,6 +366,8 @@ public class CommunicationEventListener {
             case "CONTRACT_AMENDMENT_APPLIED" -> "Phụ lục hợp đồng thuê phòng đã được áp dụng";
             case "PAYMENT_CONFIRMED", "PAYMENT_PAID" -> "Xác nhận thanh toán thành công";
             case "ESCROW_RELEASED" -> "Tiền đặt cọc đã được giải ngân";
+            case "ESCROW_HELD", "ESCROW_CREATED" -> "Tiền cọc phòng đã được giữ qua Escrow";
+            case "ESCROW_CANCELLED" -> "Yêu cầu ký quỹ tiền cọc đã hủy";
             case "INVOICE_GENERATED", "INVOICE_ISSUED" -> "Hóa đơn thuê phòng kỳ mới đã phát hành";
             case "INVOICE_PAYMENT_RECORDED" -> "Thanh toán hóa đơn phòng đã được ghi nhận";
             case "INVOICE_LATE_FEE_APPLIED" -> "Áp dụng phí phạt chậm thanh toán hóa đơn";
@@ -405,6 +407,9 @@ public class CommunicationEventListener {
         if (!msg.isBlank()) {
             if ("RENTAL_REQUEST_CREATED".equals(envelope.eventType())) {
                 return "Khách thuê gửi lời nhắn: \"" + msg + "\". Vui lòng kiểm tra và phản hồi.";
+            }
+            if ("RENTAL_REQUEST_APPROVED".equals(envelope.eventType())) {
+                return "Chủ trọ đã đồng ý yêu cầu thuê phòng của bạn. Vui lòng xem hợp đồng và đặt cọc.";
             }
             return msg;
         }
@@ -458,6 +463,11 @@ public class CommunicationEventListener {
                 case "FACE_FAILED", "FaceVerificationFailed" -> "Xác thực sinh trắc học khuôn mặt chưa thành công. Vui lòng chụp lại nơi đủ sáng.";
                 default -> "Kết quả xác thực khuôn mặt của bạn đã có cập nhật.";
             };
+            case "ESCROW" -> switch (evt) {
+                case "ESCROW_RELEASED" -> "Tiền đặt cọc phòng đã được giải ngân thành công tới chủ trọ.";
+                case "ESCROW_CANCELLED" -> "Yêu cầu ký quỹ tiền cọc phòng đã bị hủy do quá hạn thanh toán.";
+                default -> "Thông tin ký quỹ cọc bảo đảm phòng trọ đã được ghi nhận trên hệ thống.";
+            };
             default -> "Bạn có thông báo mới từ hệ thống Tổ Ấm.";
         };
     }
@@ -473,6 +483,8 @@ public class CommunicationEventListener {
             case "INVOICE" -> "/dashboard/invoices";
             case "APPOINTMENT" -> "/dashboard/appointments";
             case "RENTAL_REQUEST" -> "/dashboard/rental-requests";
+            case "KYC", "KYC_VERIFICATION" -> "/dashboard/kyc";
+            case "ESCROW" -> "/dashboard/deposits";
             default -> "/dashboard";
         };
     }
