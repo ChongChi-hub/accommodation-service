@@ -43,6 +43,9 @@ subprojects {
 
     tasks.named('test') {
         useJUnitPlatform()
+        maxHeapSize = '192m'
+        maxParallelForks = 1
+        jvmArgs = ['-XX:+UseSerialGC', '-Xms32m', '-XX:MaxMetaspaceSize=128m']
         testLogging {
             events "failed"
             exceptionFormat "full"
