@@ -1,14 +1,35 @@
-FROM eclipse-temurin:25-jre-alpine
+# Multi-stage Dockerfile for identity-service
+FROM eclipse-temurin:23-jdk-alpine AS builder
+WORKDIR /workspace
+COPY gradlew settings.gradle build.gradle ./
+COPY gradle ./gradle
+COPY common/build.gradle ./common/build.gradle
+COPY api-gateway/build.gradle ./api-gateway/build.gradle
+COPY identity-service/build.gradle ./identity-service/build.gradle
+COPY listing-service/build.gradle ./listing-service/build.gradle
+COPY booking-service/build.gradle ./booking-service/build.gradle
+COPY billing-service/build.gradle ./billing-service/build.gradle
+COPY communication-service/build.gradle ./communication-service/build.gradle
+COPY admin-service/build.gradle ./admin-service/build.gradle
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew \
+    && ./gradlew :identity-service:dependencies --no-daemon || true
+COPY common/src ./common/src
+COPY identity-service/src ./identity-service/src
+RUN ./gradlew :identity-service:bootJar -x test --no-daemon \
+    && JAR=$(ls identity-service/build/libs/identity-service-*.jar | grep -v -- '-plain\.jar$' | head -n 1) \
+    && cp "$JAR" /workspace/app.jar
+
+FROM eclipse-temurin:23-jre-alpine AS runtime
 WORKDIR /app
 RUN apk add --no-cache curl tzdata \
     && cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime \
-    && echo "Asia/Ho_Chi_Minh" > /etc/timezone
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN mkdir -p /app/storage && chown -R appuser:appgroup /app
-COPY --chown=appuser:appgroup identity-service/build/libs/identity-service-1.0.0-SNAPSHOT.jar app.jar
+    && echo "Asia/Ho_Chi_Minh" > /etc/timezone \
+    && addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && mkdir -p /app/storage /app/uploads \
+    && chown -R appuser:appgroup /app
+COPY --from=builder --chown=appuser:appgroup /workspace/app.jar /app/app.jar
 USER appuser
 EXPOSE 8081
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8081/actuator/health || exit 1
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

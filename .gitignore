@@ -1,5 +1,6 @@
-# Gradle build & cache
+# Gradle & Maven build & cache
 build/
+target/
 .gradle/
 out/
 bin/
@@ -8,9 +9,16 @@ bin/
 
 # Environment & Secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.staging.example
 *.env
+*.pem
+*.key
+*.p12
+*.jks
+id_rsa*
+id_ed25519*
 
 # Local run & debug scripts with credentials
 run-local.ps1
