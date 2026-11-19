@@ -238,11 +238,25 @@ public class InvoiceService {
 
     @Transactional(readOnly = true)
     public InvoiceDto.InvoiceResponse getInvoiceById(String id, String actorId, boolean isAdmin) {
-        Invoice inv = findOrThrow(id);
+        Invoice inv = repository.findById(id)
+                .orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id));
         if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Khong co quyen xem hoa don nay");
+            throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id);
         }
         return toResponse(inv);
+    }
+
+    @Transactional
+    public InvoiceDto.InvoiceResponse sendManualReminder(String invoiceId, String actorId, boolean isAdmin) {
+        Invoice inv = repository.findById(invoiceId)
+                .orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId));
+        if (!isAdmin && !inv.getLandlordId().equals(actorId)) {
+            throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId);
+        }
+        inv.recordManualReminder(java.time.Instant.now());
+        Invoice saved = repository.save(inv);
+        emitInvoiceEvent("INVOICE_OVERDUE_REMINDER", saved);
+        return toResponse(saved);
     }
 
     @Transactional

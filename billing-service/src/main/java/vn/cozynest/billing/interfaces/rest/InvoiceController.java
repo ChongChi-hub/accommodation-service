@@ -118,6 +118,14 @@ public class InvoiceController {
         return ResponseEntity.ok(ApiResponse.message("Đã hủy hóa đơn"));
     }
 
+    @PostMapping("/{id}/remind")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<InvoiceDto.InvoiceResponse>> remindInvoice(
+            @PathVariable String id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi nhắc thanh toán tới khách thuê",
+                invoiceService.sendManualReminder(id, (String) auth.getPrincipal(), isAdmin(auth))));
+    }
+
     private boolean isAdmin(Authentication auth) {
         return auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority()));

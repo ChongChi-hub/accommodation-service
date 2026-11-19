@@ -5,5 +5,6 @@ public enum CancelReasonCode {
     ROOM_TAKEN,
     TENANT_NOT_ELIGIBLE,
     TIME_CONFLICT,
+    CHANGE_PLANS,
     OTHER
 }

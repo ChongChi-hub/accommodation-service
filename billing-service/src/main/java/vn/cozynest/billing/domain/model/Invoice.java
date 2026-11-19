@@ -160,6 +160,18 @@ public class Invoice {
         this.updatedAt = Instant.now();
     }
 
+    public void recordManualReminder(Instant now) {
+        if ("PAID".equals(this.status) || "CANCELLED".equals(this.status)) {
+            throw new IllegalStateException("Khong the gui nhac no cho hoa don da thanh toan hoac da huy");
+        }
+        if (this.overdueNotifiedAt != null && this.overdueNotifiedAt.isAfter(now.minusSeconds(86400))) {
+            throw new IllegalStateException("Ban chi co the gui nhac no toi da 1 lan moi 24 gio cho hoa don nay");
+        }
+        this.overdueNotifiedAt = now;
+        this.reminderCount += 1;
+        this.updatedAt = now;
+    }
+
     public void consumeOverpaymentCredit() {
         this.overpaymentCreditAmount = 0L;
         this.updatedAt = Instant.now();

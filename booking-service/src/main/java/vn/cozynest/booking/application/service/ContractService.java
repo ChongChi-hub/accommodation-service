@@ -201,8 +201,12 @@ public class ContractService {
 
     @Transactional(readOnly = true)
     public ContractDto getContractById(String contractId, String actorId, boolean isAdmin) {
-        Contract contract = findContractOrThrow(contractId);
-        assertParticipantOrAdmin(contract, actorId, isAdmin);
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new vn.cozynest.booking.application.exception.ContractNotFoundException(contractId));
+        if (!isAdmin && !contract.getTenantId().equals(actorId)
+                && !LandlordIdentityResolver.matches(contract.getLandlordId(), actorId)) {
+            throw new vn.cozynest.booking.application.exception.ContractNotFoundException(contractId);
+        }
         return ContractDto.from(contract);
     }
 

@@ -119,6 +119,9 @@ public class RentalRequestService {
         if (rentalRequestRepository.existsActiveRequest(dto.roomId(), tenantId)) {
             throw new IllegalStateException("Ban da co yeu cau thue phong dang cho xu ly cho phong nay");
         }
+        if (contractRepository.isPresent() && contractRepository.get().findActiveByRoomId(dto.roomId()).isPresent()) {
+            throw new IllegalStateException("Phòng này đã có người thuê hoặc đang được giữ chỗ.");
+        }
         listingPort.ifPresent(port -> {
             BookingListingPort.RoomAvailabilityCheck availability = port.checkRoomAvailability(
                     dto.roomId(), dto.numOccupants());
@@ -166,6 +169,20 @@ public class RentalRequestService {
             throw new RentalRequestInvalidStateException(
                     request.getStatus(),
                     "Yeu cau thue phong khong o trang thai cho duyet (hien tai: " + request.getStatus() + ")"
+            );
+        }
+
+        // BUG-05 fix: Prevent 2 tenants from concurrently holding the same room
+        Instant now = Instant.now();
+        boolean otherHoldExists = rentalRequestRepository.findByRoomId(request.getRoomId()).stream()
+                .anyMatch(other -> !other.getId().equals(request.getId())
+                        && "APPROVED".equals(other.getStatus())
+                        && (other.getHoldingExpiresAt() == null || other.getHoldingExpiresAt().isAfter(now)));
+        if (otherHoldExists
+                || (contractRepository.isPresent() && contractRepository.get().findActiveByRoomId(request.getRoomId()).isPresent())) {
+            throw new RentalRequestInvalidStateException(
+                    "ROOM_HELD",
+                    "Phòng này đã được giữ chỗ hoặc đã có hợp đồng hiệu lực với khách thuê khác."
             );
         }
 

@@ -186,9 +186,9 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public PaymentDto.IntentResponse getIntent(String paymentCode, String actorId, boolean isAdmin) {
         PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
+                .orElseThrow(() -> new WebhookSecurityException(404, "Khong tim thay ma thanh toan: " + paymentCode));
         if (!isAdmin && !intent.getPayerId().equals(actorId)) {
-            throw new WebhookSecurityException(403, "Khong co quyen xem giao dich thanh toan cua nguoi khac");
+            throw new WebhookSecurityException(404, "Khong tim thay ma thanh toan: " + paymentCode);
         }
         return toResponse(intent);
     }
