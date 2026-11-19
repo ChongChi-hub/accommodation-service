@@ -45,13 +45,20 @@ public class PaymentProofStorageService {
         this.escrowHoldRepository = escrowHoldRepository;
         this.paymentIntentRepository = paymentIntentRepository;
         this.contractPort = contractPort;
-        this.storageDir = Paths.get(storagePath != null && !storagePath.isBlank() ? storagePath : "./storage/private-proofs");
+        Path requestedDir = Paths.get(storagePath != null && !storagePath.isBlank() ? storagePath : "./storage/private-proofs");
+        Path resolvedDir = requestedDir;
+        try {
+            Files.createDirectories(requestedDir);
+        } catch (Exception e) {
+            resolvedDir = Paths.get(System.getProperty("java.io.tmpdir", "/tmp"), "cozynest-private-proofs");
+            try {
+                Files.createDirectories(resolvedDir);
+            } catch (Exception ignored) {
+            }
+        }
+        this.storageDir = resolvedDir;
         this.aesKey = ProofImageCipherHelper.deriveAesKey(
                 secretKeyRaw != null && !secretKeyRaw.isBlank() ? secretKeyRaw : "cozynest-private-proof-aes256-key-2026");
-        try {
-            Files.createDirectories(this.storageDir);
-        } catch (Exception ignored) {
-        }
     }
 
     @Transactional(rollbackFor = Exception.class)

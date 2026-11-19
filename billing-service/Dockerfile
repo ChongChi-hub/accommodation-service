@@ -3,7 +3,9 @@ WORKDIR /app
 RUN apk add --no-cache curl tzdata \
     && cp /usr/share/zoneinfo/UTC /etc/localtime \
     && echo "UTC" > /etc/timezone
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && mkdir -p /app/storage/private-proofs \
+    && chown -R appuser:appgroup /app/storage
 COPY --chown=appuser:appgroup billing-service/build/libs/billing-service-*.jar app.jar
 USER appuser
 EXPOSE 8084
