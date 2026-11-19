@@ -12,5 +12,7 @@ public interface SpringDataEscrowHoldRepository extends JpaRepository<EscrowHold
     List<EscrowHoldJpaEntity> findByStatusAndInspectionEndsAtBefore(String status, Instant cutoff);
     List<EscrowHoldJpaEntity> findByTenantId(String tenantId);
     List<EscrowHoldJpaEntity> findByLandlordId(String landlordId);
+    boolean existsByBankTxCode(String bankTxCode);
+    boolean existsByReceiptHash(String receiptHash);
 }
 

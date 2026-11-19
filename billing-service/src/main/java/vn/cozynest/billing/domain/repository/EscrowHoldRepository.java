@@ -13,5 +13,7 @@ public interface EscrowHoldRepository {
     List<EscrowHold> findByTenantId(String tenantId);
     List<EscrowHold> findByLandlordId(String landlordId);
     List<EscrowHold> findAll();
+    default boolean existsByBankTxCode(String bankTxCode) { return false; }
+    default boolean existsByReceiptHash(String receiptHash) { return false; }
 }
 

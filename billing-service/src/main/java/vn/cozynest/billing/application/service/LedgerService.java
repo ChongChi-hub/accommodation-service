@@ -76,6 +76,9 @@ public class LedgerService {
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<JournalEntry> existing = journalEntryRepository.findByIdempotencyKey(idempotencyKey.trim());
             if (existing.isPresent()) {
+                if (refId != null && existing.get().getReferenceId() != null && !refId.equals(existing.get().getReferenceId())) {
+                    throw new IllegalStateException("Phát hiện trùng lặp: Mã tham chiếu giao dịch ngân hàng đã được sử dụng cho một giao dịch khác!");
+                }
                 return existing.get();
             }
         }

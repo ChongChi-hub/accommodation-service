@@ -17,6 +17,10 @@ public class EscrowHold {
     private Instant moveInConfirmedAt;
     private Instant inspectionEndsAt;
     private String disputeReason;
+    private String paymentCode;
+    private String bankTxCode;
+    private String receiptHash;
+    private String receiptUrl;
     private Instant releasedAt;
     private final Instant createdAt;
     private Instant updatedAt;
@@ -153,6 +157,23 @@ public class EscrowHold {
         return tenantConfirmedMoveIn && landlordConfirmedMoveIn;
     }
 
+    public void attachPaymentProof(String paymentCode, String bankTxCode, String receiptHash, String receiptUrl) {
+        this.paymentCode = paymentCode;
+        this.bankTxCode = bankTxCode;
+        this.receiptHash = receiptHash;
+        this.receiptUrl = receiptUrl;
+        this.updatedAt = Instant.now();
+    }
+
+    public void rejectInvalidProof(String reason) {
+        this.status = "AWAITING_DEPOSIT";
+        this.tenantConfirmedMoveIn = false;
+        this.landlordConfirmedMoveIn = false;
+        this.moveInConfirmedAt = null;
+        this.disputeReason = reason;
+        this.updatedAt = Instant.now();
+    }
+
     public String getId() { return id; }
     public String getContractId() { return contractId; }
     public String getTenantId() { return tenantId; }
@@ -165,6 +186,10 @@ public class EscrowHold {
     public Instant getMoveInConfirmedAt() { return moveInConfirmedAt; }
     public Instant getInspectionEndsAt() { return inspectionEndsAt; }
     public String getDisputeReason() { return disputeReason; }
+    public String getPaymentCode() { return paymentCode; }
+    public String getBankTxCode() { return bankTxCode; }
+    public String getReceiptHash() { return receiptHash; }
+    public String getReceiptUrl() { return receiptUrl; }
     public Instant getReleasedAt() { return releasedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

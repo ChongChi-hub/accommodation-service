@@ -80,6 +80,17 @@ public class EscrowController {
         return ResponseEntity.ok(ApiResponse.success("Da dong bang khoan ky quy do tranh chap", updated));
     }
 
+    @PostMapping("/{contractId}/reject-proof")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<EscrowHold>> rejectDepositProof(
+            @PathVariable String contractId,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+        String reason = body != null ? body.getOrDefault("reason", "Biên lai hoặc mã giao dịch không hợp lệ") : "Biên lai hoặc mã giao dịch không hợp lệ";
+        EscrowHold updated = escrowService.rejectDepositProof(contractId, (String) auth.getPrincipal(), isAdmin(auth), reason);
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối biên lai cọc không hợp lệ và yêu cầu khách thuê nạp lại", updated));
+    }
+
     @PostMapping("/{contractId}/unfreeze")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<EscrowHold>> unfreezeDispute(@PathVariable String contractId) {

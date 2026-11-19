@@ -26,14 +26,10 @@ public class EscrowService {
     private final String fintechMode;
     private final boolean liveCustodyEnabled;
 
-    public EscrowService(LedgerService ledgerService) {
-        this(ledgerService, null, Optional.empty(), Optional.empty(), "SANDBOX_ONLY", false);
-    }
-
+    public EscrowService(LedgerService ledgerService) { this(ledgerService, null, Optional.empty(), Optional.empty(), "SANDBOX_ONLY", false); }
     public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, String fintechMode, boolean liveCustodyEnabled) {
         this(ledgerService, escrowHoldRepository, Optional.empty(), Optional.empty(), fintechMode, liveCustodyEnabled);
     }
-
     public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, Optional<BillingEventOutboxRepository> outboxRepository, String fintechMode, boolean liveCustodyEnabled) {
         this(ledgerService, escrowHoldRepository, outboxRepository, Optional.empty(), fintechMode, liveCustodyEnabled);
     }
@@ -60,13 +56,36 @@ public class EscrowService {
 
     @Transactional
     public EscrowHold recordDepositPaid(String contractId, String tenantId, String landlordId, long amount, long inspectionHours) {
+        return recordDepositPaidWithProof(contractId, tenantId, landlordId, amount, inspectionHours, null, null, null, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public EscrowHold recordDepositPaidWithProof(String contractId, String tenantId, String landlordId, long amount,
+                                                 long inspectionHours, String paymentCode, String bankTxCode, String receiptHash, String receiptUrl) {
         assertSandboxOrSignedOff();
         if (escrowHoldRepository == null) return EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours);
+        if (bankTxCode != null && !bankTxCode.isBlank() && escrowHoldRepository.existsByBankTxCode(bankTxCode)) {
+            throw new IllegalStateException("Phát hiện trùng lặp: Mã giao dịch ngân hàng [" + bankTxCode + "] đã được sử dụng cho một giao dịch trước đó! Không được dùng lại mã giao dịch cũ.");
+        }
+        if (receiptHash != null && !receiptHash.isBlank() && escrowHoldRepository.existsByReceiptHash(receiptHash)) {
+            throw new IllegalStateException("Phát hiện trùng lặp biên lai: Ảnh biên lai chuyển khoản này đã được sử dụng cho một giao dịch trước đó! Vui lòng tải lên ảnh biên lai mới của lần chuyển khoản này.");
+        }
         EscrowHold hold = escrowHoldRepository.findByContractId(contractId)
                 .map(existing -> { existing.activateFromDeposit(amount, inspectionHours); return existing; })
                 .orElseGet(() -> EscrowHold.createHold(contractId, tenantId, landlordId, amount, !liveCustodyEnabled, inspectionHours));
+        if (paymentCode != null || bankTxCode != null || receiptHash != null || receiptUrl != null) hold.attachPaymentProof(paymentCode, bankTxCode, receiptHash, receiptUrl);
         EscrowHold saved = escrowHoldRepository.save(hold);
         emitOutbox("ESCROW_DEPOSIT_PAID", saved);
+        return saved;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public EscrowHold rejectDepositProof(String contractId, String actorId, boolean isAdmin, String reason) {
+        EscrowHold hold = requireHold(contractId);
+        if (!isAdmin && !hold.getLandlordId().equals(actorId)) throw new AccessDeniedException("Chỉ chủ trọ hoặc Admin mới có quyền từ chối biên lai chuyển khoản không hợp lệ");
+        hold.rejectInvalidProof(reason != null && !reason.isBlank() ? reason : "Biên lai chuyển khoản hoặc mã giao dịch không hợp lệ");
+        EscrowHold saved = escrowHoldRepository.save(hold);
+        emitOutbox("ESCROW_PROOF_REJECTED", saved);
         return saved;
     }
 
@@ -99,26 +118,18 @@ public class EscrowService {
     }
 
     @Transactional(readOnly = true)
-    public List<EscrowHold> getHoldsForTenant(String tenantId) {
-        return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findByTenantId(tenantId);
-    }
+    public List<EscrowHold> getHoldsForTenant(String tenantId) { return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findByTenantId(tenantId); }
 
     @Transactional(readOnly = true)
-    public List<EscrowHold> getHoldsForLandlord(String landlordId) {
-        return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findByLandlordId(landlordId);
-    }
+    public List<EscrowHold> getHoldsForLandlord(String landlordId) { return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findByLandlordId(landlordId); }
 
     @Transactional(readOnly = true)
-    public List<EscrowHold> getAllHolds() {
-        return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findAll();
-    }
+    public List<EscrowHold> getAllHolds() { return escrowHoldRepository == null ? List.of() : escrowHoldRepository.findAll(); }
 
     @Transactional(readOnly = true)
     public EscrowHold getHoldForParticipant(String contractId, String actorId, boolean isAdmin) {
         EscrowHold hold = requireHold(contractId);
-        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Khong co quyen truy cap thong tin ky quy hop dong nay");
-        }
+        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) throw new AccessDeniedException("Khong co quyen truy cap thong tin ky quy hop dong nay");
         return hold;
     }
 
@@ -128,12 +139,8 @@ public class EscrowService {
         EscrowHold hold = requireHold(contractId);
         boolean isTenant = hold.getTenantId().equals(actorId);
         boolean isLandlord = hold.getLandlordId().equals(actorId);
-        if (!isAdmin && !isTenant && !isLandlord) {
-            throw new AccessDeniedException("Chi nguoi thue hoac chu tro cua hop dong moi duoc xac nhan nhan phong");
-        }
-        if (!isAdmin && bankAccountService != null) {
-            bankAccountService.requireValidBankAccount(actorId, isLandlord ? "Chủ trọ" : "Khách thuê");
-        }
+        if (!isAdmin && !isTenant && !isLandlord) throw new AccessDeniedException("Chi nguoi thue hoac chu tro cua hop dong moi duoc xac nhan nhan phong");
+        if (!isAdmin && bankAccountService != null) bankAccountService.requireValidBankAccount(actorId, isLandlord ? "Chủ trọ" : "Khách thuê");
         hold.confirmMoveIn(isTenant || isAdmin, isLandlord || isAdmin);
         EscrowHold saved = escrowHoldRepository.save(hold);
         emitOutbox("ESCROW_MOVE_IN_CONFIRMED", saved);
@@ -143,9 +150,7 @@ public class EscrowService {
     @Transactional
     public EscrowHold freezeForDispute(String contractId, String actorId, boolean isAdmin, String reason) {
         EscrowHold hold = requireHold(contractId);
-        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Khong co quyen dong bang ky quy hop dong nay");
-        }
+        if (!isAdmin && !hold.getTenantId().equals(actorId) && !hold.getLandlordId().equals(actorId)) throw new AccessDeniedException("Khong co quyen dong bang ky quy hop dong nay");
         hold.freezeForDispute(reason);
         EscrowHold saved = escrowHoldRepository.save(hold);
         emitOutbox("ESCROW_DISPUTE_FROZEN", saved);
@@ -153,9 +158,7 @@ public class EscrowService {
     }
 
     @Transactional
-    public EscrowHold freezeForDispute(String contractId, String reason) {
-        return freezeForDispute(contractId, "SYSTEM_ADMIN", true, reason);
-    }
+    public EscrowHold freezeForDispute(String contractId, String reason) { return freezeForDispute(contractId, "SYSTEM_ADMIN", true, reason); }
 
     @Transactional
     public EscrowHold unfreezeDispute(String contractId) {
@@ -237,13 +240,10 @@ public class EscrowService {
 
     private EscrowHold requireHold(String contractId) {
         if (escrowHoldRepository == null) throw new IllegalStateException("Escrow repository unavailable");
-        return escrowHoldRepository.findByContractId(contractId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản ký quỹ cho hợp đồng: " + contractId));
+        return escrowHoldRepository.findByContractId(contractId).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khoản ký quỹ cho hợp đồng: " + contractId));
     }
 
     private void assertSandboxOrSignedOff() {
-        if ("LIVE".equalsIgnoreCase(fintechMode) && !liveCustodyEnabled) {
-            throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live escrow custody is disabled until legal & licensed partner sign-off.");
-        }
+        if ("LIVE".equalsIgnoreCase(fintechMode) && !liveCustodyEnabled) throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live escrow custody is disabled until legal & licensed partner sign-off.");
     }
 }

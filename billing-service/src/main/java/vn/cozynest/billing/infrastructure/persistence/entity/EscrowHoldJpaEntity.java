@@ -50,6 +50,18 @@ public class EscrowHoldJpaEntity {
     @Column(name = "dispute_reason", length = 500)
     private String disputeReason;
 
+    @Column(name = "payment_code", length = 64)
+    private String paymentCode;
+
+    @Column(name = "bank_tx_code", length = 64)
+    private String bankTxCode;
+
+    @Column(name = "receipt_hash", length = 128)
+    private String receiptHash;
+
+    @Column(name = "receipt_url", columnDefinition = "MEDIUMTEXT")
+    private String receiptUrl;
+
     @Column(name = "released_at")
     private Instant releasedAt;
 

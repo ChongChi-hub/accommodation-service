@@ -118,7 +118,7 @@ public class PaymentService {
             if ("PENDING".equals(intent.getStatus())) intent.markSubmitted();
             intent.markPaid(intent.getAmount());
             PaymentIntent saved = paymentIntentRepository.save(intent);
-            ledgerPoster.postLedgerForPayment(saved, saved.getAmount(), "ESCROW-QR-" + saved.getPaymentCode());
+            ledgerPoster.postLedgerForPaymentWithProof(saved, saved.getAmount(), "ESCROW-QR-" + saved.getPaymentCode(), req.note(), req.receiptUrl());
             webhookProcessor.publishPaymentEvent(saved, "PAYMENT_CONFIRMED");
             return toResponse(saved);
         } catch (RuntimeException ex) {

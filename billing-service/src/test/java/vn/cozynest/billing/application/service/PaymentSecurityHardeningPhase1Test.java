@@ -146,5 +146,22 @@ class PaymentSecurityHardeningPhase1Test {
                 .extracting(e -> ((WebhookSecurityException) e).getHttpStatus())
                 .isEqualTo(403);
     }
+
+    @Test
+    void rejectsReusedBankTxCodeAndReusedReceiptImage() {
+        EscrowService escrowService = new EscrowService(ledgerService, escrowHoldRepo, "SANDBOX_ONLY", false);
+        when(escrowHoldRepo.existsByBankTxCode("FT261119001")).thenReturn(true);
+        when(escrowHoldRepo.existsByReceiptHash("sha256-usedreceipt")).thenReturn(true);
+
+        assertThatThrownBy(() -> escrowService.recordDepositPaidWithProof(
+                "cnt-replay-1", "tenant-1", "landlord-1", 5_000L, 72, "PAY-1", "FT261119001", "sha256-new", "data:image/png;base64,abc"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Mã giao dịch ngân hàng [FT261119001] đã được sử dụng");
+
+        assertThatThrownBy(() -> escrowService.recordDepositPaidWithProof(
+                "cnt-replay-2", "tenant-1", "landlord-1", 5_000L, 72, "PAY-2", "FT261119002", "sha256-usedreceipt", "data:image/png;base64,abc"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Ảnh biên lai chuyển khoản này đã được sử dụng");
+    }
 }
 

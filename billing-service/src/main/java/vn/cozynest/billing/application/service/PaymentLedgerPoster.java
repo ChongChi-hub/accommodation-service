@@ -51,6 +51,10 @@ public class PaymentLedgerPoster {
     }
 
     public void postLedgerForPayment(PaymentIntent intent, long paidChunk, String txRef) {
+        postLedgerForPaymentWithProof(intent, paidChunk, txRef, null, null);
+    }
+
+    public void postLedgerForPaymentWithProof(PaymentIntent intent, long paidChunk, String txRef, String rawNote, String receiptUrl) {
         if ("LIVE".equalsIgnoreCase(fintechMode) && !liveCustodyEnabled && "DEPOSIT".equalsIgnoreCase(intent.getOrderType())) {
             throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live custody disabled under Model A.");
         }
@@ -58,15 +62,20 @@ public class PaymentLedgerPoster {
         ledgerService.getOrCreateAccount(LedgerService.ACC_ESCROW, "Tài khoản cọc ký quỹ Escrow", AccountType.LIABILITY, null);
         ledgerService.getOrCreateAccount(LedgerService.ACC_REVENUE, "Doanh thu phí dịch vụ sàn Tổ Ấm", AccountType.REVENUE, null);
 
-        String refKey = txRef != null && !txRef.isBlank() ? txRef : ("PAYWH-" + intent.getPaymentCode() + "-" + intent.getPaidAmount());
+        String bankTxCode = extractBankTxCode(rawNote);
+        String receiptHash = extractOrComputeReceiptHash(rawNote, receiptUrl);
+        String refKey = bankTxCode != null ? ("BANKTX-" + bankTxCode)
+                : (txRef != null && !txRef.isBlank() ? txRef : ("PAYWH-" + intent.getPaymentCode() + "-" + intent.getPaidAmount()));
+
         if ("DEPOSIT".equalsIgnoreCase(intent.getOrderType())) {
-            postDeposit(intent, paidChunk, refKey);
+            postDeposit(intent, paidChunk, refKey, bankTxCode, receiptHash, receiptUrl);
         } else if ("INVOICE".equalsIgnoreCase(intent.getOrderType())) {
             postInvoice(intent, paidChunk, refKey);
         }
     }
 
-    private void postDeposit(PaymentIntent intent, long paidChunk, String refKey) {
+    private void postDeposit(PaymentIntent intent, long paidChunk, String refKey,
+                             String bankTxCode, String receiptHash, String receiptUrl) {
         if (intent == null || paidChunk <= 0 || paidChunk < intent.getAmount()
                 || (!"PAID".equals(intent.getStatus()) && !"OVERPAID".equals(intent.getStatus()))) {
             throw new IllegalStateException("Chưa xác thực đủ tiền cọc tại tài khoản Sàn, từ chối ghi nhận Escrow và thông báo chủ trọ");
@@ -85,18 +94,20 @@ public class PaymentLedgerPoster {
                     landlordId = snap.get().landlordId();
                 }
             }
+            if (escrowService != null) {
+                EscrowHold hold = escrowService.recordDepositPaidWithProof(
+                        contractId, tenantId, landlordId, paidChunk, 72,
+                        intent.getPaymentCode(), bankTxCode, receiptHash, receiptUrl);
+                if (hold == null || !"HELD".equals(hold.getStatus())) {
+                    throw new IllegalStateException("Không thể kích hoạt quỹ ký quỹ Escrow cho hợp đồng " + contractId);
+                }
+            }
             ledgerService.postEntryIdempotent(refKey, "Thu tiền cọc hợp đồng " + contractId + " vào tài khoản Sàn",
                     "DEPOSIT", contractId, "ESCROW_PLATFORM",
                     List.of(
                             new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.DEBIT, paidChunk),
                             new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, paidChunk)));
 
-            if (escrowService != null) {
-                EscrowHold hold = escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
-                if (hold == null || !"HELD".equals(hold.getStatus())) {
-                    throw new IllegalStateException("Không thể kích hoạt quỹ ký quỹ Escrow cho hợp đồng " + contractId);
-                }
-            }
             if (contractPort != null) {
                 contractPort.activateContractAfterDeposit(contractId, intent.getPaymentCode(), intent.getPaidAmount());
             }
@@ -109,6 +120,42 @@ public class PaymentLedgerPoster {
 
         if (notificationPort != null) {
             notificationPort.notifyDepositConfirmed(landlordId, contractId, paidChunk);
+        }
+    }
+
+    private String extractBankTxCode(String rawNote) {
+        if (rawNote == null || rawNote.isBlank()) return null;
+        String trimmed = rawNote.trim();
+        for (String part : trimmed.split("\\|")) {
+            if (part.startsWith("BANK_TX:")) {
+                String code = part.substring("BANK_TX:".length()).trim().toUpperCase();
+                return code.isEmpty() ? null : code;
+            }
+        }
+        String normalized = trimmed.replaceAll("[^A-Za-z0-9-]", "").toUpperCase();
+        return normalized.length() >= 6 && normalized.length() <= 32 ? normalized : null;
+    }
+
+    private String extractOrComputeReceiptHash(String rawNote, String receiptUrl) {
+        if (rawNote != null) {
+            for (String part : rawNote.split("\\|")) {
+                if (part.startsWith("HASH:")) {
+                    String h = part.substring("HASH:".length()).trim().toLowerCase();
+                    if (!h.isEmpty()) return h;
+                }
+            }
+        }
+        if (receiptUrl == null || receiptUrl.isBlank()) return null;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(receiptUrl.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < Math.min(20, digest.length); i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return "sha256-" + sb;
+        } catch (Exception e) {
+            return "raw-" + Integer.toHexString(receiptUrl.trim().hashCode());
         }
     }
 

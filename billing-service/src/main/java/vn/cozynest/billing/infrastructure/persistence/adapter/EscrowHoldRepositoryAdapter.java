@@ -28,10 +28,25 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
                 .landlordConfirmedMoveIn(h.isLandlordConfirmedMoveIn())
                 .moveInConfirmedAt(h.getMoveInConfirmedAt())
                 .inspectionEndsAt(h.getInspectionEndsAt())
-                .disputeReason(h.getDisputeReason()).releasedAt(h.getReleasedAt())
+                .disputeReason(h.getDisputeReason())
+                .paymentCode(h.getPaymentCode())
+                .bankTxCode(h.getBankTxCode())
+                .receiptHash(h.getReceiptHash())
+                .receiptUrl(h.getReceiptUrl())
+                .releasedAt(h.getReleasedAt())
                 .createdAt(h.getCreatedAt()).updatedAt(h.getUpdatedAt())
                 .build());
         return toDomain(saved);
+    }
+
+    @Override
+    public boolean existsByBankTxCode(String bankTxCode) {
+        return bankTxCode != null && !bankTxCode.isBlank() && repository.existsByBankTxCode(bankTxCode);
+    }
+
+    @Override
+    public boolean existsByReceiptHash(String receiptHash) {
+        return receiptHash != null && !receiptHash.isBlank() && repository.existsByReceiptHash(receiptHash);
     }
 
     @Override
@@ -60,11 +75,13 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
     }
 
     private EscrowHold toDomain(EscrowHoldJpaEntity e) {
-        return new EscrowHold(e.getId(), e.getContractId(), e.getTenantId(), e.getLandlordId(),
+        EscrowHold hold = new EscrowHold(e.getId(), e.getContractId(), e.getTenantId(), e.getLandlordId(),
                 e.getAmount(), e.getStatus(), e.isSandboxMode(),
                 e.isTenantConfirmedMoveIn(), e.isLandlordConfirmedMoveIn(), e.getMoveInConfirmedAt(),
                 e.getInspectionEndsAt(),
                 e.getDisputeReason(), e.getReleasedAt(), e.getCreatedAt(), e.getUpdatedAt());
+        hold.attachPaymentProof(e.getPaymentCode(), e.getBankTxCode(), e.getReceiptHash(), e.getReceiptUrl());
+        return hold;
     }
 }
 
