@@ -13,3 +13,4 @@ public record SaveBankAccountRequest(
         String accountHolder,
         String qrCodeUrl
 ) {}
+

@@ -79,3 +79,4 @@ class BankAccountSecurityAndPayoutTest {
         assertThat(opt.get().accountNumber()).isEqualTo("0987654321");
     }
 }
+

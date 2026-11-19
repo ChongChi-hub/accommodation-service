@@ -13,3 +13,4 @@ public record UserBankAccountDto(
         Instant createdAt,
         Instant updatedAt
 ) {}
+

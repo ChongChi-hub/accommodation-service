@@ -10,3 +10,4 @@ import java.util.Optional;
 public interface SpringDataUserBankAccountRepository extends JpaRepository<UserBankAccountJpaEntity, String> {
     Optional<UserBankAccountJpaEntity> findByUserId(String userId);
 }
+
