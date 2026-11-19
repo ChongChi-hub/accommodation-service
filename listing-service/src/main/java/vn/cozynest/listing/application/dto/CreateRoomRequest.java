@@ -29,6 +29,14 @@ public class CreateRoomRequest {
     private String wardCode;
     private Long wardId;
 
+    @jakarta.validation.constraints.DecimalMin(value = "-90.0", message = "Vĩ độ không hợp lệ")
+    @jakarta.validation.constraints.DecimalMax(value = "90.0", message = "Vĩ độ không hợp lệ")
+    private Double latitude;
+
+    @jakarta.validation.constraints.DecimalMin(value = "-180.0", message = "Kinh độ không hợp lệ")
+    @jakarta.validation.constraints.DecimalMax(value = "180.0", message = "Kinh độ không hợp lệ")
+    private Double longitude;
+
     private Long roomTypeId;
     private String roomTypeCode;
 

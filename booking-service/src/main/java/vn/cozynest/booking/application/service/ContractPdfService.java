@@ -27,10 +27,17 @@ import java.util.Locale;
 public class ContractPdfService {
 
     private static final List<String> UNICODE_FONT_CANDIDATES = List.of(
-            "C:\\Windows\\Fonts\\arial.ttf",
-            "C:\\Windows\\Fonts\\tahoma.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSerif.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/ttf-dejavu/DejaVuSerif.ttf",
+            "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "C:\\Windows\\Fonts\\times.ttf",
+            "C:\\Windows\\Fonts\\arial.ttf",
+            "C:\\Windows\\Fonts\\tahoma.ttf"
     );
 
     private static final DateTimeFormatter VI_DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
