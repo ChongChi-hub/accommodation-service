@@ -2,7 +2,7 @@
 
 - **Nhánh:** `feat/data-storage-map`
 - **Thời gian bắt đầu:** 2026-11-19
-- **Trạng thái tổng quan:** Đã hoàn thành PHA 0. DỪNG CHỜ QUYẾT ĐỊNH CỦA CHỦ DỰ ÁN.
+- **Trạng thái tổng quan:** Đã hoàn thành PHA 0. DỪNG CHỜ LỆNH "TIẾP PHA 1" TỪ CHỦ DỰ ÁN.
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Pha | Mục tiêu | Trạng thái | Ghi chú / Bằng chứng |
 |---|---|---|---|
-| **PHA 0** | Kiểm tra toàn diện 6 hạng mục A-F, viết báo cáo AUDIT, đề xuất mặc định, dừng chờ duyệt | DONE-VERIFIED | Đã xuất docs/review/DATA-STORAGE-MAP-AUDIT.md; dừng chờ duyệt |
-| **PHA 1** | Môi trường dữ liệu thật và Docker (.real tách biệt, volume riêng, bootstrap admin) | NOT-STARTED | Chờ phê duyệt Pha 0 |
+| **PHA 0** | Kiểm tra toàn diện 6 hạng mục A-F, cập nhật quyết định chốt, xuất khuyến nghị mục mở | DONE-VERIFIED | Đã xuất docs/review/DATA-STORAGE-MAP-AUDIT.md; dừng chờ "TIẾP PHA 1" |
+| **PHA 1** | Môi trường dữ liệu thật và Docker (.real tách biệt, volume riêng, bootstrap admin) | NOT-STARTED | Chờ lệnh "TIẾP PHA 1" |
 | **PHA 2** | Ảnh và Cloudinary (signed upload, tách ảnh nhạy cảm, dọn mồ côi) | NOT-STARTED | Chờ xong Pha 1 |
 | **PHA 3** | Mã hóa dữ liệu nhạy cảm chuẩn sản phẩm (AES-256-GCM, envelope, blind index) | NOT-STARTED | Chờ xong Pha 2 |
 | **PHA 4** | Nhập vị trí phòng (địa chỉ + ghim bản đồ hoặc tọa độ, làm mờ công khai) | NOT-STARTED | Chờ xong Pha 3 |
@@ -23,5 +23,7 @@
 - [CHẠY LẠI HÔM NAY] Khởi tạo nhánh `feat/data-storage-map` trên cả 2 repository `accommodation-service` và `accommodation-web`.
 - [CHẠY LẠI HÔM NAY] Lấy baseline kiểm thử và build: BE test PASS, FE test/lint/build/playwright PASS.
 - [CHẠY LẠI HÔM NAY] Kiểm tra toàn bộ mã nguồn theo 6 hạng mục A, B, C, D, E, F.
-- [CHẠY LẠI HÔM NAY] Xuất báo cáo kiểm định `docs/review/DATA-STORAGE-MAP-AUDIT.md`.
-- [CHẠY LẠI HÔM NAY] Dừng tại Pha 0 để xin ý kiến quyết định của Chủ dự án trước khi bước sang Pha 1.
+- [CHẠY LẠI HÔM NAY] Xác nhận mã nguồn không sử dụng unsigned upload preset của Cloudinary.
+- [CHẠY LẠI HÔM NAY] Tích hợp 5 quyết định đã chốt của Chủ dự án vào báo cáo Pha 0.
+- [CHẠY LẠI HÔM NAY] Xuất báo cáo kiểm định hoàn thiện tại `docs/review/DATA-STORAGE-MAP-AUDIT.md`.
+- [CHẠY LẠI HÔM NAY] Dừng tại Pha 0 chờ lệnh "TIẾP PHA 1" từ Chủ dự án.
