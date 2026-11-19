@@ -403,6 +403,9 @@ public class CommunicationEventListener {
         }
         String msg = payload.path("message").asString("");
         if (!msg.isBlank()) {
+            if ("RENTAL_REQUEST_CREATED".equals(envelope.eventType())) {
+                return "Khách thuê gửi lời nhắn: \"" + msg + "\". Vui lòng kiểm tra và phản hồi.";
+            }
             return msg;
         }
         String contractCode = payload.path("contractCode").asString("");
@@ -414,17 +417,47 @@ public class CommunicationEventListener {
             return "Mã hóa đơn: " + invoiceCode;
         }
         String roomTitle = payload.path("roomTitle").asString("");
-        if (!roomTitle.isBlank()) {
-            return "Phòng: " + roomTitle;
-        }
+        String roomPrefix = !roomTitle.isBlank() ? "Phòng " + roomTitle + ": " : "";
+
         String agg = envelope.aggregateType() != null ? envelope.aggregateType().toUpperCase() : "";
+        String evt = envelope.eventType() != null ? envelope.eventType() : "";
         return switch (agg) {
-            case "APPOINTMENT" -> "Lịch hẹn xem phòng của bạn đã có cập nhật trạng thái mới.";
-            case "RENTAL_REQUEST" -> "Yêu cầu thuê phòng của bạn đã có phản hồi mới từ hệ thống.";
-            case "CONTRACT" -> "Hợp đồng thuê phòng của bạn đã có cập nhật mới.";
-            case "INVOICE" -> "Hóa đơn thanh toán của bạn đã có cập nhật mới.";
-            case "KYC", "KYC_VERIFICATION" -> "Hồ sơ định danh eKYC của bạn đã có kết quả kiểm duyệt.";
-            case "FACE_VERIFICATION" -> "Kết quả xác thực sinh trắc học khuôn mặt đã được cập nhật.";
+            case "APPOINTMENT" -> switch (evt) {
+                case "APPOINTMENT_CREATED" -> roomPrefix + "Khách thuê vừa gửi yêu cầu hẹn xem phòng. Vui lòng kiểm tra và xác nhận thời gian.";
+                case "APPOINTMENT_CONFIRMED" -> roomPrefix + "Lịch hẹn xem phòng đã được xác nhận thành công. Vui lòng đến đúng giờ đã hẹn.";
+                case "APPOINTMENT_CANCELLED" -> roomPrefix + "Lịch hẹn xem phòng đã được hủy theo yêu cầu.";
+                case "APPOINTMENT_DECLINED" -> roomPrefix + "Chủ trọ đã từ chối lịch hẹn xem phòng này.";
+                default -> roomPrefix + "Lịch hẹn xem phòng của bạn đã có cập nhật trạng thái mới.";
+            };
+            case "RENTAL_REQUEST" -> switch (evt) {
+                case "RENTAL_REQUEST_CREATED" -> roomPrefix + "Khách thuê vừa gửi yêu cầu thuê phòng. Vui lòng xem hồ sơ và phê duyệt.";
+                case "RENTAL_REQUEST_APPROVED" -> roomPrefix + "Yêu cầu thuê phòng của bạn đã được chủ trọ chấp thuận. Hợp đồng đang được khởi tạo.";
+                case "RENTAL_REQUEST_REJECTED" -> roomPrefix + "Yêu cầu thuê phòng của bạn chưa được chủ trọ chấp thuận.";
+                default -> roomPrefix + "Yêu cầu thuê phòng của bạn đã có cập nhật mới.";
+            };
+            case "CONTRACT" -> switch (evt) {
+                case "CONTRACT_CREATED" -> roomPrefix + "Hợp đồng thuê phòng mới đã được tạo và đang chờ bạn xem xét.";
+                case "CONTRACT_SIGNED" -> roomPrefix + "Hợp đồng thuê phòng đã được ký kết thành công bởi các bên.";
+                case "CONTRACT_ACTIVATED" -> roomPrefix + "Hợp đồng thuê phòng đã chính thức có hiệu lực!";
+                default -> roomPrefix + "Hợp đồng thuê phòng của bạn có thông tin cập nhật mới.";
+            };
+            case "INVOICE" -> switch (evt) {
+                case "INVOICE_GENERATED", "INVOICE_ISSUED" -> roomPrefix + "Hóa đơn thuê phòng kỳ mới đã sẵn sàng. Vui lòng kiểm tra và thanh toán.";
+                case "INVOICE_PAYMENT_RECORDED", "PAYMENT_CONFIRMED", "PAYMENT_PAID" -> roomPrefix + "Thanh toán hóa đơn phòng trọ đã được xác nhận thành công.";
+                default -> roomPrefix + "Hóa đơn thanh toán của bạn có cập nhật mới.";
+            };
+            case "KYC", "KYC_VERIFICATION" -> switch (evt) {
+                case "KYC_SUBMITTED", "KycSubmitted" -> "Hồ sơ xác thực CCCD gắn chip đã gửi thành công. Vui lòng chờ quản trị viên phê duyệt.";
+                case "KYC_APPROVED", "TenantKycApproved", "TENANT_KYC_APPROVED" -> "Chúc mừng! Hồ sơ xác thực CCCD của bạn đã được phê duyệt thành công.";
+                case "LandlordApproved", "LANDLORD_APPROVED" -> "Chúc mừng! Bạn đã hoàn tất xác thực và được cấp quyền Chủ cho thuê.";
+                case "KYC_REJECTED", "KycRejected" -> "Hồ sơ xác thực CCCD chưa đạt yêu cầu. Vui lòng kiểm tra lại ảnh chụp và gửi lại.";
+                default -> "Hồ sơ định danh eKYC của bạn đã có cập nhật trạng thái mới.";
+            };
+            case "FACE_VERIFICATION" -> switch (evt) {
+                case "FACE_VERIFIED", "FaceVerificationPassed" -> "Quá trình xác thực sinh trắc học khuôn mặt của bạn đã hoàn tất thành công.";
+                case "FACE_FAILED", "FaceVerificationFailed" -> "Xác thực sinh trắc học khuôn mặt chưa thành công. Vui lòng chụp lại nơi đủ sáng.";
+                default -> "Kết quả xác thực khuôn mặt của bạn đã có cập nhật.";
+            };
             default -> "Bạn có thông báo mới từ hệ thống Tổ Ấm.";
         };
     }
