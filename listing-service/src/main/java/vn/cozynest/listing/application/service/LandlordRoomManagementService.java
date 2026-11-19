@@ -81,8 +81,8 @@ public class LandlordRoomManagementService {
         String fromStatus = room.getStatus();
 
         if (!visible) {
-            if (!"PUBLISHED".equalsIgnoreCase(fromStatus)) {
-                throw new IllegalStateException("Chỉ có thể tạm ẩn bài đăng khi phòng đang ở trạng thái đã duyệt (PUBLISHED).");
+            if (!"PUBLISHED".equalsIgnoreCase(fromStatus) && !"AVAILABLE".equalsIgnoreCase(fromStatus)) {
+                throw new IllegalStateException("Chỉ có thể tạm ẩn bài đăng khi phòng đang ở trạng thái đang hiển thị (PUBLISHED/AVAILABLE).");
             }
             room.setStatus("HIDDEN");
             room.setHiddenAt(LocalDateTime.now());
@@ -97,7 +97,7 @@ public class LandlordRoomManagementService {
             if ("MODERATOR".equalsIgnoreCase(room.getHiddenBy()) || "ADMIN".equalsIgnoreCase(room.getHiddenBy())) {
                 throw new RoomModeratedException("Bài đăng bị kiểm duyệt viên ẩn do vi phạm quy chuẩn. Bạn không thể tự mở lại.");
             }
-            if (room.getPublishedAt() == null) {
+            if (room.getPublishedAt() == null && !room.isApproved()) {
                 throw new IllegalStateException("Phòng trọ chưa từng được kiểm duyệt duyệt xuất bản.");
             }
 

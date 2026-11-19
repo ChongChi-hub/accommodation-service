@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.booking.application.port.BookingBillingPort;
 import vn.cozynest.booking.application.port.BookingListingPort;
@@ -100,6 +101,23 @@ public class RentalSagaOrchestrator {
         SagaInstance saved = sagaRepository.save(saga);
         emitSagaEvent("SAGA_COMPLETED", saved);
         return saved;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void tryAdvanceAndCompleteForContract(String sagaId, String updatedPayload) {
+        Optional<SagaInstance> opt = sagaRepository.findBySagaId(sagaId);
+        if (opt.isEmpty()) return;
+        SagaInstance saga = opt.get();
+        if ("COMPLETED".equals(saga.getStatus()) || "COMPENSATED".equals(saga.getStatus())
+                || "MANUAL_INTERVENTION_REQUIRED".equals(saga.getStatus())) {
+            return;
+        }
+        if (!"DEPOSIT_PAID".equals(saga.getCurrentStep())) {
+            saga.advance("DEPOSIT_PAID", updatedPayload);
+            emitSagaEvent("SAGA_DEPOSIT_CONFIRMED", sagaRepository.save(saga));
+        }
+        saga.complete();
+        emitSagaEvent("SAGA_COMPLETED", sagaRepository.save(saga));
     }
 
     public SagaInstance failSaga(String sagaId, String reason) {

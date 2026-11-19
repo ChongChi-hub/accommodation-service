@@ -183,8 +183,7 @@ public class ContractActivationService {
                     contract.getId(), contract.getRequestId(), contract.getRoomId(),
                     paymentCode != null ? paymentCode : "", paidAmount
             );
-            sagaOrchestrator.get().advanceToDepositPaid(sagaId, payload);
-            sagaOrchestrator.get().completeSaga(sagaId);
+            sagaOrchestrator.get().tryAdvanceAndCompleteForContract(sagaId, payload);
         } catch (Exception ex) {
             log.debug("Saga advance skipped for sagaId={}: {}", sagaId, ex.getMessage());
         }

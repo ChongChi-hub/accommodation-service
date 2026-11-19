@@ -153,22 +153,36 @@ public class HttpIdentityVerificationAdapter implements IdentityVerificationPort
 
     @Override
     public String resolveUserFullName(String userId) {
+        UserProfileSummary profile = resolveUserProfile(userId);
+        return profile != null ? profile.fullName() : null;
+    }
+
+    @Override
+    public UserProfileSummary resolveUserProfile(String userId) {
         if (userId == null || userId.isBlank()) {
             return null;
         }
         return circuitBreaker.executeWithFallback(2, () -> {
             Map<String, Object> body = restClient.get()
-                    .uri("/internal/users/{id}/profile", userId)
+                    .uri("/internal/users/{id}", userId)
                     .header("X-Internal-Service-Key", internalServiceKey)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
             Object dataObj = body != null ? body.get("data") : null;
-            if (dataObj instanceof Map<?, ?> data && data.get("fullName") != null) {
-                String name = String.valueOf(data.get("fullName")).trim();
-                return name.isEmpty() ? null : name;
+            if (dataObj instanceof Map<?, ?> data) {
+                String fullName = toTrimmedOrNull(data.get("fullName"));
+                String email = toTrimmedOrNull(data.get("email"));
+                String phone = toTrimmedOrNull(data.get("phone"));
+                return new UserProfileSummary(userId, fullName, email, phone);
             }
             return null;
         }, () -> null);
+    }
+
+    private static String toTrimmedOrNull(Object value) {
+        if (value == null) return null;
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
     }
 }
 

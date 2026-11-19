@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.LedgerDto;
+import vn.cozynest.billing.application.port.BillingContractPort;
 import vn.cozynest.billing.domain.model.BillingEventOutbox;
 import vn.cozynest.billing.domain.model.EscrowHold;
 import vn.cozynest.billing.domain.model.PostingDirection;
@@ -23,31 +24,25 @@ public class EscrowService {
     private final EscrowHoldRepository escrowHoldRepository;
     private final BillingEventOutboxRepository outboxRepository;
     private final BankAccountService bankAccountService;
+    private final BillingContractPort contractPort;
     private final String fintechMode;
     private final boolean liveCustodyEnabled;
     private final int depositReleasePercent;
     private final int withdrawalHoldDays;
 
-    public EscrowService(LedgerService ledgerService) { this(ledgerService, null, Optional.empty(), Optional.empty(), "SANDBOX_ONLY", false, 50, 0); }
-    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, String fintechMode, boolean liveCustodyEnabled) {
-        this(ledgerService, escrowHoldRepository, Optional.empty(), Optional.empty(), fintechMode, liveCustodyEnabled, 50, 0);
-    }
-    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, Optional<BillingEventOutboxRepository> outboxRepository, String fintechMode, boolean liveCustodyEnabled) {
-        this(ledgerService, escrowHoldRepository, outboxRepository, Optional.empty(), fintechMode, liveCustodyEnabled, 50, 0);
-    }
+    public EscrowService(LedgerService ledgerService) { this(ledgerService, null, Optional.empty(), Optional.empty(), Optional.empty(), "SANDBOX_ONLY", false, 50, 0); }
+    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, String fintechMode, boolean liveCustodyEnabled) { this(ledgerService, escrowHoldRepository, Optional.empty(), Optional.empty(), Optional.empty(), fintechMode, liveCustodyEnabled, 50, 0); }
+    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, Optional<BillingEventOutboxRepository> outboxRepository, String fintechMode, boolean liveCustodyEnabled) { this(ledgerService, escrowHoldRepository, outboxRepository, Optional.empty(), Optional.empty(), fintechMode, liveCustodyEnabled, 50, 0); }
+    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService, String fintechMode, boolean liveCustodyEnabled, int depositReleasePercent, int withdrawalHoldDays) { this(ledgerService, escrowHoldRepository, outboxRepository, bankAccountService, Optional.empty(), fintechMode, liveCustodyEnabled, depositReleasePercent, withdrawalHoldDays); }
     @Autowired
-    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository,
-                         Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService,
-                         @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
-                         @Value("${fintech.escrow.live-custody-enabled:false}") boolean liveCustodyEnabled,
-                         @Value("${fintech.deposit.release-percent:${deposit.release.percent:50}}") int depositReleasePercent,
-                         @Value("${fintech.withdrawal.hold-days:${withdrawal.hold.days:0}}") int withdrawalHoldDays) {
-        this.ledgerService = ledgerService;
-        this.escrowHoldRepository = escrowHoldRepository;
+    public EscrowService(LedgerService ledgerService, EscrowHoldRepository escrowHoldRepository, Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService, Optional<BillingContractPort> contractPort,
+                         @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode, @Value("${fintech.escrow.live-custody-enabled:false}") boolean liveCustodyEnabled,
+                         @Value("${fintech.deposit.release-percent:${deposit.release.percent:50}}") int depositReleasePercent, @Value("${fintech.withdrawal.hold-days:${withdrawal.hold.days:0}}") int withdrawalHoldDays) {
+        this.ledgerService = ledgerService; this.escrowHoldRepository = escrowHoldRepository;
         this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
         this.bankAccountService = bankAccountService != null ? bankAccountService.orElse(null) : null;
-        this.fintechMode = fintechMode;
-        this.liveCustodyEnabled = liveCustodyEnabled;
+        this.contractPort = contractPort != null ? contractPort.orElse(null) : null;
+        this.fintechMode = fintechMode; this.liveCustodyEnabled = liveCustodyEnabled;
         this.depositReleasePercent = Math.max(0, Math.min(100, depositReleasePercent));
         this.withdrawalHoldDays = Math.max(0, withdrawalHoldDays);
     }
@@ -131,6 +126,9 @@ public class EscrowService {
         }
         EscrowHold saved = escrowHoldRepository.save(hold);
         emitOutbox("ESCROW_MOVE_IN_CONFIRMED", saved);
+        if (saved.isBothConfirmedMoveIn() && contractPort != null) {
+            contractPort.activateContractAfterDeposit(contractId, saved.getPaymentCode(), saved.getAmount());
+        }
         return saved;
     }
 

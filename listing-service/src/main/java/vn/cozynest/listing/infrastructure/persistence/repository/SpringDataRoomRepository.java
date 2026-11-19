@@ -117,7 +117,11 @@ public interface SpringDataRoomRepository
         SELECT r FROM RoomJpaEntity r
         WHERE r.landlordId = :landlordId
           AND r.deletedAt IS NULL
-          AND (:status IS NULL OR r.status = :status)
+          AND (
+              :status IS NULL
+              OR (:status = 'PUBLISHED' AND r.status IN ('PUBLISHED', 'AVAILABLE'))
+              OR (:status <> 'PUBLISHED' AND r.status = :status)
+          )
           AND (:search IS NULL OR LOWER(r.titleSearch) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(r.title) LIKE LOWER(CONCAT('%', :search, '%')))
     """)
     Page<RoomJpaEntity> findLandlordRooms(

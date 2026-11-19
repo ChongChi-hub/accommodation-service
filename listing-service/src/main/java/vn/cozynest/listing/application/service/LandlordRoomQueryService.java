@@ -107,7 +107,8 @@ public class LandlordRoomQueryService {
 
     public RoomSummaryDto getRoomSummary(Long landlordId) {
         long total = roomRepository.countByLandlordIdAndDeletedAtIsNull(landlordId);
-        long published = roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "PUBLISHED");
+        long published = roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "PUBLISHED")
+                + roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "AVAILABLE");
         long hidden = roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "HIDDEN");
         long pendingReview = roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "PENDING_REVIEW");
         long draft = roomRepository.countByLandlordIdAndDeletedAtIsNullAndStatus(landlordId, "DRAFT");

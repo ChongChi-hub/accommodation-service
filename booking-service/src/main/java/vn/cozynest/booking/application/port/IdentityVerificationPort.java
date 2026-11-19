@@ -16,9 +16,16 @@ public interface IdentityVerificationPort {
     }
 
     default String resolveUserFullName(String userId) {
+        UserProfileSummary profile = resolveUserProfile(userId);
+        return profile != null ? profile.fullName() : null;
+    }
+
+    default UserProfileSummary resolveUserProfile(String userId) {
         return null;
     }
 
     record UserVerificationStatus(boolean emailVerified, boolean kycVerified, boolean faceVerified, String role) {}
+
+    record UserProfileSummary(String id, String fullName, String email, String phone) {}
 }
 
