@@ -652,5 +652,34 @@ sequenceDiagram
 * **Xac nhan thu cong:** `POST /api/v1/billing/payments/intent/{paymentCode}/confirm` bat buoc nhap `bankTxCode` (vi du ma FT cua Vietcombank) va `actualAmount`.
 * **Kiem tra so tien:** Backend xac thuc `actualAmount >= intent.amount`. Neu du tien, chuyen sang `PAID` (hoac `OVERPAID`), ghi so kep voi ma tham chieu `MANUAL-<bankTxCode>`, ghi giu coc vao `escrow_holds` (`HELD`), va chuyen hop dong sang `ACTIVE`. Neu it hon, ghi nhan `PARTIAL_PAID` va khong kich hoat coc.
 
+---
+
+## 24. Quyet dinh Kien truc `[WALLET-VERIFY-LEDGER]` — Xac minh tien that qua Webhook, Vi Chu tro, Rut tien & Hoa hong 5%
+
+### 24.1. Thay doi Mo hinh dong tien so voi ADR-008 Model A
+* **Mo hinh cu (ADR-008 Model A):** Khach thue chuyen thang cho chu tro hoac san chi ghi nhan trang thai.
+* **Mo hinh moi (`[WALLET-VERIFY-LEDGER]` — pham vi Demo/Dev/Test):**
+  1. **Tai khoan thu ho cua San:** Khach thue chuyen tien coc va tien thue + dien hang thang vao tai khoan ngan hang cua San (cau hinh qua `fintech.platform.*`, mac dinh Vietcombank `VCB` / BIN `970436`, chu tai khoan `LE THANH CUONG`, che so tai khoan `******1900`, co the doi qua bien moi truong ma khong sua code).
+  2. **Xac minh tien that bang Webhook bien dong so du:** He thong dinh nghia cong `NotificationProvider` ho tro `PAYOS` / `SEPAY` / `CASSO` va ban `FAKE` cho dev/test. Chi webhook co chu ky HMAC-SHA256 hop le (so sanh hang thoi gian), timestamp trong cua so chong replay, chieu `IN`, dung tai khoan san, `providerTxId` duy nhat (khoa `UNIQUE` trong `bank_transaction_registry`), dung so tien va chua het han moi tu dong chot `PAID` va ghi so cai kep. Moi ca lech (lech tien, het han, sai ma tham chieu, trung, da huy) deu vao hang doi `unmatched_bank_inflows` va tra `200 OK` (khong tu cong tien).
+  3. **Bang chung khach tai len chi la thong tin ho tro:** Nut "Toi da chuyen tien" chi chuyen `PaymentIntent` sang `SUBMITTED` ("Dang cho xac minh tien ve"), tuyet doi khong ghi so cai va khong kich hoat `HELD`. Anh bien lai qua kiem tra Magic Bytes, SHA-256 duy nhat, ma giao dich ngan hang duy nhat, 64-bit dHash chong chup man hinh lai (`<= 10` bit Hamming), xoa EXIF va ma hoa AES-256-GCM ngoai web root; truy cap anh qua endpoint co RBAC/IDOR `404`, `Cache-Control: no-store` va ghi nhat ky `payment_proof_access_logs`.
+  4. **Admin xac nhan thu cong chi la du phong:** `POST /api/v1/billing/payments/manual-confirm` khoa `hasRole('ADMIN')`, bat buoc ma giao dich ngan hang that + ly do, dung chung bang khoa `bank_transaction_registry` voi webhook de chong cong doi, va bat buoc duyet 2 nguoi (Maker-Checker) khi vuot nguong cau hinh.
+
+### 24.2. So cai kep 6 tai khoan, Giai phong 50% coc & Hoa hong 5%
+* **6 nhom tai khoan so cai bat bien (`journal_entries` / `ledger_postings` co trigger cam UPDATE/DELETE):**
+  * `1010-GATEWAY` (ASSET): Tien that da ve tai khoan ngan hang cua San.
+  * `2010-ESCROW` (LIABILITY): Tien coc dang giu ho.
+  * `2020-WALLET-{landlordId}` (LIABILITY): So du kha dung chu tro co the rut (khoa khong am).
+  * `2025-PENDING-{landlordId}` (LIABILITY): Tien coc vua giai phong dang cho het `withdrawal.hold.days` ngay (mac dinh `0` o dev/demo, khuyen nghi `3` khi chay that).
+  * `2030-WDHOLD-{landlordId}` (LIABILITY): So du dang tam giu cho lenh rut tien chu tro da tao.
+  * `4010-REVENUE` (REVENUE): Doanh thu hoa hong cua San.
+* **Tien coc (khong thu hoa hong):** Webhook chot coc -> `DR 1010-GATEWAY / CR 2010-ESCROW` (`HELD`). Khi du 2 xac nhan (Chu tro ban giao + Khach nhan phong) -> giai phong `floor(deposit * deposit.release.percent / 100)` (mac dinh 50%) sang `2020-WALLET` (hoac `2025-PENDING` neu `holdDays > 0`), giu lai 50% trong `2010-ESCROW` den het hop dong (hoan cho khach hoac khau tru thiet hai do Admin quyet dinh).
+* **Tien thue + dien hang thang:** Thu qua webhook/admin -> 1 giao dich duy nhat: `DR 1010-GATEWAY (total) / CR 4010-REVENUE (HALF_UP total * commission.percent / 100) / CR 2020-WALLET-{landlordId} (total - commission)` (mac dinh `commission.percent = 5`).
+* **Rut tien chu tro:** Tao yeu cau (`Idempotency-Key`, kiem tra TK ngan hang `MATCHED`) -> `DR 2020-WALLET / CR 2030-WDHOLD` (`REQUESTED` hoac `PENDING_APPROVAL` neu `>= makerCheckerThresholdVnd`). Admin chuyen khoan that bang VietQR do he thong sinh (khong dung anh QR chu tro tai len) va bam Xac nhan da chuyen kem ma GD duy nhat -> `DR 2030-WDHOLD / CR 1010-GATEWAY` (`PAID`). Huy/Tu choi ghi but toan dao ve `2020-WALLET`.
+
+### 24.3. Rang buoc Phap ly & Gioi han Pham vi (`LEGAL-02 = HUMAN`)
+* **Gioi han hien tai:** Toàn bo chuc nang `[WALLET-VERIFY-LEDGER]` duoc thiet ke va kiem thu cho **moi truong demo / hoc tap / sandbox** (`fintech.mode=SANDBOX_ONLY`). He thong **KHONG tuyen bo tuan thu phap ly** cho hoat dong thu ho, giu tien ho, trung gian thanh toan hoac khau tru thue thuong mai.
+* **Cong phap ly bat buoc (`LEGAL-02 = HUMAN`):** Truoc khi thu tien that tren quy mo thuong mai, chu du an PHAI tham van luat su va tu van thue ve giay phep Trung gian thanh toan / Hop tac ngan hang / NĐ 52/2024/NĐ-CP, NĐ 117/2025/NĐ-CP, quy dinh xuat hoa don dien tu cho khoan hoa hong 5% va nghia vu thue cho chu tro.
+
+
 
 

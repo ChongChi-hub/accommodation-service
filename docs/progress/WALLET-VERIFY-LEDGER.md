@@ -1,64 +1,51 @@
 # TIEN DO THUC HIEN [WALLET-VERIFY-LEDGER]
 
-- **Nhanh git:** `feat/wallet-verify-ledger` (tao tu `feat/payment-harden` tren ca 2 repo `accommodation-service` va `accommodation-web`)
-- **Sao luu DB truoc khi sua/test:** Da sao luu toan bo `cozynest_billing`, `cozynest_booking`, `cozynest_identity` (27,457,608 bytes).
-- **Tai khoan san duy nhat:** Vietcombank (`VCB` / BIN `970436`), chu tai khoan `LE THANH CUONG`, so tai khoan `******1900` (doc tu cau hinh).
+- **Nhanh git:** `feat/wallet-verify-ledger` (tao tu `feat/payment-harden` tren ca 2 repo `accommodation-service` va `accommodation-web`).
+- **Sao luu DB truoc khi sua/test:** Da sao luu `cozynest_billing`, `cozynest_booking`, `cozynest_identity` (27,457,608 bytes).
+- **Tai khoan san duy nhat:** Vietcombank (`VCB` / BIN `970436`), chu tai khoan `LE THANH CUONG`, so tai khoan `******1900` (doc tu cau hinh `fintech.platform.*`, thay doi duoc khong can sua ma).
 
 ---
 
-## 1. PHA 0: DOC VA BASELINE (CHUA SUA MA NGUON)
+## 1. PHA 0: DOC, KIEM TOAN & BASELINE (CHUA SUA MA)
 
 ### 1.1. [CHAY LAI HOM NAY] Tai hien loi bien lai cu va ma giao dich bat ky
-- **Hien trang:** Tai `PaymentService.submitIntent` (`POST /api/v1/billing/payments/intent/{paymentCode}/submit`), khi khach thue gui `note: "BANK_TX:...|HASH:..."` va `receiptUrl`, he thong truc tiep goi `intent.markPaid(intent.getAmount())` va `ledgerPoster.postLedgerForPaymentWithProof(...)`, cong tien vao `1010-GATEWAY` / `2010-ESCROW` va chuyen `EscrowHold` sang `HELD`.
-- **Ca that da ghi nhan:** Bien lai tai len co noi dung chuyen khoan cu `PAY1795086207734C208` (luc 18:04), trong khi ma cua khoan thanh toan moi la `PAY-1795088282534-7604` (tao sau do), nhung he thong van bao `"Da kiem tra chong trung lap"` va cho phep cong tien ngay khi khach bam `"Toi da chuyen"`.
-- **Nguyen nhan goc:** Kiem tra `SHA-256` tren byte tep chi chan khi tai len cung 1 tep nhi phan y het, hoan toan khong chan duoc anh chup man hinh lai (re-screenshot), anh cat cup, hoac anh bien lai cua giao dich khac chua tung luu hash; dong thoi client nhap ma giao dich bat ky chua tung xuat hien trong DB deu vuot qua. Bang chung khach tai len khong bao gio duoc phep la can cu cong tien.
+- **Hien trang truoc sua:** `PaymentService.submitIntent` truc tiep goi `intent.markPaid` va ghi so kep khi khach bam "Toi da chuyen", khien bien lai cu `PAY1795086207734C208` van cong tien cho giao dich moi `PAY-1795088282534-7604`.
+- **Nguyen nhan goc:** `SHA-256` byte tep chi chan khi tai cung tep nhi phan, khong chan re-screenshot/crop hoac bien lai cu chua tung luu, va client nhap ma GD bat ky deu lot.
 
-### 1.2. [DOC TU MA] Bang liet ke MOI duong tao trang thai da xac nhan / cong escrow / ghi so
+### 1.2. [DOC TU MA] 8 duong tao trang thai xac nhan / cong tien (Truoc vs Sau)
 
-| # | Duong / Endpoint / Job | File & Phuong thuc | Dieu kien hien tai | Van de / Huong xu ly Pha 1-3 |
-| :- | :--- | :--- | :--- | :--- |
-| 1 | `POST /api/v1/billing/payments/intent/{code}/submit` | `PaymentController.submitIntent` -> `PaymentService.submitIntent` | `isAuthenticated()` la `payerId`, gui `note` + `receiptUrl` | **LO HONG:** Khach tu chuyen sang `PAID` va cong Escrow. **Sua:** Chi chuyen sang `SUBMITTED` (`Cho xac minh tien ve`), luu bang chung ho tro, KHONG cong tien, KHONG mo ban giao. |
-| 2 | `POST /api/v1/billing/payments/intent/{code}/confirm` | `PaymentController.confirmPayment` -> `PaymentService.confirmPaymentByLandlordOrAdmin` | `hasAnyRole('LANDLORD', 'ADMIN')` | **LO HONG:** Cho phep ca `LANDLORD` tu xac nhan tien ve tai khoan san. **Sua:** Chi `ADMIN` duoc xac nhan thu cong du phong kem `bankTxCode` UNIQUE trong registry chung + Maker-Checker tu nguong cau hinh. |
-| 3 | `POST /api/v1/billing/payments/webhook` | `PaymentController.handleWebhook` -> `PaymentWebhookProcessor.processWebhook` | Public + `X-Signature` HMAC + `X-Timestamp` (300s) | **HAN CHE:** Chua co `NotificationProvider` (`SePay`/`Casso`/`payOS`/`FAKE`), chua kiem tra chieu `IN`, STK san `******1900`, `providerTxId` UNIQUE, va hang doi `"Tien ve chua khop"`. |
-| 4 | `POST /api/v1/billing/payments/sandbox/simulate-webhook` | `PaymentController.simulateSandboxWebhook` | `hasRole('ADMIN')` va profile khac `prod` | **HAN CHE:** Phai khoa chat chi ton tai/chay khi `fintech.mode=SANDBOX_ONLY`, chan tuyet doi o profile real. |
-| 5 | `POST /api/v1/billing/invoices/{id}/payments` | `InvoiceController.recordPayment` -> `InvoiceService.recordPayment` | `isAuthenticated()` (tenant/landlord/admin) | **LO HONG:** Cho phep goi thang API danh dau hoa don `PAID` khong qua webhook/admin va khong ghi so cai. **Sua:** Khoa chi cho Admin/he thong noi bo hoac bat buoc qua luong webhook/admin confirm. |
-| 6 | `@Scheduled autoReleaseMaturedHolds` | `EscrowService.autoReleaseMaturedHolds` | Cron `0 15 * * * ?` khi `inspection_ends_at < NOW()` | **LO HONG:** Tu giai ngan 100% coc du chua du 2 xac nhan. **Sua:** Tat tu dong giai ngan khi chua du 2 xac nhan; chi giai phong 50% khi du 2 xac nhan va chuyen `LANDLORD_PENDING -> LANDLORD_AVAILABLE` sau `withdrawal.hold.days`. |
-| 7 | `POST /api/v1/billing/escrow/{contractId}/release` | `EscrowController.releaseDeposit` -> `EscrowService.disburseDeposit` | `hasRole('ADMIN')` | **HAN CHE:** Dang giai ngan 100% coc. **Sua:** Khi du 2 xac nhan (ban giao + nhan phong) tu dong giai phong `deposit.release.percent` (50%) vao vi chu tro, giu 50% den het hop dong. |
-| 8 | `POST /api/v1/billing/payouts` | `PayoutController.requestPayout` -> `PayoutService.requestPayout` | `hasAnyRole('LANDLORD', 'ADMIN')` | **LO HONG:** Khi `<= 10,000,000 VND`, tu dong ghi `DR WALLET / CR GATEWAY` va `COMPLETED` ngay. **Sua:** Ghi `DR LANDLORD_AVAILABLE / CR WITHDRAWAL_HOLD` (`REQUESTED`), cho Admin chuyen khoan that va bam xac nhan kem `bankTxCode` UNIQUE. |
-
-### 1.3. [DOC TU MA] & [CHAY LAI HOM NAY] Hien trang so cai, ma tham chieu va hoa don
-- **Tai khoan so cai hien co (`ledger_accounts`):**
-  - `1010-GATEWAY` (`ASSET`, so du DB hien tai: `4,065,000 VND`)
-  - `2010-ESCROW` (`LIABILITY`, so du DB hien tai: `4,065,000 VND`)
-  - `2020-WALLET-{userId}` (`LIABILITY`, so du kha dung chu tro)
-  - `4010-REVENUE` (`REVENUE`, doanh thu hoa hong san, so du `0 VND`)
-  - `5010-EXPENSE` (`EXPENSE`, chi phi van hanh, so du `0 VND`)
-  - **Con thieu:** `ACC_ESCROW` phan theo hop dong (`2010-ESCROW-{contractId}`), `ACC_LANDLORD_PENDING` (`2025-PENDING-{landlordId}`), `ACC_WITHDRAWAL_HOLD` (`2030-WDHOLD-{landlordId}`).
-- **Cach tinh so du (`LedgerAccount.applyPosting`):** `ASSET`/`EXPENSE` tang khi `DEBIT`, giam khi `CREDIT`; `LIABILITY`/`EQUITY`/`REVENUE` tang khi `CREDIT`, giam khi `DEBIT`. Khoa dong `SELECT ... FOR UPDATE` theo thu tu tu dien `account_number`, trigger MySQL V3 chan `UPDATE`/`DELETE` tren `journal_entries` va `ledger_postings`.
-- **Ma noi dung chuyen khoan hien tai:** Sinh theo dinh dang `PAY-{millis}-{4hex}` (22 ky tu, co 2 dau gach ngang `-`). Nhieu ngan hang tu luoc bo dau gach (thanh `PAY1795086207734C208`) hoac cat ngan noi dung chuyen khoan lien ngan hang, gay kho khop tu dong.
-- **Hoa don thang & tien dien (`invoices` & `PaymentLedgerPoster.postInvoice`):** Da co bang `invoices` (`base_rent`, `electricity_amount`, `water_amount`, `service_amount`, `other_amount`, `total_amount`), nhung `postInvoice` dang tinh 5% tren `baseRent` thay vi 5% (`commission.percent`, lam tron nua len `HALF_UP`) tren **TONG** (`totalAmount`).
-
-### 1.4. [CHAY LAI HOM NAY] Ket qua Baseline truoc khi sua
-- **Backend (`$env:CI='true'; .\gradlew.bat clean test --no-build-cache --continue`):**
-  - `:common:test`, `:api-gateway:test`, `:identity-service:test`, `:listing-service:test`, `:booking-service:test`, `:communication-service:test`, `:admin-service:test`: **PASSED 100%**.
-  - `:billing-service:test`: 51 tests run, **49 passed, 2 failed** (`PaymentHardeningTest` va `BillingArchitectureTest` do `BankAccountService` phu thuoc truc tiep `infrastructure`). Se khac phuc triet de trong Pha 1.
-- **Frontend (`accommodation-web`):**
-  - `npx eslint . --max-warnings=0`: **PASS (0 errors, 0 warnings)**.
-  - `npx tsc --noEmit`: **PASS (0 errors)**.
-  - `npm test -- --run`: **PASS (22/22 files, 101/101 tests, i18n parity 2266/2266 keys vi/en, 98/98 links, 224/224 images)**.
-  - `npm run build` (qua Docker image build): **PASS (206 static/dynamic pages)**.
-  - `npx playwright test e2e/smoke.spec.ts e2e/auth-rbac-middleware.spec.ts e2e/qa-fintech-sprint3.spec.ts`: **58 passed**, 3 failed (do mock cu o `qa-fintech-sprint3.spec.ts`).
+| # | Duong / Endpoint / Job | Truoc sua | Sau sua `[WALLET-VERIFY-LEDGER]` |
+| :- | :--- | :--- | :--- |
+| 1 | `POST /api/v1/billing/payments/intent/{code}/submit` | Tu chot `PAID` + cong `2010-ESCROW` + `HELD` | Chi chuyen `SUBMITTED` ("Dang cho xac minh tien ve"), luu bang chung ho tro (Magic Bytes + SHA-256 + dHash + AES-256-GCM), **KHONG** cong tien |
+| 2 | `POST /api/v1/billing/payments/intent/{code}/confirm` | `hasAnyRole('LANDLORD','ADMIN')` | Khoa cung `hasRole('ADMIN')`, ghi chung `bank_transaction_registry` UNIQUE |
+| 3 | `POST /api/v1/billing/payments/webhook/provider` (moi) | Chua co `NotificationProvider` | Xac minh HMAC-SHA256 hang thoi gian + timestamp + chieu `IN` + STK san + `providerTxId` UNIQUE; khop dung moi chot `PAID`; lech tien/het han/sai ma -> `unmatched_bank_inflows` (`200 OK`) |
+| 4 | `POST /api/v1/billing/payments/manual-confirm` (moi) | Chua co | Chi `ADMIN`, bat buoc `bankTxCode` UNIQUE + ly do + Maker-Checker khi `>= threshold` |
+| 5 | `POST /api/v1/billing/payments/sandbox/fake-inflow` | `simulate-webhook` khong kiem tra `fintech.mode` | Chi hoat dong khi `ADMIN` va `fintech.mode=SANDBOX_ONLY`, tra `404` o che do khac |
+| 6 | `POST /api/v1/billing/invoices/{id}/payments` | `isAuthenticated()` goi thang danh dau `PAID` | Khoa `hasRole('ADMIN')` |
+| 7 | `EscrowService` (`confirmMoveIn` & `autoReleaseMaturedHolds`) | Tu giai ngan 100% du chua du 2 xac nhan | Chi giai phong `deposit.release.percent` (50%) khi du **ca 2 xac nhan**; giu 50% den het HD; `withdrawal.hold.days` chuyen `2025-PENDING -> 2020-WALLET` |
+| 8 | `POST /api/v1/billing/payouts` | `<= 10tr` tu `COMPLETED` + `CR 1010-GATEWAY` | `Idempotency-Key` + TK `MATCHED` -> `DR 2020-WALLET / CR 2030-WDHOLD` (`REQUESTED`/`PENDING_APPROVAL`); chi `PAID` + `CR 1010-GATEWAY` khi Admin goi `confirm-paid` kem `bankTxCode` UNIQUE |
 
 ---
 
-## 2. KE HOACH Va TIEN DO CAC PHA
+## 2. TRANG THAI CAC PHA (PHA 0 -> PHA 5)
 
-| Pha | Hang muc chinh | Trang thai | Ghi chu / Minh chung |
+| Pha | Hang muc chinh | Trang thai | Minh chung |
 | :--- | :--- | :--- | :--- |
-| **Pha 0** | Doc ma, tai hien loi bien lai cu, liet ke duong cong tien, lay Baseline BE/FE | **DONE-VERIFIED** | `[CHAY LAI HOM NAY]` & `[DOC TU MA]` day du |
-| **Pha 1** | Ma tham chieu `TOAM...` (<=23 ky tu, khong gach), Webhook `NotificationProvider` (`FAKE`/`PayOS`/`SePay`/`Casso`), Admin confirm + Maker-Checker, Doi y nghia "Toi da chuyen" (`SUBMITTED`), Kho bang chung rieng tu + dHash + Registry UNIQUE, Doi soat hang ngay | **IN-PROGRESS** | Provider that chua co khoa: `HUMAN`, test bang `FAKE` provider |
-| **Pha 2** | So cai 6 nhom tai khoan, Coc giu 50% (`deposit.release.percent=50`) & cho `withdrawal.hold.days`, Hoan coc cuoi HD, Hoa hong 5% (`commission.percent=5`, `HALF_UP`) tren tong tien tro + dien | **NOT-DONE** | Tat ca tham so doc tu cau hinh |
-| **Pha 3** | Rut tien (`REQUESTED -> APPROVED -> PAID / REJECTED / CANCELLED`), `DR AVAILABLE / CR WITHDRAWAL_HOLD`, QR he thong tu sinh, Admin confirm kem `bankTxCode` UNIQUE | **NOT-DONE** | Khoa dong `SELECT FOR UPDATE` + idempotency |
-| **Pha 4** | Frontend Khach / Chu tro (Trang Vi, Rut tien, Bang chung) / Admin (Hang doi chua khop, Duyet rut + QR, Maker-Checker, Doi soat), i18n vi/en 100%, responsive & screenshots | **NOT-DONE** | 1440 & 390, sang & toi, tu phe binh 3 diem |
-| **Pha 5** | Nghiem thu E2E (provider FAKE), Kich ban gian lan, Checklist 1.000 d (`HUMAN`), Cap nhat `DECISIONS.md` (`LEGAL-02 = HUMAN`), Reset 2 HD test bang but toan dao | **NOT-DONE** | Bao cao cuoi & ve sinh git/DB |
+| **Pha 0** | Doc ma, kiem toan 8 duong cong tien, sao luu DB, lay Baseline BE/FE | **DONE-VERIFIED** | Baseline: BE 7/8 module pass, `:billing-service` 49/51; FE lint/tsc/101 vitest pass, Playwright 58/61 |
+| **Pha 1** | Ma tham chieu `TOAM...` (19 ky tu, khong gach), `NotificationProvider` (`FAKE`/`PAYOS`/`SEPAY`/`CASSO`), Webhook xac minh tien that + `unmatched_bank_inflows`, Admin manual confirm + Maker-Checker, doi y nghia "Toi da chuyen" (`SUBMITTED`), kho bang chung rieng tu AES-256-GCM + dHash + RBAC `404` + access log | **DONE-VERIFIED** (FAKE provider) / **HUMAN** (ket noi PayOS live key) | Flyway `V11` `success=1`; `WalletVerifyLedgerEndToEndTest`, `WalletFraudPreventionTest`, `BillingSecurityMatrixTest`, `BillingArchitectureTest`, `PaymentHardeningTest` PASS |
+| **Pha 2** | So cai 6 nhom tai khoan (`1010`, `2010`, `2020`, `2025`, `2030`, `4010`), giai phong 50% coc (`deposit.release.percent=50`) + `withdrawal.hold.days`, hoan/khau tru 50% cuoi HD, hoa hong 5% (`HALF_UP`) tren **TONG** tien thue + dien | **DONE-VERIFIED** | Test 1.000.000 + 200.000 dien = 60.000 hoa hong + 1.140.000 vi chu tro; coc 1.000.000 -> 500.000 vi + 500.000 giu lai, hoa hong 0 |
+| **Pha 3** | Rut tien (`REQUESTED`/`PENDING_APPROVAL`/`APPROVED`/`PAID`/`REJECTED`/`CANCELLED`), khoa dong `SELECT FOR UPDATE`, QR VietQR do he thong sinh, API `/wallet/summary` & `/wallet/ledger` | **DONE-VERIFIED** | Test rut tien, huy rut, tu choi hoan so du, trung `bankTxCode` bi chan, rut song song khong am so du |
+| **Pha 4** | FE Khach (`SUBMITTED`, khoa nhan phong, hien 50% coc giu lai, ma rut gon), Chu tro (`LandlordWalletPanel` 4 KPI + lich su tach hoa hong 5%, huy lenh rut), Admin (`AdminInflowAndWithdrawalTab` + `AdminPayoutQrModal` QR he thong), Vitest + Playwright + chup anh 1440/390 sang/toi + sua loi UI | **DONE-VERIFIED** | `eslint --max-warnings=0`, `tsc --noEmit`, `verify-i18n` (2266/2266), 23/23 Vitest (105 tests), Docker `next build` 206 trang, Playwright `wallet-verify-ledger.spec.ts` 3/3 PASS |
+| **Pha 5** | Full test BE/FE khong phat sinh loi moi, reset 2 HD test bang but toan dao (khong `DELETE` so cai) va giu nguyen dau van tay bien lai cu, cap nhat `DECISIONS.md` (`LEGAL-02 = HUMAN`) | **DONE-VERIFIED** (ky thuat) / **HUMAN** (`LEGAL-02` & thu 1.000 d PayOS that) | `JE-REV-2026-F15A7BF9` (15.000 d) + `JE-REV-2026-90289A1E` (30.000 d); `DEBIT == CREDIT == 4.110.000`; `1010 == 2010 == 4.020.000` |
 
+---
+
+## 3. CHECKLIST THU CHUYEN KHOAN THAT 1.000 d QUA PAYOS (HUMAN)
+
+1. Dang nhap cong PayOS, tao kenh webhook tro toi `POST https://<domain>/api/v1/billing/payments/webhook/provider`.
+2. Nap bien moi truong (KHONG commit vao git): `FINTECH_WEBHOOK_PROVIDER=PAYOS`, `FINTECH_WEBHOOK_SECRET=<checksum_key_payos>`, `FINTECH_PLATFORM_BANK_CODE=VCB`, `FINTECH_PLATFORM_ACCOUNT_NUMBER=<stk_san>`, `FINTECH_PLATFORM_ACCOUNT_HOLDER=<ten_chu_tk>`.
+3. Khach tao QR cho 1 trong 2 hop dong test da reset (`HD-2026-F15A7BF9` 5.000 d hoac `HD-2026-90289A1E` 10.000 d) va thu:
+   - Thu tai lai anh bien lai cu / ma GD `1025874046638834` -> he thong phai tu choi (khong duoc dung lai).
+   - Chuyen khoan that moi dung noi dung `TOAM...` va dung so tien -> PayOS gui webhook -> he thong tu dong chuyen `HELD` va mo khoa 2 nut ban giao / nhan phong.
+   - Chuyen thu lech so tien 1.000 d -> webhook tra `200 OK`, khong tu cong tien, ghi vao hang doi `"Tien ve chua khop"` de Admin xu ly.
+4. Hoan tat `LEGAL-02` voi luat su va tu van thue truoc khi bat thu tien thuong mai.
