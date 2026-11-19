@@ -59,14 +59,18 @@ public class HttpBillingContractAdapter implements BillingContractPort {
                     .body(new ParameterizedTypeReference<>() {});
             Object dataObj = body != null ? body.get("data") : null;
             if (dataObj instanceof Map<?, ?> data) {
+                long monthlyRent = asLong(data.get("effectiveMonthlyRent"));
+                long deposit = data.containsKey("depositAmount") ? asLong(data.get("depositAmount")) : monthlyRent;
                 return Optional.of(new ContractSnapshot(
                         asString(data.get("contractId")),
                         asString(data.get("roomId")),
                         asString(data.get("tenantId")),
                         asString(data.get("landlordId")),
                         asString(data.get("status")),
-                        asLong(data.get("effectiveMonthlyRent")),
-                        (int) asLong(data.get("paymentDueDay"))
+                        monthlyRent,
+                        (int) asLong(data.get("paymentDueDay")),
+                        deposit,
+                        asString(data.get("orderCode"))
                 ));
             }
             return Optional.empty();
@@ -74,6 +78,29 @@ public class HttpBillingContractAdapter implements BillingContractPort {
             log.warn("Booking contract lookup unavailable/open circuit for contractId={}", contractId);
             return Optional.empty();
         });
+    }
+
+    @Override
+    public boolean activateContractAfterDeposit(String contractId, String paymentCode, long paidAmount) {
+        if (contractId == null || contractId.isBlank()) {
+            return false;
+        }
+        try {
+            restClient.post()
+                    .uri("/internal/contracts/{id}/activate-deposit", contractId)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .body(Map.of(
+                            "paymentCode", paymentCode != null ? paymentCode : "",
+                            "paidAmount", paidAmount
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (Exception ex) {
+            log.error("Failed to activate contract after deposit for contractId={}, paymentCode={}: {}",
+                    contractId, paymentCode, ex.getMessage());
+            return false;
+        }
     }
 
     private String asString(Object v) {

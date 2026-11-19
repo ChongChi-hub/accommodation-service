@@ -75,7 +75,7 @@ public class ContractSigningCoordinator {
 
         String hash = contract.computeCanonicalHash();
         String objectKey = null;
-        if ("ACTIVE".equals(contract.getStatus())) {
+        if ("ACTIVE".equals(contract.getStatus()) || "AWAITING_DEPOSIT".equals(contract.getStatus())) {
             ContractPdfService.GeneratedPdf pdf = pdfService.generateSignedContractPdf(contract);
             objectKey = "contracts/" + contract.getId() + "/" + contract.getContractCode() + ".pdf";
             PrivateObjectStoragePort.StoredObjectMetadata meta = storagePort.storePrivate(

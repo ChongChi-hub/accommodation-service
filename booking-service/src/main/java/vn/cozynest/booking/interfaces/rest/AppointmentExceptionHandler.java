@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.cozynest.booking.application.exception.AppointmentNotFoundException;
 import vn.cozynest.booking.application.exception.ContractAlreadyExistsException;
+import vn.cozynest.booking.application.exception.ContractNotFoundException;
 import vn.cozynest.booking.application.exception.OptimisticLockConflictException;
 import vn.cozynest.booking.application.exception.RentalRequestInvalidStateException;
 import vn.cozynest.booking.application.exception.RentalRequestNotFoundException;
@@ -65,6 +66,12 @@ public class AppointmentExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleContractAlreadyExists(ContractAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(ex.getMessage(), "ERR_CONTRACT_ALREADY_EXISTS"));
+    }
+
+    @ExceptionHandler(ContractNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleContractNotFound(ContractNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_CONTRACT_NOT_FOUND"));
     }
 
     @ExceptionHandler(AppointmentNotFoundException.class)

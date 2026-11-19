@@ -21,6 +21,9 @@ public class ContractJpaEntity {
     @Column(name = "contract_code", nullable = false, unique = true, length = 50)
     private String contractCode;
 
+    @Column(name = "order_code", unique = true, length = 32)
+    private String orderCode;
+
     @Column(name = "room_id", nullable = false, length = 64)
     private String roomId;
 
@@ -63,6 +66,21 @@ public class ContractJpaEntity {
     @Column(name = "verification_code", length = 64)
     private String verificationCode;
 
+    @Column(name = "checkin_code", length = 12)
+    private String checkinCode;
+
+    @Column(name = "checkin_instructions", columnDefinition = "TEXT")
+    private String checkinInstructions;
+
+    @Column(name = "room_full_address", length = 300)
+    private String roomFullAddress;
+
+    @Column(name = "landlord_name", length = 150)
+    private String landlordName;
+
+    @Column(name = "landlord_phone", length = 30)
+    private String landlordPhone;
+
     @Column(name = "pdf_url", length = 500)
     private String pdfUrl;
 
@@ -72,6 +90,10 @@ public class ContractJpaEntity {
     @Column(nullable = false, length = 30)
     @Builder.Default
     private String status = "PENDING_SIGN";
+
+    @Column(name = "listing_sync_status", nullable = false, length = 24)
+    @Builder.Default
+    private String listingSyncStatus = "PENDING";
 
     @Column(name = "expiry_notified_days", length = 64)
     private String expiryNotifiedDays;
@@ -84,6 +106,9 @@ public class ContractJpaEntity {
 
     @Column(name = "landlord_signed_at")
     private Instant landlordSignedAt;
+
+    @Column(name = "deposit_paid_at")
+    private Instant depositPaidAt;
 
     @Column(name = "initial_electricity_reading", precision = 10, scale = 2)
     @Builder.Default

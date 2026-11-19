@@ -12,5 +12,6 @@ public interface PaymentIntentRepository {
     Optional<PaymentIntent> findByPaymentCode(String paymentCode);
     Optional<PaymentIntent> findByOrderIdAndType(String orderId, String orderType);
     default List<PaymentIntent> findPendingExpiredBefore(Instant cutoff) { return List.of(); }
+    default List<PaymentIntent> findByOrderIdAndOrderTypeAndStatus(String orderId, String orderType, String status) { return List.of(); }
     default List<PaymentIntent> findAll() { return List.of(); }
 }

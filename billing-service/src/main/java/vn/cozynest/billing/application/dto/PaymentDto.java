@@ -13,9 +13,15 @@ public class PaymentDto {
             @NotBlank(message = "Mã đơn hàng không được để trống")
             String orderId,
 
-            @Min(value = 1000, message = "Số tiền thanh toán tối thiểu là 1,000 VND")
-            long amount
-    ) {}
+            @Min(value = 0, message = "Số tiền thanh toán không hợp lệ")
+            Long amount
+    ) {
+        public CreateIntentRequest {
+            if (amount == null) {
+                amount = 0L;
+            }
+        }
+    }
 
     public record IntentResponse(
             String id,

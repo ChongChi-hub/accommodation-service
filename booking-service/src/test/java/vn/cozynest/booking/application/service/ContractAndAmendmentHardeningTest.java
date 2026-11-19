@@ -57,9 +57,9 @@ class ContractAndAmendmentHardeningTest {
                 .isInstanceOf(AccessDeniedException.class);
 
         service.signContract(contract.getId(), "tenant-1", "654321", false, "10.0.0.2", "Chrome");
-        ContractDto active = service.signContract(contract.getId(), "landlord-1", "112233", true, "10.0.0.3", "Firefox");
+        ContractDto awaitingDeposit = service.signContract(contract.getId(), "landlord-1", "112233", true, "10.0.0.3", "Firefox");
 
-        assertThat(active.status()).isEqualTo("ACTIVE");
+        assertThat(awaitingDeposit.status()).isEqualTo("AWAITING_DEPOSIT");
         assertThat(contract.getPdfObjectKey()).startsWith("contracts/" + contract.getId() + "/");
         verify(auditRepo, times(2)).save(any(ContractSignatureAudit.class));
 
@@ -107,6 +107,7 @@ class ContractAndAmendmentHardeningTest {
                 today.minusMonths(10), today.plusDays(14), 3_000_000L, 3_000_000L, "Terms");
         expiringContract.signByTenant();
         expiringContract.signByLandlord();
+        expiringContract.activateAfterDeposit("123456", "", "", "", "");
         when(contractRepo.findExpiringBetween(any(), any())).thenReturn(List.of(expiringContract));
 
         ContractExpiryScheduler scheduler = new ContractExpiryScheduler(contractRepo, outboxRepo);

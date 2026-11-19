@@ -19,6 +19,7 @@ import java.util.UUID;
 public class Contract {
     private String id;
     private String contractCode;
+    private String orderCode;
     private String roomId;
     private String tenantId;
     private String landlordId;
@@ -32,13 +33,21 @@ public class Contract {
     private String terms;
     private String documentHash;
     private String verificationCode;
+    private String checkinCode;
+    private String checkinInstructions;
+    private String roomFullAddress;
+    private String landlordName;
+    private String landlordPhone;
     private String pdfUrl;
     private String pdfObjectKey;
     private String status;
+    @Builder.Default
+    private String listingSyncStatus = "PENDING";
     private String expiryNotifiedDays;
     private Instant holdingExpiresAt;
     private Instant tenantSignedAt;
     private Instant landlordSignedAt;
+    private Instant depositPaidAt;
 
     @Builder.Default
     private java.math.BigDecimal initialElectricityReading = java.math.BigDecimal.ZERO;
@@ -127,25 +136,97 @@ public class Contract {
     }
 
     public void signByTenant() {
-        if ("ACTIVE".equals(this.status) || "CANCELLED".equals(this.status)) {
+        if ("ACTIVE".equals(this.status) || "AWAITING_DEPOSIT".equals(this.status)
+                || "CANCELLED".equals(this.status) || "TERMINATED".equals(this.status)) {
             return; // Idempotent
         }
         this.tenantSignedAt = Instant.now();
         if (this.landlordSignedAt != null) {
-            this.status = "ACTIVE";
+            this.status = this.depositAmount > 0 ? "AWAITING_DEPOSIT" : "ACTIVE";
+            if ("ACTIVE".equals(this.status) && (this.orderCode == null || this.orderCode.isBlank())) {
+                this.orderCode = OrderCodeGenerator.generate();
+            }
         }
         this.updatedAt = Instant.now();
     }
 
     public void signByLandlord() {
-        if ("ACTIVE".equals(this.status) || "CANCELLED".equals(this.status)) {
+        if ("ACTIVE".equals(this.status) || "AWAITING_DEPOSIT".equals(this.status)
+                || "CANCELLED".equals(this.status) || "TERMINATED".equals(this.status)) {
             return;
         }
         this.landlordSignedAt = Instant.now();
         if (this.tenantSignedAt != null) {
-            this.status = "ACTIVE";
+            this.status = this.depositAmount > 0 ? "AWAITING_DEPOSIT" : "ACTIVE";
+            if ("ACTIVE".equals(this.status) && (this.orderCode == null || this.orderCode.isBlank())) {
+                this.orderCode = OrderCodeGenerator.generate();
+            }
         }
         this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Activates a signed contract once deposit payment is confirmed (idempotent).
+     * Transitions AWAITING_DEPOSIT -> ACTIVE and populates orderCode & handover info.
+     */
+    public void activateAfterDeposit(
+            String checkinCode,
+            String fullAddress,
+            String landlordName,
+            String landlordPhone,
+            String checkinInstructions
+    ) {
+        if ("CANCELLED".equals(this.status) || "TERMINATED".equals(this.status) || "EXPIRED".equals(this.status)) {
+            throw new IllegalStateException("Khong the kich hoat hop dong o trang thai: " + this.status);
+        }
+        if (this.orderCode == null || this.orderCode.isBlank()) {
+            this.orderCode = OrderCodeGenerator.generate();
+        }
+        if (this.checkinCode == null || this.checkinCode.isBlank()) {
+            this.checkinCode = (checkinCode != null && !checkinCode.isBlank())
+                    ? checkinCode : OrderCodeGenerator.generateCheckinCode();
+        }
+        if (fullAddress != null && !fullAddress.isBlank()) {
+            this.roomFullAddress = fullAddress;
+        }
+        if (landlordName != null && !landlordName.isBlank()) {
+            this.landlordName = landlordName;
+        }
+        if (landlordPhone != null && !landlordPhone.isBlank()) {
+            this.landlordPhone = landlordPhone;
+        }
+        if (checkinInstructions != null && !checkinInstructions.isBlank()) {
+            this.checkinInstructions = checkinInstructions;
+        }
+        if (this.depositPaidAt == null) {
+            this.depositPaidAt = Instant.now();
+        }
+        this.status = "ACTIVE";
+        this.updatedAt = Instant.now();
+    }
+
+    public void markListingSynced() {
+        this.listingSyncStatus = "SYNCED";
+        this.updatedAt = Instant.now();
+    }
+
+    public void markListingSyncFailed() {
+        this.listingSyncStatus = "FAILED_RETRY";
+        this.updatedAt = Instant.now();
+    }
+
+    public void expire() {
+        if ("AWAITING_DEPOSIT".equals(this.status) || "PENDING_SIGN".equals(this.status)) {
+            this.status = "EXPIRED";
+            this.updatedAt = Instant.now();
+        }
+    }
+
+    public void cancel() {
+        if (!"ACTIVE".equals(this.status) && !"TERMINATED".equals(this.status)) {
+            this.status = "CANCELLED";
+            this.updatedAt = Instant.now();
+        }
     }
 
     public void terminate() {

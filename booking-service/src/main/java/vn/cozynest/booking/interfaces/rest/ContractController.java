@@ -2,12 +2,14 @@ package vn.cozynest.booking.interfaces.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.cozynest.booking.application.dto.*;
+import vn.cozynest.booking.application.service.ContractActivationService;
 import vn.cozynest.booking.application.service.ContractService;
 import vn.cozynest.booking.infrastructure.security.UserContextResolver;
 import vn.cozynest.common.dto.ApiResponse;
@@ -20,10 +22,17 @@ import java.util.Map;
 public class ContractController {
 
     private final ContractService contractService;
+    private final ContractActivationService activationService;
     private final UserContextResolver userContextResolver;
 
-    public ContractController(ContractService contractService, UserContextResolver userContextResolver) {
+    @Autowired
+    public ContractController(
+            ContractService contractService,
+            @Autowired(required = false) ContractActivationService activationService,
+            UserContextResolver userContextResolver
+    ) {
         this.contractService = contractService;
+        this.activationService = activationService;
         this.userContextResolver = userContextResolver;
     }
 
@@ -48,6 +57,13 @@ public class ContractController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractDto>> getContract(@PathVariable String id) {
         return ResponseEntity.ok(ApiResponse.success(contractService.getContractById(
+                id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"))));
+    }
+
+    @GetMapping("/{id}/checkin-info")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ContractCheckinInfoDto>> getCheckinInfo(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.success(activationService.getCheckinInfo(
                 id, userContextResolver.getCurrentUserId(), userContextResolver.hasRole("ADMIN"))));
     }
 

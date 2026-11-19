@@ -17,7 +17,24 @@ public interface BookingListingPort {
         return null;
     }
 
+    default boolean markRoomRented(String roomId, String contractId) {
+        return true;
+    }
+
+    default RoomCheckinDetails getRoomCheckinDetails(String roomId) {
+        return new RoomCheckinDetails("Phong tro CozyNest", "", "", "", "", "");
+    }
+
     record RoomAvailabilityCheck(boolean available, int maxOccupants, String status, String reason) {}
+
+    record RoomCheckinDetails(
+            String roomTitle,
+            String fullAddress,
+            String areaHint,
+            String landlordName,
+            String landlordPhone,
+            String houseRules
+    ) {}
 
     record RoomContractSnapshot(
             Long monthlyRent,

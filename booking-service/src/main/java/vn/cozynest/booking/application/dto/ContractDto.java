@@ -34,7 +34,10 @@ public record ContractDto(
         Instant physicalSignedAt,
         Instant tenantConfirmedAt,
         String tenantRejectReason,
-        Instant createdAt
+        Instant createdAt,
+        String orderCode,
+        Instant depositPaidAt,
+        String listingSyncStatus
 ) {
     public static ContractDto from(Contract c) {
         if (c == null) return null;
@@ -67,7 +70,10 @@ public record ContractDto(
                 c.getPhysicalSignedAt(),
                 c.getTenantConfirmedAt(),
                 c.getTenantRejectReason(),
-                c.getCreatedAt()
+                c.getCreatedAt(),
+                c.getOrderCode(),
+                c.getDepositPaidAt(),
+                c.getListingSyncStatus()
         );
     }
 }

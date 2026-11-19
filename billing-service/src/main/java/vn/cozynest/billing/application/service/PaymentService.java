@@ -128,11 +128,48 @@ public class PaymentService {
 
     @Transactional
     public PaymentDto.IntentResponse createIntent(String payerId, PaymentDto.CreateIntentRequest request) {
+        long effectiveAmount = request.amount() != null ? request.amount() : 0L;
+
+        if ("DEPOSIT".equalsIgnoreCase(request.orderType()) && contractPort != null) {
+            var snap = contractPort.getContractSnapshot(request.orderId(), java.time.LocalDate.now())
+                    .orElseThrow(() -> new WebhookSecurityException(404, "Khong tim thay hop dong hoac ban khong co quyen dat coc"));
+            if (!payerId.equals(snap.tenantId())) {
+                throw new WebhookSecurityException(404, "Khong tim thay hop dong hoac ban khong co quyen dat coc");
+            }
+            if (!"AWAITING_DEPOSIT".equals(snap.status())) {
+                throw new IllegalStateException("Chi co the thanh toan coc khi hop dong o trang thai cho dat coc (hien tai: " + snap.status() + ")");
+            }
+            Instant now = Instant.now();
+            for (PaymentIntent existing : paymentIntentRepository.findByOrderIdAndOrderTypeAndStatus(request.orderId(), "DEPOSIT", "PENDING")) {
+                if (existing.markExpiredIfPast(now)) {
+                    paymentIntentRepository.save(existing);
+                } else {
+                    throw new IllegalStateException("Hop dong nay dang co giao dich dat coc cho thanh toan (" + existing.getPaymentCode() + "). Vui long hoan tat hoac huy giao dich cu.");
+                }
+            }
+            // Server-computed deposit amount from contract (never trust client-submitted amount)
+            effectiveAmount = snap.depositAmount() > 0 ? snap.depositAmount() : snap.effectiveMonthlyRent();
+        }
+
+        if (effectiveAmount < 1000L) {
+            throw new IllegalArgumentException("So tien thanh toan toi thieu la 1,000 VND");
+        }
+
         String paymentCode = "PAY-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        String qrUrl = gatewayPort.buildPaymentInstructionUrl(paymentCode, request.amount(), request.orderType());
+        String qrUrl = gatewayPort.buildPaymentInstructionUrl(paymentCode, effectiveAmount, request.orderType());
         PaymentIntent saved = paymentIntentRepository.save(PaymentIntent.create(
-                paymentCode, payerId, request.orderType(), request.orderId(), request.amount(), qrUrl, 15));
+                paymentCode, payerId, request.orderType(), request.orderId(), effectiveAmount, qrUrl, 15));
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PaymentDto.IntentResponse> getActivePendingIntentForOrder(String orderType, String orderId, String actorId, boolean isAdmin) {
+        Instant now = Instant.now();
+        return paymentIntentRepository.findByOrderIdAndOrderTypeAndStatus(orderId, orderType, "PENDING").stream()
+                .filter(i -> i.getExpiresAt() == null || i.getExpiresAt().isAfter(now))
+                .filter(i -> isAdmin || actorId.equals(i.getPayerId()))
+                .findFirst()
+                .map(this::toResponse);
     }
 
     @Transactional
@@ -291,6 +328,9 @@ public class PaymentService {
                     }
                 }
                 escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
+            }
+            if (contractPort != null && ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus()))) {
+                contractPort.activateContractAfterDeposit(intent.getOrderId(), intent.getPaymentCode(), intent.getPaidAmount());
             }
         } else if ("INVOICE".equalsIgnoreCase(intent.getOrderType())) {
             Invoice invoice = invoiceRepository.findById(intent.getOrderId()).orElse(null);

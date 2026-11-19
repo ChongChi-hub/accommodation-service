@@ -69,6 +69,18 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success(paymentService.getIntent(paymentCode, actorId, isAdmin)));
     }
 
+    @GetMapping("/pending")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> getPendingIntentForOrder(
+            @RequestParam String orderType,
+            @RequestParam String orderId,
+            Authentication authentication) {
+        String actorId = String.valueOf(authentication.getPrincipal());
+        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return ResponseEntity.ok(ApiResponse.success(
+                paymentService.getActivePendingIntentForOrder(orderType, orderId, actorId, isAdmin).orElse(null)));
+    }
+
     @PostMapping("/sandbox/simulate-webhook")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> simulateSandboxWebhook(

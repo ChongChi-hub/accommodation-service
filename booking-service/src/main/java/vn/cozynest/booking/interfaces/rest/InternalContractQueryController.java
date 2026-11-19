@@ -6,6 +6,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.cozynest.booking.application.dto.ContractDto;
+import vn.cozynest.booking.application.service.ContractActivationService;
 import vn.cozynest.booking.application.service.ContractService;
 import vn.cozynest.common.dto.ApiResponse;
 
@@ -20,14 +22,17 @@ public class InternalContractQueryController {
     private static final String DEFAULT_INTERNAL_KEY = "CozyNestInternalServiceKeySecret2026";
 
     private final ContractService contractService;
+    private final ContractActivationService activationService;
     private final String expectedServiceKey;
 
     public InternalContractQueryController(
             ContractService contractService,
+            @Autowired(required = false) ContractActivationService activationService,
             @Value("${app.internal.service-key:" + DEFAULT_INTERNAL_KEY + "}") String expectedServiceKey,
             @Autowired(required = false) Environment env
     ) {
         this.contractService = contractService;
+        this.activationService = activationService;
         this.expectedServiceKey = expectedServiceKey;
         if (env != null && env.matchesProfiles("prod", "production", "staging")) {
             if (DEFAULT_INTERNAL_KEY.equals(expectedServiceKey)) {
@@ -35,6 +40,8 @@ public class InternalContractQueryController {
             }
         }
     }
+
+    public record ActivateDepositRequest(String paymentCode, long paidAmount) {}
 
     @GetMapping("/{contractId}/effective-rent")
     public ResponseEntity<ApiResponse<ContractService.EffectiveRentSnapshot>> getEffectiveRent(
@@ -47,6 +54,23 @@ public class InternalContractQueryController {
                     .body(ApiResponse.error("Truy cap noi bo khong hop le", "ERR_UNAUTHORIZED"));
         }
         return ResponseEntity.ok(ApiResponse.success(contractService.getEffectiveRent(contractId, billingDate)));
+    }
+
+    @PostMapping("/{contractId}/activate-deposit")
+    public ResponseEntity<ApiResponse<ContractDto>> activateAfterDeposit(
+            @PathVariable String contractId,
+            @RequestBody(required = false) ActivateDepositRequest body,
+            @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey
+    ) {
+        if (serviceKey == null || !isKeyValid(serviceKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Truy cap noi bo khong hop le", "ERR_UNAUTHORIZED"));
+        }
+        String paymentCode = body != null ? body.paymentCode() : "";
+        long paidAmount = body != null ? body.paidAmount() : 0L;
+        return ResponseEntity.ok(ApiResponse.success(
+                activationService.activateAfterDeposit(contractId, paymentCode, paidAmount)
+        ));
     }
 
     private boolean isKeyValid(String serviceKey) {

@@ -19,16 +19,19 @@ import java.util.Map;
 public class HttpBookingListingAdapter implements BookingListingPort {
     private static final Logger log = LoggerFactory.getLogger(HttpBookingListingAdapter.class);
     private final RestClient restClient;
+    private final String internalServiceKey;
     private final ServiceCircuitBreaker circuitBreaker = new ServiceCircuitBreaker(3, Duration.ofSeconds(30));
 
     @Autowired
     public HttpBookingListingAdapter(
-            @Value("${app.listing-service.url:http://localhost:8082}") String listingBaseUrl
+            @Value("${app.listing-service.url:http://localhost:8082}") String listingBaseUrl,
+            @Value("${app.internal.service-key:CozyNestInternalServiceKeySecret2026}") String internalServiceKey
     ) {
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout(Duration.ofSeconds(3));
         rf.setReadTimeout(Duration.ofSeconds(5));
         this.restClient = RestClient.builder().baseUrl(listingBaseUrl).requestFactory(rf).build();
+        this.internalServiceKey = internalServiceKey;
     }
 
     @Override
@@ -129,8 +132,82 @@ public class HttpBookingListingAdapter implements BookingListingPort {
     }
 
     @Override
+    public boolean markRoomRented(String roomId, String contractId) {
+        if (roomId == null || !roomId.matches("\\d+")) {
+            return true;
+        }
+        try {
+            restClient.post()
+                    .uri("/internal/rooms/{id}/status", roomId)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .body(Map.of(
+                            "status", "RENTED",
+                            "occupancyStatus", "OCCUPIED",
+                            "reason", "Contract activated: " + contractId
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (Exception ex) {
+            log.error("Failed to mark room RENTED in listing-service for roomId={}, contractId={}: {}",
+                    roomId, contractId, ex.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public RoomCheckinDetails getRoomCheckinDetails(String roomId) {
+        if (roomId == null || !roomId.matches("\\d+")) {
+            return new RoomCheckinDetails("Phong tro CozyNest", "", "", "", "", "");
+        }
+        return circuitBreaker.executeWithFallback(2, () -> {
+            Map<String, Object> body = restClient.get()
+                    .uri("/api/v1/rooms/{id}", roomId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            Object dataObj = body != null ? body.get("data") : null;
+            if (dataObj instanceof Map<?, ?> data) {
+                String title = str(data.get("title"), "Phong tro CozyNest");
+                String address = str(data.get("address"), "");
+                String district = str(data.get("districtName"), str(data.get("districtCode"), ""));
+                String province = str(data.get("provinceName"), str(data.get("provinceCode"), ""));
+                String areaHint = (!district.isBlank() && !province.isBlank())
+                        ? district + ", " + province : (!district.isBlank() ? district : province);
+                String landlordName = str(data.get("landlordName"), "");
+                String landlordPhone = str(data.get("landlordPhone"), "");
+                String houseRules = str(data.get("houseRules"), str(data.get("curfew"), ""));
+                return new RoomCheckinDetails(title, address, areaHint, landlordName, landlordPhone, houseRules);
+            }
+            return new RoomCheckinDetails("Phong tro CozyNest", "", "", "", "", "");
+        }, () -> new RoomCheckinDetails("Phong tro CozyNest", "", "", "", "", ""));
+    }
+
+    @Override
     public void releaseRoomHold(String roomId) {
-        log.info("Saga compensation notified listing hold release for roomId={}", roomId);
+        if (roomId == null || !roomId.matches("\\d+")) {
+            return;
+        }
+        try {
+            restClient.post()
+                    .uri("/internal/rooms/{id}/status", roomId)
+                    .header("X-Internal-Service-Key", internalServiceKey)
+                    .body(Map.of(
+                            "status", "PUBLISHED",
+                            "occupancyStatus", "AVAILABLE",
+                            "reason", "Contract terminated or saga compensated"
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Released room hold in listing-service for roomId={}", roomId);
+        } catch (Exception ex) {
+            log.warn("Failed to release room hold in listing-service for roomId={}: {}", roomId, ex.getMessage());
+        }
+    }
+
+    private String str(Object value, String fallback) {
+        if (value == null) return fallback;
+        String s = String.valueOf(value).trim();
+        return s.isEmpty() || "null".equalsIgnoreCase(s) ? fallback : s;
     }
 
     private Long toLong(Object value, Long defaultValue) {

@@ -44,6 +44,11 @@ public class PaymentIntentRepositoryAdapter implements PaymentIntentRepository {
     }
 
     @Override
+    public java.util.List<PaymentIntent> findByOrderIdAndOrderTypeAndStatus(String orderId, String orderType, String status) {
+        return repository.findByOrderIdAndOrderTypeAndStatus(orderId, orderType, status).stream().map(this::toDomain).toList();
+    }
+
+    @Override
     public java.util.List<PaymentIntent> findAll() {
         return repository.findAll().stream().map(this::toDomain).toList();
     }

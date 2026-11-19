@@ -384,7 +384,8 @@ public class ContractService {
                 .orElse(contract.getMonthlyRent());
         return new EffectiveRentSnapshot(
                 contract.getId(), contract.getRoomId(), contract.getTenantId(),
-                contract.getLandlordId(), contract.getStatus(), rent, contract.getPaymentDueDay());
+                contract.getLandlordId(), contract.getStatus(), rent, contract.getPaymentDueDay(),
+                contract.getDepositAmount(), contract.getOrderCode());
     }
 
     public record EffectiveRentSnapshot(
@@ -394,8 +395,17 @@ public class ContractService {
             String landlordId,
             String status,
             long effectiveMonthlyRent,
-            int paymentDueDay
-    ) {}
+            int paymentDueDay,
+            long depositAmount,
+            String orderCode
+    ) {
+        public EffectiveRentSnapshot(
+                String contractId, String roomId, String tenantId, String landlordId,
+                String status, long effectiveMonthlyRent, int paymentDueDay
+        ) {
+            this(contractId, roomId, tenantId, landlordId, status, effectiveMonthlyRent, paymentDueDay, 0L, null);
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<ContractAmendmentDto> getAmendments(String contractId, String actorId, boolean isAdmin) {

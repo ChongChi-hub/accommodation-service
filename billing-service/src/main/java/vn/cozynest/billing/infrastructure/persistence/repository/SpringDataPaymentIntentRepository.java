@@ -11,4 +11,5 @@ public interface SpringDataPaymentIntentRepository extends JpaRepository<Payment
     Optional<PaymentIntentJpaEntity> findByPaymentCode(String paymentCode);
     Optional<PaymentIntentJpaEntity> findByOrderIdAndOrderType(String orderId, String orderType);
     List<PaymentIntentJpaEntity> findByStatusAndExpiresAtBefore(String status, Instant cutoff);
+    List<PaymentIntentJpaEntity> findByOrderIdAndOrderTypeAndStatus(String orderId, String orderType, String status);
 }
