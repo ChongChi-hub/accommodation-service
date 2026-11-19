@@ -36,8 +36,17 @@ spring:
 
 mail:
   enabled: ${MAIL_ENABLED:true}
+  provider: ${EMAIL_PROVIDER:smtp}
   from: ${MAIL_FROM:no-reply@cozynest.vn}
   from-name: ${MAIL_FROM_NAME:Tổ Ấm}
+  monthly-cap: ${EMAIL_MONTHLY_CAP:150}
+  redirect-to: ${MAIL_REDIRECT_TO:}
+  emailjs:
+    endpoint: ${EMAILJS_ENDPOINT:https://api.emailjs.com/api/v1.0/email/send}
+    service-id: ${EMAILJS_SERVICE_ID:}
+    template-id-notify: ${EMAILJS_TEMPLATE_ID_NOTIFY:}
+    public-key: ${EMAILJS_PUBLIC_KEY:}
+    private-key: ${EMAILJS_PRIVATE_KEY:}
 
 management:
   health:

@@ -15,6 +15,7 @@ import vn.cozynest.common.events.EventEnvelopeCodec;
 import vn.cozynest.common.events.EventInboxProcessor;
 import vn.cozynest.common.events.EventTopology;
 import vn.cozynest.communication.application.service.CommunicationEmailService;
+import vn.cozynest.communication.application.service.CommunicationLifecycleEmailHelper;
 import vn.cozynest.communication.application.service.NotificationApplicationService;
 
 import java.time.Instant;
@@ -32,13 +33,23 @@ public class CommunicationEventListener {
     private final NotificationApplicationService notificationService;
     private final Optional<RabbitTemplate> rabbitTemplate;
     private final Optional<CommunicationEmailService> emailService;
+    private final Optional<CommunicationLifecycleEmailHelper> lifecycleEmailHelper;
 
     public CommunicationEventListener(
             CommunicationInboxStore inboxStore,
             NotificationApplicationService notificationService,
             Optional<RabbitTemplate> rabbitTemplate
     ) {
-        this(inboxStore, notificationService, rabbitTemplate, Optional.empty());
+        this(inboxStore, notificationService, rabbitTemplate, Optional.empty(), Optional.empty());
+    }
+
+    public CommunicationEventListener(
+            CommunicationInboxStore inboxStore,
+            NotificationApplicationService notificationService,
+            Optional<RabbitTemplate> rabbitTemplate,
+            Optional<CommunicationEmailService> emailService
+    ) {
+        this(inboxStore, notificationService, rabbitTemplate, emailService, Optional.empty());
     }
 
     @Autowired
@@ -46,12 +57,14 @@ public class CommunicationEventListener {
             CommunicationInboxStore inboxStore,
             NotificationApplicationService notificationService,
             Optional<RabbitTemplate> rabbitTemplate,
-            Optional<CommunicationEmailService> emailService
+            Optional<CommunicationEmailService> emailService,
+            Optional<CommunicationLifecycleEmailHelper> lifecycleEmailHelper
     ) {
         this.inboxStore = inboxStore;
         this.notificationService = notificationService;
         this.rabbitTemplate = rabbitTemplate != null ? rabbitTemplate : Optional.empty();
         this.emailService = emailService != null ? emailService : Optional.empty();
+        this.lifecycleEmailHelper = lifecycleEmailHelper != null ? lifecycleEmailHelper : Optional.empty();
     }
 
     @RabbitListener(queues = EventTopology.COMMUNICATION_QUEUE)
@@ -275,6 +288,32 @@ public class CommunicationEventListener {
                     );
                     svc.sendRentalRequestRejectedNotification(rentalPayload);
                 }
+                case "APPOINTMENT_COMPLETED" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendAppointmentOutcomeEmail(payload.path("tenantId").asString(""), payload.path("roomTitle").asString(""), true));
+                case "APPOINTMENT_NO_SHOW" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendAppointmentOutcomeEmail(payload.path("tenantId").asString(""), payload.path("roomTitle").asString(""), false));
+                case "CONTRACT_CREATED" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendContractNeedsSignatureEmail(payload.path("tenantId").asString(""), payload.path("contractCode").asString("")));
+                case "CONTRACT_ACTIVATED" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendContractActivatedEmail(
+                                payload.path("tenantId").asString(""),
+                                payload.path("landlordId").asString(""),
+                                payload.path("contractCode").asString(""),
+                                payload.path("orderCode").asString("")
+                        ));
+                case "PAYMENT_PAID" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendPaymentPaidEmail(
+                                payload.path("tenantId").asString(""),
+                                payload.path("paymentCode").asString(""),
+                                payload.path("paidAmount").asLong(0L),
+                                true
+                        ));
+                case "INVOICE_GENERATED" -> lifecycleEmailHelper.ifPresent(h ->
+                        h.sendInvoiceGeneratedEmail(
+                                payload.path("tenantId").asString(""),
+                                payload.path("invoiceCode").asString(""),
+                                payload.path("totalAmount").asLong(0L)
+                        ));
                 default -> {}
             }
         } catch (Exception ex) {

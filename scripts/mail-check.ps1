@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Kiểm tra cấu hình và gửi email thử nghiệm qua SMTP (hỗ trợ cả Mailpit dev và SMTP thật có STARTTLS).
 .DESCRIPTION
@@ -60,6 +60,42 @@ if (-not $ToEmail) {
 if ([string]::IsNullOrWhiteSpace($ToEmail)) {
     Write-Host "[LỖI] Địa chỉ email nhận không được để trống." -ForegroundColor Red
     exit 1
+}
+
+$EmailProvider = if ($env:EMAIL_PROVIDER) { $env:EMAIL_PROVIDER.ToLower() } else { "smtp" }
+Write-Host "EMAIL_PROVIDER  : $EmailProvider"
+if ($EmailProvider -eq "emailjs") {
+    $svcId = $env:EMAILJS_SERVICE_ID
+    $tplId = $env:EMAILJS_TEMPLATE_ID_NOTIFY
+    $pubKey = $env:EMAILJS_PUBLIC_KEY
+    $privKey = $env:EMAILJS_PRIVATE_KEY
+    if (-not $svcId -or -not $tplId -or -not $pubKey -or -not $privKey) {
+        Write-Host "[LOI] Thieu EMAILJS_SERVICE_ID / EMAILJS_TEMPLATE_ID_NOTIFY / EMAILJS_PUBLIC_KEY / EMAILJS_PRIVATE_KEY trong .env" -ForegroundColor Red
+        exit 1
+    }
+    $target = if ($env:MAIL_REDIRECT_TO) { $env:MAIL_REDIRECT_TO } else { $ToEmail.Trim() }
+    $body = (@{
+        service_id = $svcId
+        template_id = $tplId
+        user_id = $pubKey
+        accessToken = $privKey
+        template_params = @{
+            to_email = $target
+            to_name = "Nguoi dung kiem thu"
+            subject = "[To Am] Kiem tra ket noi EmailJS thanh cong"
+            message = "Email nay xac nhan cau hinh EmailJS tren communication-service dang hoat dong binh thuong."
+            message_html = "<p>Email nay xac nhan cau hinh <strong>EmailJS</strong> dang hoat dong binh thuong.</p>"
+            action_url = "http://localhost:3000"
+        }
+    } | ConvertTo-Json -Depth 4)
+    try {
+        $resp = Invoke-WebRequest -Method Post -Uri "https://api.emailjs.com/api/v1.0/email/send" -ContentType "application/json" -Headers @{ Origin = "http://localhost:3000" } -Body $body -UseBasicParsing -TimeoutSec 10
+        Write-Host "[THANH CONG] EmailJS phan hoi HTTP $($resp.StatusCode)!" -ForegroundColor Green
+        exit 0
+    } catch {
+        Write-Host "[THAT BAI] EmailJS tra loi: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
 }
 
 try {
