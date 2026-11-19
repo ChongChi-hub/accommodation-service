@@ -133,7 +133,12 @@ public class AppointmentExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String msg = "Du lieu bi trung lap hoac vi pham rang buoc he thong.";
+        String lower = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (lower.contains("appointment") || lower.contains("viewing")) {
+            msg = "Du lieu bi trung lap hoac da ton tai yeu cau cho khung gio nay.";
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("Du lieu bi trung lap hoac da ton tai yeu cau cho khung gio nay.", "DATA_CONFLICT"));
+                .body(ApiResponse.error(msg, "DATA_CONFLICT"));
     }
 }

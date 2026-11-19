@@ -364,21 +364,22 @@ public class CommunicationEventListener {
             case "CONTRACT_PHYSICAL_SCAN_UPLOADED" -> "Bản quét hợp đồng thuê phòng đã được tải lên";
             case "CONTRACT_PHYSICAL_SCAN_REJECTED" -> "Bản quét hợp đồng thuê phòng bị từ chối";
             case "CONTRACT_AMENDMENT_APPLIED" -> "Phụ lục hợp đồng thuê phòng đã được áp dụng";
-            case "PAYMENT_CONFIRMED" -> "Xác nhận thanh toán thành công";
+            case "PAYMENT_CONFIRMED", "PAYMENT_PAID" -> "Xác nhận thanh toán thành công";
             case "ESCROW_RELEASED" -> "Tiền đặt cọc đã được giải ngân";
             case "INVOICE_GENERATED", "INVOICE_ISSUED" -> "Hóa đơn thuê phòng kỳ mới đã phát hành";
             case "INVOICE_PAYMENT_RECORDED" -> "Thanh toán hóa đơn phòng đã được ghi nhận";
             case "INVOICE_LATE_FEE_APPLIED" -> "Áp dụng phí phạt chậm thanh toán hóa đơn";
             case "INVOICE_OVERDUE_REMINDER" -> "Nhắc nhở thanh toán hóa đơn quá hạn";
-            case "KYC_SUBMITTED" -> "Hồ sơ xác thực eKYC đã được gửi";
-            case "KYC_APPROVED" -> "Hồ sơ xác thực eKYC đã được phê duyệt";
-            case "KYC_REJECTED" -> "Hồ sơ xác thực eKYC cần bổ sung hoặc bị từ chối";
-            case "FACE_VERIFIED" -> "Xác thực sinh trắc học khuôn mặt thành công";
-            case "FACE_FAILED" -> "Xác thực sinh trắc học khuôn mặt thất bại";
+            case "KYC_SUBMITTED", "KycSubmitted" -> "Hồ sơ xác thực eKYC đã được gửi";
+            case "KYC_APPROVED", "TenantKycApproved", "TENANT_KYC_APPROVED" -> "Hồ sơ xác thực eKYC đã được phê duyệt";
+            case "LandlordApproved", "LANDLORD_APPROVED" -> "Chúc mừng! Bạn đã trở thành Chủ trọ";
+            case "KYC_REJECTED", "KycRejected" -> "Hồ sơ xác thực eKYC cần bổ sung hoặc bị từ chối";
+            case "FACE_VERIFIED", "FaceVerificationPassed", "FACE_VERIFICATION_PASSED" -> "Xác thực sinh trắc học khuôn mặt thành công";
+            case "FACE_FAILED", "FaceVerificationFailed", "FACE_VERIFICATION_FAILED" -> "Xác thực sinh trắc học khuôn mặt thất bại";
             case "LISTING_PUBLISHED" -> "Tin đăng phòng trọ đã được phát hành";
             case "LISTING_UPDATED" -> "Tin đăng phòng trọ đã được cập nhật";
             case "LISTING_CLOSED" -> "Tin đăng phòng trọ đã được đóng";
-            default -> "Cập nhật nghiệp vụ: " + eventType;
+            default -> "Thông báo từ hệ thống Tổ Ấm";
         };
     }
 
@@ -412,7 +413,20 @@ public class CommunicationEventListener {
         if (!invoiceCode.isBlank()) {
             return "Mã hóa đơn: " + invoiceCode;
         }
-        return "Cập nhật " + envelope.aggregateType() + " #" + envelope.aggregateId();
+        String roomTitle = payload.path("roomTitle").asString("");
+        if (!roomTitle.isBlank()) {
+            return "Phòng: " + roomTitle;
+        }
+        String agg = envelope.aggregateType() != null ? envelope.aggregateType().toUpperCase() : "";
+        return switch (agg) {
+            case "APPOINTMENT" -> "Lịch hẹn xem phòng của bạn đã có cập nhật trạng thái mới.";
+            case "RENTAL_REQUEST" -> "Yêu cầu thuê phòng của bạn đã có phản hồi mới từ hệ thống.";
+            case "CONTRACT" -> "Hợp đồng thuê phòng của bạn đã có cập nhật mới.";
+            case "INVOICE" -> "Hóa đơn thanh toán của bạn đã có cập nhật mới.";
+            case "KYC", "KYC_VERIFICATION" -> "Hồ sơ định danh eKYC của bạn đã có kết quả kiểm duyệt.";
+            case "FACE_VERIFICATION" -> "Kết quả xác thực sinh trắc học khuôn mặt đã được cập nhật.";
+            default -> "Bạn có thông báo mới từ hệ thống Tổ Ấm.";
+        };
     }
 
     private String resolveLinkUrl(DomainEventEnvelope envelope, JsonNode payload) {

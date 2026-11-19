@@ -624,3 +624,9 @@ sequenceDiagram
 * **Nang cap Chu tro (`identity-service`):** `LandlordApplicationUseCase.upgradeToLandlord` cap them vai tro `LANDLORD` (giu nguyen `TENANT`), tu dong chuyen doi ho so `LandlordProfile` tu `AWAITING_KYC` (hoac `REJECTED`) sang `PENDING_REVIEW` qua `profile.submitKyc()` truoc khi goi `profile.approve("AUTO_UPGRADE")` de tuan thu chat che may trang thai domain, loai bo triet de loi `409 ERR_LANDLORD_INVALID_STATE_TRANSITION` (`Chỉ có thể phê duyệt hồ sơ đang chờ xét duyệt (PENDING_REVIEW). Trạng thái hiện tại: AWAITING_KYC`).
 * **Kiem duyet eKYC (`KycModerationUseCase`):** Dong bo chuyen trang thai ho so tu `AWAITING_KYC` hoac `REJECTED` sang `PENDING_REVIEW` truoc khi goi `approve()` hoac `reject()`.
 
+### 22.5. `[BOOKING-COMM]` — Sua loi Phe duyet Yeu cau thue & Chuan hoa Thong bao
+* **Outbox aggregate_id truncation:** Do Flyway V9 tren `booking-service` mo rong `aggregate_id` tu `VARCHAR(36)` len `VARCHAR(64)` de chua saga key (`saga-` + 36-char UUID = 41 chars), container da duoc rebuild va ap dung migration thanh cong tren MySQL.
+* **AppointmentExceptionHandler:** Loai bo viec ep toan bo `DataIntegrityViolationException` thanh loi trung gio xem phong; chi ap dung thong bao nay neu ngoai le thuc su lien quan den xem phong / lich hen.
+* **CommunicationEventListener:** Chuan hoa tieu de va noi dung thong bao tieng Viet than thien nguoi dung (thay the cac tieu de va ma dinh danh UUID tho nhu `Cap nhat RENTAL_REQUEST #...`, `TenantKycApproved`).
+
+
