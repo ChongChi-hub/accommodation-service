@@ -568,3 +568,32 @@ sequenceDiagram
 * **Production Financial Blockers (`LEGAL-02 = HUMAN`):**
   * Platform strictly runs with `fintech.mode=SANDBOX_ONLY`, `money.custody.enabled=false`, `live-custody-enabled=false`, and `live-enabled=false`.
   * Real-money activation remains blocked until external legal counsel & tax advisor sign-off (`NĐ 52/2024/NĐ-CP`, `NĐ 117/2025/NĐ-CP`, `Luật 56/2024/QH15`, `Luật GDĐT 2023`), NHNN-licensed intermediary contract, and e-contract audit acceptance are completed.
+
+---
+
+## 21. Quyết định Thiết kế `[FIX-LIFECYCLE-CHAT-LAYOUT-ADMINSTATS]`
+
+### 21.1. H1 — Vòng đời Lịch hẹn Xem phòng (`booking-service` + `communication-service`)
+* Giữ nguyên `POST /api/v1/landlord/appointments/{id}/complete` để tương thích ngược, bổ sung `PATCH /{id}/complete` và `PATCH /{id}/no-show`.
+* Tiêm `java.time.Clock` (UTC) vào `LandlordAppointmentService`: mọi mốc thời gian so sánh theo UTC; gọi hoàn thành trước `scheduledStart` trả `409 ERR_APPOINTMENT_NOT_STARTED`; gọi lặp trạng thái đã hoàn tất trả `200` idempotent (không ghi outbox/audit trùng); chuyển chéo `COMPLETED <-> NO_SHOW` trả `409 ERR_INVALID_APPOINTMENT_STATE`.
+* `DevAppointmentFixtureController` bị khóa kép bằng `@Profile({"dev", "test"})` VÀ `@ConditionalOnProperty(name = "app.booking.fixtures.enabled", havingValue = "true", matchIfMissing = false)` (mặc định tắt kể cả ở `dev`, không tồn tại bean ở `prod`), đồng thời kiểm tra quyền sở hữu phòng.
+* `communication-service` tiêu thụ idempotent các sự kiện `APPOINTMENT_COMPLETED`, `APPOINTMENT_NO_SHOW`, và `RENTAL_REQUEST_REJECTED` (kèm `rejectionReason`) thông qua `CommunicationInboxStore`.
+
+### 21.2. H2 — Yêu cầu Thuê phòng & Hợp đồng (`booking-service`)
+* **Hợp đồng trực tiếp (`requestId == null`):** Giữ lại vì có luồng hợp pháp trên `dashboard/landlord/contracts` (`ct-00000004`), nhưng bắt buộc kiểm tra chủ sở hữu phòng qua `BookingListingPort.getRoomOwnerId` (trả `404` nếu khác chủ trọ).
+* **Hợp đồng từ yêu cầu thuê (`requestId != null`):** Bắt buộc yêu cầu ở trạng thái `APPROVED` (`409 ERR_RENTAL_REQUEST_INVALID_STATE`), kiểm tra quyền sở hữu (`404` IDOR), và khóa trùng ở DB bằng `UNIQUE KEY uq_contracts_request_id (request_id)` (migration `V8`, bắt `DataIntegrityViolationException` -> `409 ERR_CONTRACT_ALREADY_EXISTS`).
+* **Snapshot tên khách & tên phòng:** Thêm cột `tenant_name`, `room_title`, `rejection_reason` vào `rental_requests` (migration `V8`), backfill từ `viewing_appointments` cùng schema, không gọi chéo service khi đọc danh sách.
+
+### 21.3. H3 — Bảo mật & Ổn định Chat (`communication-service`)
+* Ràng buộc `UNIQUE KEY uq_conversations_pair_key` (migration `V5`) chống race condition tạo trùng hội thoại.
+* Chuyển toàn bộ lỗi truy cập hội thoại không phải thành viên sang `404 ConversationNotFoundException` (chống IDOR enumeration).
+* Giới hạn độ dài tin nhắn tối đa 2000 ký tự, rate limit 20 tin / 10 giây (`429`), lưu nguyên văn không HTML-encode phía server (escape khi hiển thị trên FE), hỗ trợ cursor pagination `before`, và gỡ bỏ alias cứng `u-hao-01` khỏi `u-landlord-02`.
+
+### 21.4. H5 — Thống kê Nền tảng ADMIN (`admin-service` + 4 internal endpoints)
+* Loại bỏ hoàn toàn truy vấn SQL xuyên schema trong `AdminDashboardController` và giữ nguyên quyền tối thiểu của `admin_user`.
+* Bổ sung 4 internal read-only endpoints bảo vệ bằng `X-Internal-Service-Key` (so sánh hằng thời gian `MessageDigest.isEqual`) và bị chặn hoàn toàn (`404`) tại `api-gateway`:
+  * `identity-service`: `GET /internal/stats/identity`
+  * `listing-service`: `GET /internal/stats/listing`
+  * `booking-service`: `GET /internal/stats/booking`
+  * `billing-service`: `GET /internal/stats/billing`
+* `admin-service` tổng hợp qua HTTP (`RestClient`, timeout 3s connect / 5s read), cache TTL 30s (xóa khi gọi `/api/v1/admin/clear-cache`), gắn cờ `degraded: true` + `failedSources` và trả `null` (không bao giờ giả lập `0`) khi nguồn lỗi. Công bố `GET /api/v1/admin/stats/overview` và `GET /api/v1/admin/stats/timeseries` với `@PreAuthorize("hasRole('ADMIN')")`.
