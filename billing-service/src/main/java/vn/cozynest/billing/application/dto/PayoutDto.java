@@ -19,7 +19,6 @@ public class PayoutDto {
             @NotBlank(message = "Tên chủ tài khoản không được để trống")
             String accountHolder,
 
-            @NotBlank(message = "Mã OTP xác thực không được để trống")
             String otp
     ) {}
 

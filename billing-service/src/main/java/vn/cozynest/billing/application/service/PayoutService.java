@@ -35,6 +35,7 @@ public class PayoutService {
     private final boolean liveDisbursementEnabled;
     private final long makerCheckerThresholdVnd;
     private final long withdrawalMinAmount;
+    private final boolean requireOtp;
 
     public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService) {
         this(payoutRepository, riskProfileRepository, ledgerService, "SANDBOX_ONLY", false);
@@ -46,14 +47,14 @@ public class PayoutService {
                          Optional<BillingIdentityVerificationPort> identityVerificationPort, Optional<MakerCheckerRepository> makerCheckerRepository,
                          Optional<BillingEventOutboxRepository> outboxRepository, String fintechMode, boolean liveDisbursementEnabled, long makerCheckerThresholdVnd) {
         this(payoutRepository, riskProfileRepository, ledgerService, identityVerificationPort, makerCheckerRepository, outboxRepository,
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, 1000L);
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, 1000L, true);
     }
     public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService,
                          Optional<BillingIdentityVerificationPort> identityVerificationPort, Optional<MakerCheckerRepository> makerCheckerRepository,
                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService,
                          Optional<BankTransactionRegistryRepository> bankTxRegistry, String fintechMode, boolean liveDisbursementEnabled, long makerCheckerThresholdVnd, long withdrawalMinAmount) {
         this(payoutRepository, riskProfileRepository, ledgerService, identityVerificationPort, makerCheckerRepository, outboxRepository,
-                bankAccountService, bankTxRegistry, Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, withdrawalMinAmount);
+                bankAccountService, bankTxRegistry, Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, withdrawalMinAmount, true);
     }
 
     @Autowired
@@ -65,7 +66,8 @@ public class PayoutService {
                          @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
                          @Value("${fintech.disbursement.live-enabled:false}") boolean liveDisbursementEnabled,
                          @Value("${fintech.payout.maker-checker-threshold-vnd:10000000}") long makerCheckerThresholdVnd,
-                         @Value("${fintech.withdrawal.min-amount:${withdrawal.min.amount:1000}}") long withdrawalMinAmount) {
+                         @Value("${fintech.withdrawal.min-amount:${withdrawal.min.amount:1000}}") long withdrawalMinAmount,
+                         @Value("${fintech.payout.require-otp:false}") boolean requireOtp) {
         this.payoutRepository = payoutRepository;
         this.riskProfileRepository = riskProfileRepository;
         this.ledgerService = ledgerService;
@@ -80,6 +82,7 @@ public class PayoutService {
         this.liveDisbursementEnabled = liveDisbursementEnabled;
         this.makerCheckerThresholdVnd = makerCheckerThresholdVnd;
         this.withdrawalMinAmount = Math.max(1000L, withdrawalMinAmount);
+        this.requireOtp = requireOtp;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -94,7 +97,7 @@ public class PayoutService {
             Optional<PayoutRequest> existing = payoutRepository.findByIdempotencyKey(idempotencyKey.trim());
             if (existing.isPresent()) return PayoutLedgerHelper.toResponse(existing.get());
         }
-        verifyOtpCode(landlordId, command.otp());
+        if (requireOtp) verifyOtpCode(landlordId, command.otp());
         if (command.amount() < withdrawalMinAmount) throw new IllegalArgumentException("Số tiền rút tối thiểu theo cấu hình là " + withdrawalMinAmount + " VND");
         String bankCode = command.bankCode().trim().toUpperCase();
         String accountNumber = command.accountNumber().trim();

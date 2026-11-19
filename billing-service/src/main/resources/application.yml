@@ -65,6 +65,7 @@ fintech:
     min-amount: ${WITHDRAWAL_MIN_AMOUNT:1000}
   payout:
     maker-checker-threshold-vnd: ${PAYOUT_MAKER_CHECKER_THRESHOLD_VND:10000000}
+    require-otp: ${FINTECH_PAYOUT_REQUIRE_OTP:false}
   payment:
     manual-maker-checker-threshold-vnd: ${MANUAL_PAYMENT_MAKER_CHECKER_THRESHOLD_VND:10000000}
   proof:
