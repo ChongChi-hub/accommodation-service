@@ -14,7 +14,7 @@ CREATE INDEX idx_contracts_listing_sync ON contracts (listing_sync_status);
 
 -- Backfill existing ACTIVE contracts (e.g., demo seed ct-00000001) with deterministic order codes
 UPDATE contracts
-SET order_code = CONCAT('TOAM-260101-', UPPER(LEFT(REPLACE(id, '-', ''), 6))),
+SET order_code = CONCAT('TOAM-260101-', UPPER(RIGHT(REPLACE(id, '-', ''), 6))),
     listing_sync_status = 'SYNCED'
 WHERE status = 'ACTIVE' AND order_code IS NULL;
 
