@@ -109,7 +109,11 @@ public class PaymentService {
         if ("CANCELLED".equals(intent.getStatus()) || "EXPIRED".equals(intent.getStatus())) throw new IllegalStateException("Giao dịch đã bị hủy hoặc hết hạn, không thể xác nhận chuyển tiền");
         if (gatewayPort != null && gatewayPort.isKillSwitchActive()) throw new IllegalStateException("Cổng thanh toán Sàn đang tạm khóa đối soát");
         if (bankAccountService != null && "DEPOSIT".equalsIgnoreCase(intent.getOrderType())) bankAccountService.requireValidBankAccount(actorId, "Khách thuê");
-        if (req != null && req.note() != null && req.note().contains("UNVERIFIED_TRANSFER")) throw new IllegalStateException("Chưa ghi nhận được biến động tiền cọc về tài khoản Sàn, từ chối kích hoạt Escrow");
+        if (req == null || req.note() == null || req.note().trim().length() < 6
+                || req.receiptUrl() == null || req.receiptUrl().isBlank()
+                || req.note().contains("UNVERIFIED_TRANSFER")) {
+            throw new IllegalStateException("Chưa ghi nhận được biến động tiền cọc về tài khoản Sàn: Bắt buộc phải cung cấp Mã giao dịch ngân hàng và Ảnh biên lai chuyển khoản hợp lệ!");
+        }
         try {
             if ("PENDING".equals(intent.getStatus())) intent.markSubmitted();
             intent.markPaid(intent.getAmount());
