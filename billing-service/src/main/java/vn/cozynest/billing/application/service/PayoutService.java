@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.PayoutDto;
 import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.billing.application.port.BillingIdentityVerificationPort;
+import vn.cozynest.billing.application.port.BillingNotificationPort;
 import vn.cozynest.billing.domain.model.*;
 import vn.cozynest.billing.domain.repository.*;
 
@@ -20,7 +21,6 @@ import java.util.UUID;
 @Service
 public class PayoutService {
     private static final long DEFAULT_MAKER_CHECKER_THRESHOLD = 10_000_000L;
-
     private final PayoutRequestRepository payoutRepository;
     private final RiskProfileRepository riskProfileRepository;
     private final LedgerService ledgerService;
@@ -29,6 +29,8 @@ public class PayoutService {
     private final BillingEventOutboxRepository outboxRepository;
     private final BankAccountService bankAccountService;
     private final BankTransactionRegistryRepository bankTxRegistry;
+    private final BillingNotificationPort notificationPort;
+    private final PaymentProofStorageService proofStorageService;
     private final String fintechMode;
     private final boolean liveDisbursementEnabled;
     private final long makerCheckerThresholdVnd;
@@ -37,23 +39,29 @@ public class PayoutService {
     public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService) {
         this(payoutRepository, riskProfileRepository, ledgerService, "SANDBOX_ONLY", false);
     }
-    public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService,
-                         String fintechMode, boolean liveDisbursementEnabled) {
-        this(payoutRepository, riskProfileRepository, ledgerService, Optional.empty(), Optional.empty(), Optional.empty(),
-                fintechMode, liveDisbursementEnabled, DEFAULT_MAKER_CHECKER_THRESHOLD);
+    public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService, String fintechMode, boolean liveDisbursementEnabled) {
+        this(payoutRepository, riskProfileRepository, ledgerService, Optional.empty(), Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, DEFAULT_MAKER_CHECKER_THRESHOLD);
     }
     public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService,
                          Optional<BillingIdentityVerificationPort> identityVerificationPort, Optional<MakerCheckerRepository> makerCheckerRepository,
                          Optional<BillingEventOutboxRepository> outboxRepository, String fintechMode, boolean liveDisbursementEnabled, long makerCheckerThresholdVnd) {
         this(payoutRepository, riskProfileRepository, ledgerService, identityVerificationPort, makerCheckerRepository, outboxRepository,
-                Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, 1000L);
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, 1000L);
+    }
+    public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService,
+                         Optional<BillingIdentityVerificationPort> identityVerificationPort, Optional<MakerCheckerRepository> makerCheckerRepository,
+                         Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService,
+                         Optional<BankTransactionRegistryRepository> bankTxRegistry, String fintechMode, boolean liveDisbursementEnabled, long makerCheckerThresholdVnd, long withdrawalMinAmount) {
+        this(payoutRepository, riskProfileRepository, ledgerService, identityVerificationPort, makerCheckerRepository, outboxRepository,
+                bankAccountService, bankTxRegistry, Optional.empty(), Optional.empty(), fintechMode, liveDisbursementEnabled, makerCheckerThresholdVnd, withdrawalMinAmount);
     }
 
     @Autowired
     public PayoutService(PayoutRequestRepository payoutRepository, RiskProfileRepository riskProfileRepository, LedgerService ledgerService,
                          Optional<BillingIdentityVerificationPort> identityVerificationPort, Optional<MakerCheckerRepository> makerCheckerRepository,
                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<BankAccountService> bankAccountService,
-                         Optional<BankTransactionRegistryRepository> bankTxRegistry,
+                         Optional<BankTransactionRegistryRepository> bankTxRegistry, Optional<BillingNotificationPort> notificationPort,
+                         Optional<PaymentProofStorageService> proofStorageService,
                          @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
                          @Value("${fintech.disbursement.live-enabled:false}") boolean liveDisbursementEnabled,
                          @Value("${fintech.payout.maker-checker-threshold-vnd:10000000}") long makerCheckerThresholdVnd,
@@ -66,6 +74,8 @@ public class PayoutService {
         this.outboxRepository = outboxRepository != null ? outboxRepository.orElse(null) : null;
         this.bankAccountService = bankAccountService != null ? bankAccountService.orElse(null) : null;
         this.bankTxRegistry = bankTxRegistry != null ? bankTxRegistry.orElse(null) : null;
+        this.notificationPort = notificationPort != null ? notificationPort.orElse(null) : null;
+        this.proofStorageService = proofStorageService != null ? proofStorageService.orElse(null) : null;
         this.fintechMode = fintechMode;
         this.liveDisbursementEnabled = liveDisbursementEnabled;
         this.makerCheckerThresholdVnd = makerCheckerThresholdVnd;
@@ -85,43 +95,33 @@ public class PayoutService {
             if (existing.isPresent()) return PayoutLedgerHelper.toResponse(existing.get());
         }
         verifyOtpCode(landlordId, command.otp());
-        if (command.amount() < withdrawalMinAmount) {
-            throw new IllegalArgumentException("Số tiền rút tối thiểu theo cấu hình là " + withdrawalMinAmount + " VND");
-        }
+        if (command.amount() < withdrawalMinAmount) throw new IllegalArgumentException("Số tiền rút tối thiểu theo cấu hình là " + withdrawalMinAmount + " VND");
         String bankCode = command.bankCode().trim().toUpperCase();
         String accountNumber = command.accountNumber().trim();
         String accountHolder = command.accountHolder().trim().toUpperCase();
         if (bankAccountService != null) {
-            UserBankAccount verified = bankAccountService.findDomainByUserId(landlordId)
-                    .filter(UserBankAccount::isMatched)
+            UserBankAccount verified = bankAccountService.findDomainByUserId(landlordId).filter(UserBankAccount::isMatched)
                     .orElseThrow(() -> new IllegalStateException("Tài khoản ngân hàng nhận tiền của chủ trọ phải ở trạng thái MATCHED trước khi rút tiền!"));
             bankCode = verified.getBankCode();
             accountNumber = verified.getAccountNumber();
             accountHolder = verified.getAccountHolder();
         }
-        RiskProfile riskProfile = riskProfileRepository.findByUserId(landlordId)
-                .orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(landlordId)));
+        RiskProfile riskProfile = riskProfileRepository.findByUserId(landlordId).orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(landlordId)));
         riskProfile.validateWithdrawal(command.amount(), LocalDate.now());
-
         long availableBalance = ledgerService.getAccountBalance(ledgerService.getLandlordAvailableAccountNumber(landlordId));
-        if (availableBalance < command.amount()) {
-            throw new IllegalStateException("Số dư ví khả dụng không đủ (Hiện có: " + availableBalance + " VND)");
-        }
-        String payoutCode = "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
-        PayoutLedgerHelper.postHoldOnRequest(ledgerService, landlordId, payoutCode, bankCode, PayoutLedgerHelper.maskAccount(accountNumber), command.amount());
+        if (availableBalance < command.amount()) throw new IllegalStateException("Số dư ví khả dụng không đủ (Hiện có: " + availableBalance + " VND)");
 
+        String payoutCode = "PO-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        String maskedAcc = PayoutLedgerHelper.maskAccount(accountNumber);
+        PayoutLedgerHelper.postHoldOnRequest(ledgerService, landlordId, payoutCode, bankCode, maskedAcc, command.amount());
         boolean needsApproval = command.amount() >= makerCheckerThresholdVnd && makerCheckerRepository != null;
-        String mcId = null;
-        if (needsApproval) {
-            MakerCheckerRequest mc = makerCheckerRepository.save(MakerCheckerRequest.create(
-                    landlordId, "PAYOUT_APPROVAL", command.amount(), "Rut tien gia tri cao >= " + makerCheckerThresholdVnd + " VND",
-                    String.format("{\"payoutCode\":\"%s\",\"bankCode\":\"%s\"}", payoutCode, bankCode)));
-            mcId = mc.getId();
-        }
+        String mcId = needsApproval ? makerCheckerRepository.save(MakerCheckerRequest.create(landlordId, "PAYOUT_APPROVAL", command.amount(),
+                "Rut tien gia tri cao >= " + makerCheckerThresholdVnd + " VND", String.format("{\"payoutCode\":\"%s\",\"bankCode\":\"%s\"}", payoutCode, bankCode))).getId() : null;
         PayoutRequest payout = PayoutRequest.create(payoutCode, landlordId, command.amount(), bankCode, accountNumber, accountHolder, true, needsApproval, mcId);
         if (idempotencyKey != null && !idempotencyKey.isBlank()) payout.setIdempotencyKey(idempotencyKey.trim());
         PayoutRequest saved = payoutRepository.save(payout);
         emitOutbox(needsApproval ? "PAYOUT_PENDING_APPROVAL" : "PAYOUT_REQUESTED", saved);
+        if (notificationPort != null) notificationPort.notifyAdminPayoutRequested(landlordId, saved.getPayoutCode(), saved.getAmount(), bankCode, maskedAcc);
         return PayoutLedgerHelper.toResponse(saved);
     }
 
@@ -129,12 +129,9 @@ public class PayoutService {
     public PayoutDto.PayoutResponse approvePayout(String payoutId, String checkerAdminId) {
         assertDisbursementAllowed();
         PayoutRequest payout = requirePayout(payoutId);
-        if ("PAID".equals(payout.getStatus()) || "COMPLETED".equals(payout.getStatus()) || "APPROVED".equals(payout.getStatus())) {
-            return PayoutLedgerHelper.toResponse(payout);
-        }
+        if ("PAID".equals(payout.getStatus()) || "COMPLETED".equals(payout.getStatus()) || "APPROVED".equals(payout.getStatus())) return PayoutLedgerHelper.toResponse(payout);
         if (payout.getMakerCheckerRequestId() != null && makerCheckerRepository != null) {
-            MakerCheckerRequest mc = makerCheckerRepository.findById(payout.getMakerCheckerRequestId())
-                    .orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
+            MakerCheckerRequest mc = makerCheckerRepository.findById(payout.getMakerCheckerRequestId()).orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
             mc.approve(checkerAdminId);
             makerCheckerRepository.save(mc);
         } else if (payout.getLandlordId().equals(checkerAdminId)) {
@@ -151,34 +148,38 @@ public class PayoutService {
         assertDisbursementAllowed();
         PayoutRequest payout = requirePayout(payoutId);
         if ("PAID".equals(payout.getStatus()) || "COMPLETED".equals(payout.getStatus())) return PayoutLedgerHelper.toResponse(payout);
-        if ("REJECTED".equals(payout.getStatus()) || "CANCELLED".equals(payout.getStatus())) {
-            throw new IllegalStateException("Không thể xác nhận đã chuyển cho yêu cầu đã hủy hoặc từ chối");
-        }
-        if (payout.isRequiresMakerChecker() && "PENDING_APPROVAL".equals(payout.getStatus())) {
-            throw new IllegalStateException("Yêu cầu rút tiền vượt ngưỡng phải được duyệt Maker-Checker (APPROVED) trước khi xác nhận đã chuyển!");
-        }
+        if ("REJECTED".equals(payout.getStatus()) || "CANCELLED".equals(payout.getStatus())) throw new IllegalStateException("Không thể xác nhận đã chuyển cho yêu cầu đã hủy hoặc từ chối");
+        if (payout.isRequiresMakerChecker() && "PENDING_APPROVAL".equals(payout.getStatus())) throw new IllegalStateException("Yêu cầu rút tiền vượt ngưỡng phải được duyệt Maker-Checker (APPROVED) trước khi xác nhận đã chuyển!");
         String normTx = PaymentReferenceCodeCodec.normalizeAlphanumericUpper(cmd != null ? cmd.bankTxCode() : null);
-        if (normTx.length() < 6 || normTx.length() > 36) {
-            throw new IllegalArgumentException("Mã giao dịch ngân hàng (FT...) không hợp lệ (cần 6-36 ký tự chữ/số)");
-        }
-        if (bankTxRegistry != null && bankTxRegistry.existsByNormalizedTxCode(normTx)) {
-            throw new IllegalStateException("Phát hiện trùng lặp: Mã giao dịch ngân hàng [" + normTx + "] đã được sử dụng trước đó!");
-        }
+        if (normTx.length() < 6 || normTx.length() > 36) throw new IllegalArgumentException("Mã giao dịch ngân hàng (FT...) không hợp lệ (cần 6-36 ký tự chữ/số)");
+        if (bankTxRegistry != null && bankTxRegistry.existsByNormalizedTxCode(normTx)) throw new IllegalStateException("Phát hiện trùng lặp: Mã giao dịch ngân hàng [" + normTx + "] đã được sử dụng trước đó!");
         if (bankTxRegistry != null) {
             bankTxRegistry.save(BankTransactionRecord.createOutflow(normTx, "ADMIN_PAYOUT", payout.getAmount(), payout.getPayoutCode(),
                     "PAYOUT", payout.getId(), PayoutLedgerHelper.maskAccount(payout.getAccountNumber()),
                     cmd != null && cmd.note() != null ? cmd.note() : "Admin giải ngân rút tiền", adminId, Instant.now()));
         }
         PayoutLedgerHelper.postPaidOutflow(ledgerService, payout, normTx, adminId, PayoutLedgerHelper.maskAccount(payout.getAccountNumber()));
-        RiskProfile riskProfile = riskProfileRepository.findByUserId(payout.getLandlordId())
-                .orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(payout.getLandlordId())));
+        RiskProfile riskProfile = riskProfileRepository.findByUserId(payout.getLandlordId()).orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(payout.getLandlordId())));
         riskProfile.recordWithdrawal(payout.getAmount(), LocalDate.now());
         riskProfileRepository.save(riskProfile);
 
-        payout.markPaid(normTx, cmd != null ? cmd.proofUrl() : null, adminId);
+        String storedProofUrl = cmd != null ? cmd.proofUrl() : null;
+        if (storedProofUrl != null && storedProofUrl.startsWith("data:image/") && proofStorageService != null) {
+            storedProofUrl = proofStorageService.storePayoutReceiptImage(payout.getId(), storedProofUrl);
+        }
+        payout.markPaid(normTx, storedProofUrl, adminId);
         PayoutRequest saved = payoutRepository.save(payout);
         emitOutbox("PAYOUT_PAID", saved);
+        if (notificationPort != null) notificationPort.notifyLandlordPayoutPaid(saved.getLandlordId(), saved.getPayoutCode(), saved.getAmount(), normTx);
         return PayoutLedgerHelper.toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] loadAuthorizedPayoutProofImage(String payoutId, String actorId, boolean isAdmin) {
+        PayoutRequest payout = requirePayout(payoutId);
+        if (!isAdmin && !payout.getLandlordId().equals(actorId)) throw new WebhookSecurityException(404, "Không tìm thấy biên lai giải ngân");
+        if (proofStorageService == null) throw new WebhookSecurityException(404, "Không tìm thấy biên lai giải ngân");
+        return proofStorageService.loadPayoutReceiptImage(payout.getId());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -198,8 +199,7 @@ public class PayoutService {
         if ("PAID".equals(payout.getStatus()) || "COMPLETED".equals(payout.getStatus())) throw new IllegalStateException("Không thể từ chối yêu cầu rút tiền đã hoàn tất");
         if ("REJECTED".equals(payout.getStatus()) || "CANCELLED".equals(payout.getStatus())) return PayoutLedgerHelper.toResponse(payout);
         if (payout.getMakerCheckerRequestId() != null && makerCheckerRepository != null) {
-            MakerCheckerRequest mc = makerCheckerRepository.findById(payout.getMakerCheckerRequestId())
-                    .orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
+            MakerCheckerRequest mc = makerCheckerRepository.findById(payout.getMakerCheckerRequestId()).orElseThrow(() -> new IllegalStateException("Thieu ban ghi Maker-Checker"));
             mc.reject(checkerAdminId, reason != null ? reason : "Tu choi boi quan tri vien");
             makerCheckerRepository.save(mc);
         }
@@ -214,13 +214,10 @@ public class PayoutService {
     @Transactional
     public RiskProfile markBankChangedByOwner(String landlordId, String otpCode) {
         verifyOtpCode(landlordId, otpCode);
-        RiskProfile profile = riskProfileRepository.findByUserId(landlordId).orElseGet(() -> RiskProfile.createDefault(landlordId));
+        RiskProfile profile = riskProfileRepository.findByUserId(landlordId).orElseGet(() -> riskProfileRepository.save(RiskProfile.createDefault(landlordId)));
         profile.markBankChanged(Instant.now());
         RiskProfile saved = riskProfileRepository.save(profile);
-        if (outboxRepository != null) {
-            outboxRepository.save(BillingEventOutbox.create("BANK_ACCOUNT_CHANGED", "RISK_PROFILE", landlordId,
-                    String.format("{\"landlordId\":\"%s\",\"message\":\"Tai khoan ngan hang da duoc cap nhat, kich hoat khoa rut tien 24h\"}", landlordId)));
-        }
+        if (outboxRepository != null) outboxRepository.save(BillingEventOutbox.create("BANK_ACCOUNT_CHANGED", "RISK_PROFILE", landlordId, "{\"landlordId\":\"" + landlordId + "\"}"));
         return saved;
     }
 
@@ -228,9 +225,7 @@ public class PayoutService {
     @Transactional(readOnly = true) public List<PayoutDto.PayoutResponse> getLandlordPayouts(String landlordId) { return payoutRepository.findByLandlordId(landlordId).stream().map(PayoutLedgerHelper::toResponse).toList(); }
 
     private PayoutRequest requirePayout(String payoutId) { return payoutRepository.findById(payoutId).orElseThrow(() -> new WebhookSecurityException(404, "Không tìm thấy yêu cầu rút tiền: " + payoutId)); }
-    private void assertDisbursementAllowed() {
-        if ("LIVE".equalsIgnoreCase(fintechMode) && !liveDisbursementEnabled) throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live disbursement disabled without license/partner sign-off.");
-    }
+    private void assertDisbursementAllowed() { if ("LIVE".equalsIgnoreCase(fintechMode) && !liveDisbursementEnabled) throw new IllegalStateException("BLOCKED_HUMAN_REVIEW [LEGAL-02]: Live disbursement disabled without license/partner sign-off."); }
     private void verifyOtpCode(String userId, String otp) {
         if (otp == null || otp.trim().isEmpty()) throw new AccessDeniedException("Yêu cầu mã TOTP để thực hiện giao dịch này");
         if (!otp.matches("^[0-9]{6,8}$")) throw new AccessDeniedException("Mã OTP xác thực phải gồm 6 chữ số hợp lệ.");

@@ -165,5 +165,22 @@ public class PaymentProofStorageService {
         return false;
     }
 
+    public String storePayoutReceiptImage(String payoutId, String receiptPayload) {
+        byte[] rawBytes = ProofImageCipherHelper.decodeReceiptBytes(receiptPayload);
+        ProofImageCipherHelper.verifyMagicBytes(rawBytes);
+        BufferedImage decoded = ProofImageCipherHelper.readAndValidateImage(rawBytes);
+        byte[] cleanBytes = ProofImageCipherHelper.reencodeWithoutMetadata(decoded);
+        ProofImageCipherHelper.writeEncryptedFile(storageDir, "payout-" + payoutId + ".enc", aesKey, cleanBytes);
+        return "/api/v1/billing/payouts/" + payoutId + "/proof-image";
+    }
+
+    public byte[] loadPayoutReceiptImage(String payoutId) {
+        try {
+            return ProofImageCipherHelper.readEncryptedFile(storageDir, "payout-" + payoutId + ".enc", aesKey);
+        } catch (IllegalArgumentException e) {
+            throw new WebhookSecurityException(404, "Không tìm thấy ảnh biên lai giải ngân");
+        }
+    }
+
     public record StreamedProof(PaymentProofRecord metadata, byte[] imageBytes) {}
 }

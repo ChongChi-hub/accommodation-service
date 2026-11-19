@@ -129,7 +129,7 @@ public class PaymentService {
         webhookProcessor.publishPaymentEvent(saved, "PAYMENT_SUBMITTED");
         if (notificationPort != null) {
             String tenantLabel = (req != null && req.payerName() != null && !req.payerName().isBlank()) ? req.payerName().trim() : actorId;
-            notificationPort.notifyAdminDepositSubmitted(tenantLabel, saved.getOrderId(), saved.getPaymentCode(), saved.getAmount());
+            notificationPort.notifyAdminPaymentSubmitted(tenantLabel, saved.getOrderType(), saved.getOrderId(), saved.getPaymentCode(), saved.getAmount());
         }
         return toResponse(saved);
     }

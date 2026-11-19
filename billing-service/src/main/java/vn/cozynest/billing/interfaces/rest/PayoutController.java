@@ -1,6 +1,8 @@
 package vn.cozynest.billing.interfaces.rest;
 
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -97,6 +99,18 @@ public class PayoutController {
         } catch (IllegalArgumentException ex) {
             throw new org.springframework.security.access.AccessDeniedException(ex.getMessage());
         }
+    }
+
+    @GetMapping("/{id}/proof-image")
+    public ResponseEntity<byte[]> getPayoutProofImage(@PathVariable String id, Authentication authentication) {
+        String actorId = String.valueOf(authentication.getPrincipal());
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equalsIgnoreCase(a.getAuthority()));
+        byte[] bytes = payoutService.loadAuthorizedPayoutProofImage(id, actorId, isAdmin);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .header("Pragma", "no-cache").header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.IMAGE_JPEG).body(bytes);
     }
 
     @GetMapping

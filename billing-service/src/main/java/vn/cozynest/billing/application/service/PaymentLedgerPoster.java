@@ -162,6 +162,13 @@ public class PaymentLedgerPoster {
         if (invoice != null) {
             invoice.recordPayment(paidChunk);
             invoiceRepository.save(invoice);
+            if (notificationPort != null) {
+                final String targetLandlord = landlordId;
+                final String targetTenant = invoice.getTenantId();
+                final String invCode = invoice.getInvoiceCode();
+                runAfterCommit(() -> notificationPort.notifyInvoicePaidWithCommission(
+                        targetLandlord, targetTenant, invCode, paidChunk, platformFee, landlordAmount));
+            }
         }
     }
 

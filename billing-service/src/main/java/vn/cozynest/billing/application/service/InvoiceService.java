@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.InvoiceDto;
 import vn.cozynest.billing.application.dto.LedgerDto;
 import vn.cozynest.billing.application.port.BillingContractPort;
+import vn.cozynest.billing.application.port.BillingNotificationPort;
 import vn.cozynest.billing.domain.model.BillingEventOutbox;
 import vn.cozynest.billing.domain.model.Invoice;
 import vn.cozynest.billing.domain.model.PostingDirection;
@@ -32,21 +33,30 @@ public class InvoiceService {
     private final Optional<UtilityReadingRepository> utilityReadingRepository;
     private final Optional<BillingEventOutboxRepository> outboxRepository;
     private final Optional<InvoicePdfService> pdfService;
+    private final Optional<BillingNotificationPort> notificationPort;
 
     public InvoiceService(InvoiceRepository repository, LedgerService ledgerService) {
-        this(repository, ledgerService, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        this(repository, ledgerService, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+    }
+
+    public InvoiceService(InvoiceRepository repository, LedgerService ledgerService,
+                          Optional<BillingContractPort> contractPort, Optional<UtilityReadingRepository> utilityReadingRepository,
+                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<InvoicePdfService> pdfService) {
+        this(repository, ledgerService, contractPort, utilityReadingRepository, outboxRepository, pdfService, Optional.empty());
     }
 
     @Autowired
     public InvoiceService(InvoiceRepository repository, LedgerService ledgerService,
                           Optional<BillingContractPort> contractPort, Optional<UtilityReadingRepository> utilityReadingRepository,
-                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<InvoicePdfService> pdfService) {
+                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<InvoicePdfService> pdfService,
+                          Optional<BillingNotificationPort> notificationPort) {
         this.repository = repository;
         this.ledgerService = ledgerService;
         this.contractPort = contractPort != null ? contractPort : Optional.empty();
         this.utilityReadingRepository = utilityReadingRepository != null ? utilityReadingRepository : Optional.empty();
         this.outboxRepository = outboxRepository != null ? outboxRepository : Optional.empty();
         this.pdfService = pdfService != null ? pdfService : Optional.empty();
+        this.notificationPort = notificationPort != null ? notificationPort : Optional.empty();
     }
 
     @Transactional
@@ -67,6 +77,8 @@ public class InvoiceService {
                 cmd.serviceAmount(), cmd.otherAmount(), availableCredit, cmd.dueDate());
         Invoice saved = repository.save(invoice);
         emitInvoiceEvent("INVOICE_GENERATED", saved);
+        notificationPort.ifPresent(port -> port.notifyTenantInvoiceCreated(
+                saved.getTenantId(), saved.getInvoiceCode(), String.valueOf(saved.getPeriodMonth()), saved.getTotalAmount()));
         return toResponse(saved);
     }
 
@@ -187,50 +199,32 @@ public class InvoiceService {
                         inv.getId(), inv.getInvoiceCode(), inv.getContractId(), inv.getTenantId(), inv.getStatus(), inv.getTotalAmount()))));
     }
 
-    @Transactional(readOnly = true)
-    public List<InvoiceDto.InvoiceResponse> getInvoicesForTenant(String tenantId) {
-        return repository.findByTenantId(tenantId).stream().map(this::toResponse).toList();
-    }
+    @Transactional(readOnly = true) public List<InvoiceDto.InvoiceResponse> getInvoicesForTenant(String tenantId) { return repository.findByTenantId(tenantId).stream().map(this::toResponse).toList(); }
+    @Transactional(readOnly = true) public List<InvoiceDto.InvoiceResponse> getInvoicesForLandlord(String landlordId) { return repository.findByLandlordId(landlordId).stream().map(this::toResponse).toList(); }
 
-    @Transactional(readOnly = true)
-    public List<InvoiceDto.InvoiceResponse> getInvoicesForLandlord(String landlordId) {
-        return repository.findByLandlordId(landlordId).stream().map(this::toResponse).toList();
-    }
-
-    @Transactional(readOnly = true)
-    public InvoiceDto.InvoiceResponse getInvoiceById(String id, String actorId, boolean isAdmin) {
-        Invoice inv = repository.findById(id)
-                .orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id));
-        if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) {
-            throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id);
-        }
+    @Transactional(readOnly = true) public InvoiceDto.InvoiceResponse getInvoiceById(String id, String actorId, boolean isAdmin) {
+        Invoice inv = repository.findById(id).orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id));
+        if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + id);
         return toResponse(inv);
     }
 
-    @Transactional
-    public InvoiceDto.InvoiceResponse sendManualReminder(String invoiceId, String actorId, boolean isAdmin) {
-        Invoice inv = repository.findById(invoiceId)
-                .orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId));
-        if (!isAdmin && !inv.getLandlordId().equals(actorId)) {
-            throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId);
-        }
+    @Transactional public InvoiceDto.InvoiceResponse sendManualReminder(String invoiceId, String actorId, boolean isAdmin) {
+        Invoice inv = repository.findById(invoiceId).orElseThrow(() -> new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId));
+        if (!isAdmin && !inv.getLandlordId().equals(actorId)) throw new vn.cozynest.billing.application.exception.WebhookSecurityException(404, "Khong tim thay hoa don: " + invoiceId);
         inv.recordManualReminder(java.time.Instant.now());
         Invoice saved = repository.save(inv);
         emitInvoiceEvent("INVOICE_OVERDUE_REMINDER", saved);
         return toResponse(saved);
     }
 
-    @Transactional
-    public void cancelInvoice(String id, String actorId, boolean isAdmin) {
+    @Transactional public void cancelInvoice(String id, String actorId, boolean isAdmin) {
         Invoice inv = findOrThrow(id);
         if (!isAdmin && !inv.getLandlordId().equals(actorId)) throw new AccessDeniedException("Ban khong co quyen huy hoa don nay");
         inv.cancel();
         repository.save(inv);
     }
 
-    private Invoice findOrThrow(String id) {
-        return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + id));
-    }
+    private Invoice findOrThrow(String id) { return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + id)); }
 
     private InvoiceDto.InvoiceResponse toResponse(Invoice i) {
         return new InvoiceDto.InvoiceResponse(
