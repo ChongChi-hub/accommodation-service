@@ -118,3 +118,4 @@ class ContractDepositActivationFlowTest {
         verify(outboxRepo).save(argThat((AppointmentEventOutbox e) -> "CONTRACT_LISTING_SYNC_RETRY".equals(e.getEventType())));
     }
 }
+

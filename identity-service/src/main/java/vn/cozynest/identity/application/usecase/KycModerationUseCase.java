@@ -215,7 +215,7 @@ public class KycModerationUseCase {
             userRepository.save(user);
 
             LandlordProfile profile = profileOpt.get();
-            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC || profile.getApprovalStatus() == LandlordApprovalStatus.REJECTED) {
                 profile.submitKyc();
             }
             profile.approve(reviewerId);
@@ -270,7 +270,7 @@ public class KycModerationUseCase {
         boolean isLandlordApplicant = profileOpt.isPresent();
         if (isLandlordApplicant) {
             LandlordProfile profile = profileOpt.get();
-            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC || profile.getApprovalStatus() == LandlordApprovalStatus.REJECTED) {
                 profile.submitKyc();
             }
             profile.reject(reviewerId, request.getReasonCode() != null ? request.getReasonCode().name() : "REJECTED", request.getReasonNote());

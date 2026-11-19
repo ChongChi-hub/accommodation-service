@@ -68,3 +68,4 @@ class ConcurrentRoomHoldAndIdorTest {
         assertThat(CancelReasonCode.valueOf("CHANGE_PLANS")).isEqualTo(CancelReasonCode.CHANGE_PLANS);
     }
 }
+

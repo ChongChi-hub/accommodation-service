@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.identity.application.dto.LandlordApplicationSummaryDto;
 import vn.cozynest.identity.domain.exception.IdentityDomainException;
 import vn.cozynest.identity.domain.model.KycStatus;
+import vn.cozynest.identity.domain.model.LandlordApprovalStatus;
 import vn.cozynest.identity.domain.model.LandlordProfile;
 import vn.cozynest.identity.domain.model.User;
 import vn.cozynest.identity.domain.model.UserRoleType;
@@ -65,12 +66,15 @@ public class LandlordApplicationUseCase {
             throw new IdentityDomainException("Bạn cần hoàn tất và được duyệt xác thực CCCD trước khi nâng cấp thành chủ trọ.", "ERR_KYC_NOT_VERIFIED");
         }
 
-        // Exclusively upgrade role to LANDLORD (completely removes TENANT role)
-        user.setSingleRole(UserRoleType.LANDLORD);
+        // Upgrade user with LANDLORD role (keeping existing TENANT role)
+        user.addRole(UserRoleType.LANDLORD);
         userRepository.save(user);
 
         LandlordProfile profile = landlordProfileRepository.findByUserId(userId)
                 .orElseGet(() -> LandlordProfile.createNew(userId));
+        if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC || profile.getApprovalStatus() == LandlordApprovalStatus.REJECTED) {
+            profile.submitKyc();
+        }
         profile.approve("AUTO_UPGRADE");
         landlordProfileRepository.save(profile);
 

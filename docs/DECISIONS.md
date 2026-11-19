@@ -619,3 +619,8 @@ sequenceDiagram
 ### 22.3. `[MAIL-EMAILJS]` — Cong gui Email da nha cung cap (`communication-service`)
 * Mac dinh giu `EMAIL_PROVIDER=smtp` (Mailpit). Ho tro `EMAIL_PROVIDER=emailjs|log` qua `EmailDispatchGateway` (`@Primary`) + `EmailJsMailTransport` (timeout 3s/5s, chi retry `429`/`5xx`, khong retry `400`).
 * Bang `email_outbox` (migration `V6`) chong gui trung theo `event_key`, han muc thang `EMAIL_MONTHLY_CAP=150`, gioi han theo nguoi nhan, che PII trong log, va `MAIL_REDIRECT_TO` chi cho phep o `dev`/`test` (fail-fast o `prod`).
+
+### 22.4. `[AUTH-KYC]` — Sua loi Nang cap Chu tro & Gui OTP Dang ky (`identity-service`)
+* **Nang cap Chu tro (`identity-service`):** `LandlordApplicationUseCase.upgradeToLandlord` cap them vai tro `LANDLORD` (giu nguyen `TENANT`), tu dong chuyen doi ho so `LandlordProfile` tu `AWAITING_KYC` (hoac `REJECTED`) sang `PENDING_REVIEW` qua `profile.submitKyc()` truoc khi goi `profile.approve("AUTO_UPGRADE")` de tuan thu chat che may trang thai domain, loai bo triet de loi `409 ERR_LANDLORD_INVALID_STATE_TRANSITION` (`Chỉ có thể phê duyệt hồ sơ đang chờ xét duyệt (PENDING_REVIEW). Trạng thái hiện tại: AWAITING_KYC`).
+* **Kiem duyet eKYC (`KycModerationUseCase`):** Dong bo chuyen trang thai ho so tu `AWAITING_KYC` hoac `REJECTED` sang `PENDING_REVIEW` truoc khi goi `approve()` hoac `reject()`.
+

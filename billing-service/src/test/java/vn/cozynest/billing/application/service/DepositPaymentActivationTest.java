@@ -117,3 +117,4 @@ class DepositPaymentActivationTest {
                 .hasMessageContaining("PENDING_SIGN");
     }
 }
+
