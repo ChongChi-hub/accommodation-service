@@ -42,9 +42,14 @@ public class InvoiceDto {
     public record GenerateFromContractCommand(
             @NotBlank(message = "Ma hop dong khong duoc de trong") String contractId,
             @NotNull(message = "Ky hoa don khong duoc de trong") LocalDate periodMonth,
-            @Min(0) long serviceAmount,
-            @Min(0) long otherAmount
-    ) {}
+            @Min(0) Long serviceAmount,
+            @Min(0) Long otherAmount
+    ) {
+        public GenerateFromContractCommand {
+            if (serviceAmount == null) serviceAmount = 0L;
+            if (otherAmount == null) otherAmount = 0L;
+        }
+    }
 
     public record ApplyLateFeeCommand(
             @Min(value = 1, message = "Phi tre han phai lon hon 0") long feeAmount

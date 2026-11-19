@@ -89,6 +89,9 @@ public class InvoiceService {
         if (!isAdmin && !snap.landlordId().equals(actorId)) {
             throw new AccessDeniedException("Ban khong co quyen tao hoa don cho hop dong cua chu tro khac");
         }
+        if (snap.status() != null && !"ACTIVE".equalsIgnoreCase(snap.status())) {
+            throw new IllegalStateException("Chi co the tao hoa don cho hop dong dang hieu luc (trang thai hien tai: " + snap.status() + ")");
+        }
         Optional<UtilityReading> reading = utilityReadingRepository
                 .flatMap(repo -> repo.findByContractIdAndPeriodMonth(cmd.contractId(), cmd.periodMonth()))
                 .filter(r -> !"CANCELLED".equals(r.getStatus()));

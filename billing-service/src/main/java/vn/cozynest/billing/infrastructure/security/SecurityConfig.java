@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/health",
+                                "/error",
                                 "/internal/**",
                                 "/api/v1/billing/payments/webhook/**"
                         ).permitAll()

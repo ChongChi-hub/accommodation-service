@@ -26,7 +26,7 @@ public class AppointmentEventOutboxJpaEntity {
     @Column(name = "aggregate_type", length = 50, nullable = false)
     private String aggregateType = "VIEWING_APPOINTMENT";
 
-    @Column(name = "aggregate_id", length = 36, nullable = false)
+    @Column(name = "aggregate_id", length = 64, nullable = false)
     private String aggregateId;
 
     @Column(name = "payload", columnDefinition = "JSON", nullable = false)
