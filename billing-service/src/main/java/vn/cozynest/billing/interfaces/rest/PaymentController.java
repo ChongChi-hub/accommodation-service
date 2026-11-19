@@ -49,6 +49,31 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Tạo yêu cầu thanh toán thành công", paymentService.createIntent(payerId, request)));
     }
 
+    @PostMapping({"/intent/{paymentCode}/submit", "/intents/{paymentCode}/submit"})
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> submitIntent(
+            @PathVariable String paymentCode,
+            @RequestBody(required = false) PaymentDto.SubmitIntentRequest request,
+            Authentication authentication) {
+        String actorId = String.valueOf(authentication.getPrincipal());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Đã ghi nhận thông báo chuyển khoản, đang chờ chủ trọ xác nhận",
+                paymentService.submitIntent(paymentCode, actorId, request)));
+    }
+
+    @PostMapping({"/intent/{paymentCode}/confirm", "/intents/{paymentCode}/confirm"})
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> confirmPayment(
+            @PathVariable String paymentCode,
+            @Valid @RequestBody PaymentDto.ConfirmPaymentRequest request,
+            Authentication authentication) {
+        String actorId = String.valueOf(authentication.getPrincipal());
+        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Xác nhận đã nhận tiền thành công",
+                paymentService.confirmPaymentByLandlordOrAdmin(paymentCode, request, actorId, isAdmin)));
+    }
+
     @PostMapping("/intent/{paymentCode}/cancel")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> cancelIntent(
@@ -82,7 +107,7 @@ public class PaymentController {
     }
 
     @PostMapping("/sandbox/simulate-webhook")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> simulateSandboxWebhook(
             @RequestBody Map<String, Object> payload,
             Authentication authentication) {
@@ -96,9 +121,8 @@ public class PaymentController {
                 ? Long.parseLong(String.valueOf(payload.get("amount")))
                 : 0L;
         String actorId = String.valueOf(authentication.getPrincipal());
-        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
-        return ResponseEntity.ok(ApiResponse.success("Mo phong webhook thanh cong (SANDBOX)",
-                paymentService.simulateSandboxWebhook(paymentCode, amount, actorId, isAdmin)));
+        return ResponseEntity.ok(ApiResponse.success("Mô phỏng webhook thành công (SANDBOX)",
+                paymentService.simulateSandboxWebhook(paymentCode, amount, actorId, true)));
     }
 
     @PostMapping("/webhook")
@@ -131,6 +155,14 @@ public class PaymentController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<PaymentDto.IntentResponse>>> manualQueue() {
         return ResponseEntity.ok(ApiResponse.success(paymentService.getManualInterventionQueue()));
+    }
+
+    @GetMapping({"/landlord/submitted", "/landlord/submissions"})
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<PaymentDto.IntentResponse>>> getLandlordSubmissions(
+            Authentication authentication) {
+        String actorId = String.valueOf(authentication.getPrincipal());
+        return ResponseEntity.ok(ApiResponse.success(paymentService.getLandlordSubmittedIntents(actorId)));
     }
 
     @GetMapping("/admin")

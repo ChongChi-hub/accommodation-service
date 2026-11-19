@@ -45,6 +45,19 @@ public class PaymentIntent {
                 Instant.now().plusSeconds(ttlMinutes * 60), Instant.now(), Instant.now());
     }
 
+    public void markSubmitted() {
+        if (!"PENDING".equals(this.status)) {
+            throw new IllegalStateException("Chi co the bao da chuyen tien khi giao dich o trang thai PENDING (hien tai: " + this.status + ")");
+        }
+        if (this.expiresAt != null && Instant.now().isAfter(this.expiresAt)) {
+            this.status = "EXPIRED";
+            this.updatedAt = Instant.now();
+            throw new IllegalStateException("Giao dich thanh toan da het han");
+        }
+        this.status = "SUBMITTED";
+        this.updatedAt = Instant.now();
+    }
+
     public PaymentOutcome recordGatewayPayment(long actualAmount, Instant now) {
         if (actualAmount <= 0) {
             throw new IllegalArgumentException("So tien nhan tu webhook phai lon hon 0");
@@ -57,7 +70,7 @@ public class PaymentIntent {
             this.updatedAt = now;
             return PaymentOutcome.LATE_AFTER_CANCEL;
         }
-        if ("EXPIRED".equals(this.status) || now.isAfter(this.expiresAt)) {
+        if ("EXPIRED".equals(this.status) || (this.expiresAt != null && now.isAfter(this.expiresAt))) {
             this.status = "EXPIRED";
             this.paidAmount += actualAmount;
             this.updatedAt = now;
@@ -85,7 +98,8 @@ public class PaymentIntent {
     }
 
     public boolean markExpiredIfPast(Instant now) {
-        if ("PENDING".equals(this.status) && now.isAfter(this.expiresAt)) {
+        if (("PENDING".equals(this.status) || "SUBMITTED".equals(this.status))
+                && this.expiresAt != null && now.isAfter(this.expiresAt)) {
             this.status = "EXPIRED";
             this.updatedAt = now;
             return true;

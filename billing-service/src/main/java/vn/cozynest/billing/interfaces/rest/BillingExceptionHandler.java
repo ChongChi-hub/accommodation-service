@@ -5,11 +5,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import vn.cozynest.billing.application.exception.ObligationAlreadyPaidException;
 import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.common.dto.ApiResponse;
 
 @RestControllerAdvice
 public class BillingExceptionHandler {
+
+    @ExceptionHandler(ObligationAlreadyPaidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleObligationAlreadyPaid(ObligationAlreadyPaidException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ex.getMessage(), "ERR_OBLIGATION_ALREADY_PAID"));
+    }
 
     @ExceptionHandler(WebhookSecurityException.class)
     public ResponseEntity<ApiResponse<Void>> handleWebhookSecurity(WebhookSecurityException ex) {

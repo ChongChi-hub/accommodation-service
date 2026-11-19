@@ -629,4 +629,28 @@ sequenceDiagram
 * **AppointmentExceptionHandler:** Loai bo viec ep toan bo `DataIntegrityViolationException` thanh loi trung gio xem phong; chi ap dung thong bao nay neu ngoai le thuc su lien quan den xem phong / lich hen.
 * **CommunicationEventListener:** Chuan hoa tieu de va noi dung thong bao tieng Viet than thien nguoi dung (thay the cac tieu de va ma dinh danh UUID tho nhu `Cap nhat RENTAL_REQUEST #...`, `TenantKycApproved`).
 
+---
+
+## 23. Quyet dinh Kien truc `[PAYMENT-HARDEN-VIETQR]` — Va lo hong thanh toan & Chuyen khoan VietQR
+
+### 23.1. Lo hong L1 (Nguoi thue tu xac nhan da thanh toan)
+* **Nguyen nhan goc:** Trinh duyet goi truc tiep webhook simulation hoac chuyen trang thai sang PAID khong qua kiem chung ngan hang.
+* **Quyet dinh:**
+  1. Tuyet doi khong cho phep nguoi thue (hoac API client bat ky) tu chuyen trang thai giao dich sang `PAID`/`HELD`.
+  2. Nguoi thue bam "Toi da chuyen tien" chi goi `POST /intent/{paymentCode}/submit`, chuyen `PaymentIntent.status` sang `SUBMITTED`, phat su kien `PAYMENT_SUBMITTED`, KHONG ghi so kep (General Ledger), KHONG kich hoat Escrow, KHONG chuyen trang thai hop dong.
+  3. Chi co nguon dang tin phia server moi duoc chot `PAID`: Webhook ky HMAC SHA-256 hop le, hoac Chu tro / Admin xac nhan thu cong kem so tien thuc nhan (`actualAmount`) va ma giao dich ngan hang (`bankTxCode`).
+
+### 23.2. Lo hong L2 (Tao ma VietQR cho khoan da thanh toan)
+* **Nguyen nhan goc:** Backend `PaymentService.createIntent` khong kiem tra tinh trang hoan thanh cua khoan no (obligation), client co the spam tao vo so payment intent du hop dong da `ACTIVE` hoac tien coc da o quy `HELD`.
+* **Quyet dinh:**
+  1. `PaymentObligationValidator` kiem tra trang thai hop dong phai la `AWAITING_DEPOSIT` va quy Escrow chua duoc bao dam (`HELD`/`RELEASED`). Neu da thanh toan hoac da bao dam, nem `ObligationAlreadyPaidException` tra ve HTTP `409 Conflict` voi ma loi `ERR_OBLIGATION_ALREADY_PAID`.
+  2. Idempotent: Neu dang co mot intent o trang thai `PENDING` hoac `SUBMITTED` chua het han, he thong tra lai intent dang hoat dong do, khong sinh ma moi.
+  3. Giao dien frontend: Neu khoan coc da thanh toan, nut "Tao ma thanh toan VietQR" bi vo hieu hoa (disabled) va hien thi nhan "Khoan coc da thanh toan" kem huy hieu "DA HOAN TAT COC".
+
+### 23.3. Quy trinh Doi soat Ngan hang phia Chu tro (Phase 4)
+* **Endpoint moi:** `GET /api/v1/billing/payments/landlord/submitted` cho phep chu tro xem danh sach cac khoan nguoi thue da bao chuyen khoan.
+* **Xac nhan thu cong:** `POST /api/v1/billing/payments/intent/{paymentCode}/confirm` bat buoc nhap `bankTxCode` (vi du ma FT cua Vietcombank) va `actualAmount`.
+* **Kiem tra so tien:** Backend xac thuc `actualAmount >= intent.amount`. Neu du tien, chuyen sang `PAID` (hoac `OVERPAID`), ghi so kep voi ma tham chieu `MANUAL-<bankTxCode>`, ghi giu coc vao `escrow_holds` (`HELD`), va chuyen hop dong sang `ACTIVE`. Neu it hon, ghi nhan `PARTIAL_PAID` va khong kich hoat coc.
+
+
 

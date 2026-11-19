@@ -23,6 +23,21 @@ public class PaymentDto {
         }
     }
 
+    public record SubmitIntentRequest(
+            String note,
+            String receiptUrl
+    ) {}
+
+    public record ConfirmPaymentRequest(
+            @Min(value = 1, message = "Số tiền thực nhận phải lớn hơn 0")
+            long actualAmount,
+
+            @NotBlank(message = "Mã giao dịch ngân hàng không được để trống")
+            String bankTxCode,
+
+            String note
+    ) {}
+
     public record IntentResponse(
             String id,
             String paymentCode,
@@ -55,4 +70,3 @@ public class PaymentDto {
             long timestamp
     ) {}
 }
-

@@ -6,6 +6,9 @@ import vn.cozynest.billing.domain.repository.PaymentIntentRepository;
 import vn.cozynest.billing.infrastructure.persistence.entity.PaymentIntentJpaEntity;
 import vn.cozynest.billing.infrastructure.persistence.repository.SpringDataPaymentIntentRepository;
 
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -35,21 +38,32 @@ public class PaymentIntentRepositoryAdapter implements PaymentIntentRepository {
 
     @Override
     public Optional<PaymentIntent> findByOrderIdAndType(String orderId, String orderType) {
-        return repository.findByOrderIdAndOrderType(orderId, orderType).map(this::toDomain);
+        return repository.findByOrderIdAndOrderType(orderId, orderType).stream().findFirst().map(this::toDomain);
     }
 
     @Override
-    public java.util.List<PaymentIntent> findPendingExpiredBefore(java.time.Instant cutoff) {
-        return repository.findByStatusAndExpiresAtBefore("PENDING", cutoff).stream().map(this::toDomain).toList();
+    public List<PaymentIntent> findByOrderIdAndOrderType(String orderId, String orderType) {
+        return repository.findByOrderIdAndOrderType(orderId, orderType).stream().map(this::toDomain).toList();
     }
 
     @Override
-    public java.util.List<PaymentIntent> findByOrderIdAndOrderTypeAndStatus(String orderId, String orderType, String status) {
+    public List<PaymentIntent> findPendingExpiredBefore(Instant cutoff) {
+        return repository.findByStatusInAndExpiresAtBefore(List.of("PENDING", "SUBMITTED"), cutoff)
+                .stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<PaymentIntent> findByOrderIdAndOrderTypeAndStatus(String orderId, String orderType, String status) {
         return repository.findByOrderIdAndOrderTypeAndStatus(orderId, orderType, status).stream().map(this::toDomain).toList();
     }
 
     @Override
-    public java.util.List<PaymentIntent> findAll() {
+    public List<PaymentIntent> findByOrderIdAndOrderTypeAndStatusIn(String orderId, String orderType, Collection<String> statuses) {
+        return repository.findByOrderIdAndOrderTypeAndStatusIn(orderId, orderType, statuses).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public List<PaymentIntent> findAll() {
         return repository.findAll().stream().map(this::toDomain).toList();
     }
 
@@ -87,4 +101,3 @@ public class PaymentIntentRepositoryAdapter implements PaymentIntentRepository {
                 .build();
     }
 }
-

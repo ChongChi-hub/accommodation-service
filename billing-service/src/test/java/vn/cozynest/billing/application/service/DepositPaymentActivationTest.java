@@ -88,7 +88,7 @@ class DepositPaymentActivationTest {
         when(intentRepo.findByPaymentCode(created.paymentCode())).thenReturn(Optional.of(activePending));
         when(contractPort.activateContractAfterDeposit("ct-new-1", created.paymentCode(), 4_500_000L)).thenReturn(true);
 
-        PaymentDto.IntentResponse paid = service.simulateSandboxWebhook(created.paymentCode(), 4_500_000L, "u-tenant-01", false);
+        PaymentDto.IntentResponse paid = service.simulateSandboxWebhook(created.paymentCode(), 4_500_000L, "u-tenant-01", true);
         assertThat(paid.status()).isEqualTo("PAID");
         verify(contractPort, times(1)).activateContractAfterDeposit("ct-new-1", created.paymentCode(), 4_500_000L);
     }
