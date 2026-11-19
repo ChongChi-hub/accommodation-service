@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import vn.cozynest.billing.application.dto.LedgerDto;
 import vn.cozynest.billing.application.port.BillingContractPort;
+import vn.cozynest.billing.application.port.BillingNotificationPort;
 import vn.cozynest.billing.domain.model.*;
 import vn.cozynest.billing.domain.repository.InvoiceRepository;
 
@@ -17,8 +18,19 @@ public class PaymentLedgerPoster {
     private final InvoiceRepository invoiceRepository;
     private final EscrowService escrowService;
     private final BillingContractPort contractPort;
+    private final BillingNotificationPort notificationPort;
     private final String fintechMode;
     private final boolean liveCustodyEnabled;
+
+    public PaymentLedgerPoster(
+            LedgerService ledgerService,
+            InvoiceRepository invoiceRepository,
+            EscrowService escrowService,
+            BillingContractPort contractPort,
+            String fintechMode,
+            boolean liveCustodyEnabled) {
+        this(ledgerService, invoiceRepository, escrowService, contractPort, null, fintechMode, liveCustodyEnabled);
+    }
 
     @Autowired
     public PaymentLedgerPoster(
@@ -26,12 +38,14 @@ public class PaymentLedgerPoster {
             InvoiceRepository invoiceRepository,
             @Autowired(required = false) EscrowService escrowService,
             @Autowired(required = false) BillingContractPort contractPort,
+            @Autowired(required = false) BillingNotificationPort notificationPort,
             @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
             @Value("${fintech.escrow.live-custody-enabled:false}") boolean liveCustodyEnabled) {
         this.ledgerService = ledgerService;
         this.invoiceRepository = invoiceRepository;
         this.escrowService = escrowService;
         this.contractPort = contractPort;
+        this.notificationPort = notificationPort;
         this.fintechMode = fintechMode;
         this.liveCustodyEnabled = liveCustodyEnabled;
     }
@@ -59,21 +73,24 @@ public class PaymentLedgerPoster {
                         new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.DEBIT, paidChunk),
                         new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, paidChunk)));
 
-        if (escrowService != null) {
-            String contractId = intent.getOrderId();
-            String tenantId = intent.getPayerId();
-            String landlordId = "u-landlord-01";
-            if (contractPort != null) {
-                var snap = contractPort.getContractSnapshot(contractId, LocalDate.now());
-                if (snap.isPresent()) {
-                    tenantId = snap.get().tenantId();
-                    landlordId = snap.get().landlordId();
-                }
+        String contractId = intent.getOrderId();
+        String tenantId = intent.getPayerId();
+        String landlordId = "u-landlord-01";
+        if (contractPort != null) {
+            var snap = contractPort.getContractSnapshot(contractId, LocalDate.now());
+            if (snap.isPresent()) {
+                tenantId = snap.get().tenantId();
+                landlordId = snap.get().landlordId();
             }
+        }
+        if (escrowService != null) {
             escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
         }
         if (contractPort != null && ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus()))) {
             contractPort.activateContractAfterDeposit(intent.getOrderId(), intent.getPaymentCode(), intent.getPaidAmount());
+        }
+        if (notificationPort != null) {
+            notificationPort.notifyDepositConfirmed(landlordId, intent.getOrderId(), paidChunk);
         }
     }
 

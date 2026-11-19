@@ -98,7 +98,7 @@ public class PaymentIntent {
     }
 
     public boolean markExpiredIfPast(Instant now) {
-        if (("PENDING".equals(this.status) || "SUBMITTED".equals(this.status))
+        if ("PENDING".equals(this.status)
                 && this.expiresAt != null && now.isAfter(this.expiresAt)) {
             this.status = "EXPIRED";
             this.updatedAt = now;

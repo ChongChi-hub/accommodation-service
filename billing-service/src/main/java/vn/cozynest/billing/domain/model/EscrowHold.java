@@ -69,7 +69,7 @@ public class EscrowHold {
     }
 
     public void activateFromDeposit(long paidAmount, long inspectionHours) {
-        if ("AWAITING_DEPOSIT".equals(status)) {
+        if ("AWAITING_DEPOSIT".equals(status) || "CANCELLED".equals(status)) {
             if (paidAmount > 0) {
                 this.amount = paidAmount;
             }

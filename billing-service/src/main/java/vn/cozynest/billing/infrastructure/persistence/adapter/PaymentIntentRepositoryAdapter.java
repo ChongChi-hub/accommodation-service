@@ -48,7 +48,7 @@ public class PaymentIntentRepositoryAdapter implements PaymentIntentRepository {
 
     @Override
     public List<PaymentIntent> findPendingExpiredBefore(Instant cutoff) {
-        return repository.findByStatusInAndExpiresAtBefore(List.of("PENDING", "SUBMITTED"), cutoff)
+        return repository.findByStatusInAndExpiresAtBefore(List.of("PENDING"), cutoff)
                 .stream().map(this::toDomain).toList();
     }
 
