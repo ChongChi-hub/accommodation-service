@@ -9,7 +9,7 @@ public interface PayoutRequestRepository {
     PayoutRequest save(PayoutRequest request);
     Optional<PayoutRequest> findById(String id);
     Optional<PayoutRequest> findByPayoutCode(String payoutCode);
+    Optional<PayoutRequest> findByIdempotencyKey(String idempotencyKey);
     List<PayoutRequest> findByLandlordId(String landlordId);
     List<PayoutRequest> findAll();
 }
-

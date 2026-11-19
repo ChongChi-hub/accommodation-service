@@ -81,7 +81,7 @@ public class InvoiceController {
     }
 
     @PostMapping("/{id}/payments")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InvoiceDto.InvoiceResponse>> recordPayment(
             @PathVariable String id,
             @Valid @RequestBody InvoiceDto.RecordPaymentCommand command,

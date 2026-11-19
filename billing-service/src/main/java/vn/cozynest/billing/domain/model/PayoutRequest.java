@@ -6,6 +6,7 @@ import java.util.UUID;
 public class PayoutRequest {
     private final String id;
     private final String payoutCode;
+    private String idempotencyKey;
     private final String landlordId;
     private final long amount;
     private final String bankCode;
@@ -16,6 +17,11 @@ public class PayoutRequest {
     private boolean requiresMakerChecker;
     private String makerCheckerRequestId;
     private String failureReason;
+    private String bankTxCode;
+    private String proofUrl;
+    private String approvedBy;
+    private String paidBy;
+    private Instant paidAt;
     private final Instant createdAt;
     private Instant updatedAt;
 
@@ -57,22 +63,23 @@ public class PayoutRequest {
     public static PayoutRequest create(String payoutCode, String landlordId, long amount,
                                        String bankCode, String accountNumber, String accountHolder,
                                        boolean otpVerified, boolean requiresMakerChecker, String makerCheckerRequestId) {
-        return new PayoutRequest(
-                UUID.randomUUID().toString(),
-                payoutCode,
-                landlordId,
-                amount,
-                bankCode,
-                accountNumber,
-                accountHolder,
-                requiresMakerChecker ? "PENDING_APPROVAL" : "REQUESTED",
-                otpVerified,
-                requiresMakerChecker,
-                makerCheckerRequestId,
-                null,
-                Instant.now(),
-                Instant.now()
-        );
+        return new PayoutRequest(UUID.randomUUID().toString(), payoutCode, landlordId, amount,
+                bankCode, accountNumber, accountHolder, requiresMakerChecker ? "PENDING_APPROVAL" : "REQUESTED",
+                otpVerified, requiresMakerChecker, makerCheckerRequestId, null, Instant.now(), Instant.now());
+    }
+
+    public void attachExtendedFields(String idempotencyKey, String bankTxCode, String proofUrl,
+                                     String approvedBy, String paidBy, Instant paidAt) {
+        this.idempotencyKey = idempotencyKey;
+        this.bankTxCode = bankTxCode;
+        this.proofUrl = proofUrl;
+        this.approvedBy = approvedBy;
+        this.paidBy = paidBy;
+        this.paidAt = paidAt;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public void approve() {
@@ -80,8 +87,32 @@ public class PayoutRequest {
         this.updatedAt = Instant.now();
     }
 
+    public void approveBy(String adminId) {
+        this.status = "APPROVED";
+        this.approvedBy = adminId;
+        this.updatedAt = Instant.now();
+    }
+
     public void complete() {
         this.status = "COMPLETED";
+        this.paidAt = Instant.now();
+        this.updatedAt = this.paidAt;
+    }
+
+    public void markPaid(String bankTxCode, String proofUrl, String adminId) {
+        this.status = "PAID";
+        this.bankTxCode = bankTxCode;
+        this.proofUrl = proofUrl;
+        this.paidBy = adminId;
+        this.paidAt = Instant.now();
+        this.updatedAt = this.paidAt;
+    }
+
+    public void cancelByLandlord() {
+        if (!"REQUESTED".equals(this.status) && !"PENDING_APPROVAL".equals(this.status)) {
+            throw new IllegalStateException("Chỉ có thể hủy yêu cầu rút tiền khi chưa được duyệt (trạng thái hiện tại: " + this.status + ")");
+        }
+        this.status = "CANCELLED";
         this.updatedAt = Instant.now();
     }
 
@@ -99,6 +130,7 @@ public class PayoutRequest {
 
     public String getId() { return id; }
     public String getPayoutCode() { return payoutCode; }
+    public String getIdempotencyKey() { return idempotencyKey; }
     public String getLandlordId() { return landlordId; }
     public long getAmount() { return amount; }
     public String getBankCode() { return bankCode; }
@@ -109,7 +141,11 @@ public class PayoutRequest {
     public boolean isRequiresMakerChecker() { return requiresMakerChecker; }
     public String getMakerCheckerRequestId() { return makerCheckerRequestId; }
     public String getFailureReason() { return failureReason; }
+    public String getBankTxCode() { return bankTxCode; }
+    public String getProofUrl() { return proofUrl; }
+    public String getApprovedBy() { return approvedBy; }
+    public String getPaidBy() { return paidBy; }
+    public Instant getPaidAt() { return paidAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
-

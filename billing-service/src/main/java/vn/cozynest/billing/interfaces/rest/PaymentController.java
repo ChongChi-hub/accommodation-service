@@ -57,12 +57,12 @@ public class PaymentController {
             Authentication authentication) {
         String actorId = String.valueOf(authentication.getPrincipal());
         return ResponseEntity.ok(ApiResponse.success(
-                "Đã ghi nhận thông báo chuyển khoản, đang chờ chủ trọ xác nhận",
+                "Đã ghi nhận thông báo chuyển khoản, đang chờ hệ thống xác minh tiền về tài khoản sàn",
                 paymentService.submitIntent(paymentCode, actorId, request)));
     }
 
     @PostMapping({"/intent/{paymentCode}/confirm", "/intents/{paymentCode}/confirm"})
-    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PaymentDto.IntentResponse>> confirmPayment(
             @PathVariable String paymentCode,
             @Valid @RequestBody PaymentDto.ConfirmPaymentRequest request,
@@ -70,7 +70,7 @@ public class PaymentController {
         String actorId = String.valueOf(authentication.getPrincipal());
         boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         return ResponseEntity.ok(ApiResponse.success(
-                "Xác nhận đã nhận tiền thành công",
+                "Admin xác nhận đã nhận tiền thành công",
                 paymentService.confirmPaymentByLandlordOrAdmin(paymentCode, request, actorId, isAdmin)));
     }
 

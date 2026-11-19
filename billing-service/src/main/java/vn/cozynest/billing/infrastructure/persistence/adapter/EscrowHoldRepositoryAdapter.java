@@ -22,17 +22,25 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
     public EscrowHold save(EscrowHold h) {
         EscrowHoldJpaEntity saved = repository.save(EscrowHoldJpaEntity.builder()
                 .id(h.getId()).contractId(h.getContractId()).tenantId(h.getTenantId())
-                .landlordId(h.getLandlordId()).amount(h.getAmount()).status(h.getStatus())
+                .landlordId(h.getLandlordId()).amount(h.getAmount())
+                .releasedAmount(h.getReleasedAmount()).retainedAmount(h.getRetainedAmount())
+                .status(h.getStatus())
                 .sandboxMode(h.isSandboxMode())
                 .tenantConfirmedMoveIn(h.isTenantConfirmedMoveIn())
                 .landlordConfirmedMoveIn(h.isLandlordConfirmedMoveIn())
                 .moveInConfirmedAt(h.getMoveInConfirmedAt())
+                .pendingReleaseUntil(h.getPendingReleaseUntil())
+                .pendingSettled(h.isPendingSettled())
                 .inspectionEndsAt(h.getInspectionEndsAt())
                 .disputeReason(h.getDisputeReason())
                 .paymentCode(h.getPaymentCode())
                 .bankTxCode(h.getBankTxCode())
                 .receiptHash(h.getReceiptHash())
                 .receiptUrl(h.getReceiptUrl())
+                .deductionClaimAmount(h.getDeductionClaimAmount())
+                .deductionClaimReason(h.getDeductionClaimReason())
+                .deductionClaimProofUrl(h.getDeductionClaimProofUrl())
+                .deductionClaimStatus(h.getDeductionClaimStatus())
                 .releasedAt(h.getReleasedAt())
                 .createdAt(h.getCreatedAt()).updatedAt(h.getUpdatedAt())
                 .build());
@@ -81,7 +89,9 @@ public class EscrowHoldRepositoryAdapter implements EscrowHoldRepository {
                 e.getInspectionEndsAt(),
                 e.getDisputeReason(), e.getReleasedAt(), e.getCreatedAt(), e.getUpdatedAt());
         hold.attachPaymentProof(e.getPaymentCode(), e.getBankTxCode(), e.getReceiptHash(), e.getReceiptUrl());
+        hold.configurePartialFields(e.getReleasedAmount(), e.getRetainedAmount(), e.getPendingReleaseUntil(),
+                e.isPendingSettled(), e.getDeductionClaimAmount(), e.getDeductionClaimReason(),
+                e.getDeductionClaimProofUrl(), e.getDeductionClaimStatus());
         return hold;
     }
 }
-

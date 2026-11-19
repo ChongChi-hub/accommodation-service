@@ -95,7 +95,7 @@ public class PaymentReconciliationService {
         long completedPayouts = 0L;
         if (payoutRepository != null) {
             for (PayoutRequest p : payoutRepository.findAll()) {
-                if ("COMPLETED".equals(p.getStatus())) {
+                if ("COMPLETED".equals(p.getStatus()) || "PAID".equals(p.getStatus())) {
                     completedPayouts += p.getAmount();
                     totalOutflowTx++;
                     matchedCount++;

@@ -59,19 +59,16 @@ public class LedgerAccount {
         // ASSET & EXPENSE: Debit increases, Credit decreases
         // LIABILITY, EQUITY, REVENUE: Credit increases, Debit decreases
         boolean isNormalDebit = (accountType == AccountType.ASSET || accountType == AccountType.EXPENSE);
+        long nextBalance;
         if (isNormalDebit) {
-            if (direction == PostingDirection.DEBIT) {
-                this.balance += amount;
-            } else {
-                this.balance -= amount;
-            }
+            nextBalance = (direction == PostingDirection.DEBIT) ? (this.balance + amount) : (this.balance - amount);
         } else {
-            if (direction == PostingDirection.CREDIT) {
-                this.balance += amount;
-            } else {
-                this.balance -= amount;
-            }
+            nextBalance = (direction == PostingDirection.CREDIT) ? (this.balance + amount) : (this.balance - amount);
         }
+        if (nextBalance < 0 && accountNumber != null && (accountNumber.startsWith("2020-") || accountNumber.startsWith("2025-") || accountNumber.startsWith("2030-"))) {
+            throw new IllegalStateException("Số dư tài khoản " + accountNumber + " không đủ (hiện có " + this.balance + " VND, yêu cầu trừ " + amount + " VND)");
+        }
+        this.balance = nextBalance;
         this.updatedAt = Instant.now();
     }
 

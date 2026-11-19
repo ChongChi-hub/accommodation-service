@@ -45,12 +45,36 @@ cozynest:
     enabled: ${COZYNEST_BROKER_ENABLED:false}
 
 fintech:
+  mode: ${FINTECH_MODE:SANDBOX_ONLY}
+  platform:
+    bank-code: ${FINTECH_PLATFORM_BANK_CODE:VCB}
+    bank-bin: ${FINTECH_PLATFORM_BANK_BIN:970436}
+    account-number: ${FINTECH_PLATFORM_ACCOUNT_NUMBER:1042701900}
+    account-holder: ${FINTECH_PLATFORM_ACCOUNT_HOLDER:LE THANH CUONG}
+  webhook:
+    provider: ${FINTECH_WEBHOOK_PROVIDER:FAKE}
+    window-seconds: ${FINTECH_WEBHOOK_WINDOW_SECONDS:300}
+  commission:
+    percent: ${COMMISSION_PERCENT:5}
+  deposit:
+    release-percent: ${DEPOSIT_RELEASE_PERCENT:50}
+  withdrawal:
+    hold-days: ${WITHDRAWAL_HOLD_DAYS:0}
+    min-amount: ${WITHDRAWAL_MIN_AMOUNT:1000}
+  payout:
+    maker-checker-threshold-vnd: ${PAYOUT_MAKER_CHECKER_THRESHOLD_VND:10000000}
+  payment:
+    manual-maker-checker-threshold-vnd: ${MANUAL_PAYMENT_MAKER_CHECKER_THRESHOLD_VND:10000000}
+  proof:
+    storage-dir: ${FINTECH_PROOF_STORAGE_DIR:./storage/private-proofs}
+    encryption-key: ${FINTECH_PROOF_ENCRYPTION_KEY:cozynest-private-proof-aes256-key-2026}
   gateway:
     qr-base-url: ${FINTECH_GATEWAY_QR_BASE_URL:https://img.vietqr.io/image}
     bank-bin: ${FINTECH_GATEWAY_BANK_BIN:970436}
     virtual-account: ${FINTECH_GATEWAY_VIRTUAL_ACCOUNT:1042701900}
     account-name: ${FINTECH_GATEWAY_ACCOUNT_NAME:LE THANH CUONG}
     kill-switch: ${FINTECH_GATEWAY_KILL_SWITCH:false}
+    webhook-secret: ${FINTECH_GATEWAY_WEBHOOK_SECRET:cozynest-dev-fake-webhook-secret-2026}
 
 app:
   identity-service:

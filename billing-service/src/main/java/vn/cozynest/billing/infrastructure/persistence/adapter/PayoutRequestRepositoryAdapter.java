@@ -19,9 +19,7 @@ public class PayoutRequestRepositoryAdapter implements PayoutRequestRepository {
 
     @Override
     public PayoutRequest save(PayoutRequest domain) {
-        PayoutRequestJpaEntity entity = toEntity(domain);
-        PayoutRequestJpaEntity saved = repository.save(entity);
-        return toDomain(saved);
+        return toDomain(repository.save(toEntity(domain)));
     }
 
     @Override
@@ -35,6 +33,12 @@ public class PayoutRequestRepositoryAdapter implements PayoutRequestRepository {
     }
 
     @Override
+    public Optional<PayoutRequest> findByIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) return Optional.empty();
+        return repository.findByIdempotencyKey(idempotencyKey.trim()).map(this::toDomain);
+    }
+
+    @Override
     public List<PayoutRequest> findByLandlordId(String landlordId) {
         return repository.findByLandlordIdOrderByCreatedAtDesc(landlordId).stream().map(this::toDomain).toList();
     }
@@ -44,42 +48,41 @@ public class PayoutRequestRepositoryAdapter implements PayoutRequestRepository {
         return repository.findAll().stream().map(this::toDomain).toList();
     }
 
-    private PayoutRequest toDomain(PayoutRequestJpaEntity entity) {
-        return new PayoutRequest(
-                entity.getId(),
-                entity.getPayoutCode(),
-                entity.getLandlordId(),
-                entity.getAmount(),
-                entity.getBankCode(),
-                entity.getAccountNumber(),
-                entity.getAccountHolder(),
-                entity.getStatus(),
-                entity.isOtpVerified(),
-                entity.isRequiresMakerChecker(),
-                entity.getMakerCheckerRequestId(),
-                entity.getFailureReason(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
+    private PayoutRequest toDomain(PayoutRequestJpaEntity e) {
+        PayoutRequest r = new PayoutRequest(
+                e.getId(), e.getPayoutCode(), e.getLandlordId(), e.getAmount(),
+                e.getBankCode(), e.getAccountNumber(), e.getAccountHolder(),
+                e.getStatus(), e.isOtpVerified(), e.isRequiresMakerChecker(),
+                e.getMakerCheckerRequestId(), e.getFailureReason(),
+                e.getCreatedAt(), e.getUpdatedAt()
         );
+        r.attachExtendedFields(e.getIdempotencyKey(), e.getBankTxCode(), e.getProofUrl(),
+                e.getApprovedBy(), e.getPaidBy(), e.getPaidAt());
+        return r;
     }
 
-    private PayoutRequestJpaEntity toEntity(PayoutRequest domain) {
+    private PayoutRequestJpaEntity toEntity(PayoutRequest d) {
         return PayoutRequestJpaEntity.builder()
-                .id(domain.getId())
-                .payoutCode(domain.getPayoutCode())
-                .landlordId(domain.getLandlordId())
-                .amount(domain.getAmount())
-                .bankCode(domain.getBankCode())
-                .accountNumber(domain.getAccountNumber())
-                .accountHolder(domain.getAccountHolder())
-                .status(domain.getStatus())
-                .otpVerified(domain.isOtpVerified())
-                .requiresMakerChecker(domain.isRequiresMakerChecker())
-                .makerCheckerRequestId(domain.getMakerCheckerRequestId())
-                .failureReason(domain.getFailureReason())
-                .createdAt(domain.getCreatedAt())
-                .updatedAt(domain.getUpdatedAt())
+                .id(d.getId())
+                .payoutCode(d.getPayoutCode())
+                .idempotencyKey(d.getIdempotencyKey())
+                .landlordId(d.getLandlordId())
+                .amount(d.getAmount())
+                .bankCode(d.getBankCode())
+                .accountNumber(d.getAccountNumber())
+                .accountHolder(d.getAccountHolder())
+                .status(d.getStatus())
+                .otpVerified(d.isOtpVerified())
+                .requiresMakerChecker(d.isRequiresMakerChecker())
+                .makerCheckerRequestId(d.getMakerCheckerRequestId())
+                .failureReason(d.getFailureReason())
+                .bankTxCode(d.getBankTxCode())
+                .proofUrl(d.getProofUrl())
+                .approvedBy(d.getApprovedBy())
+                .paidBy(d.getPaidBy())
+                .paidAt(d.getPaidAt())
+                .createdAt(d.getCreatedAt())
+                .updatedAt(d.getUpdatedAt())
                 .build();
     }
 }
-

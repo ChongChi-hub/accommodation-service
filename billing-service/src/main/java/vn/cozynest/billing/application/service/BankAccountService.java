@@ -4,21 +4,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.cozynest.billing.application.dto.SaveBankAccountRequest;
 import vn.cozynest.billing.application.dto.UserBankAccountDto;
-import vn.cozynest.billing.infrastructure.persistence.entity.UserBankAccountJpaEntity;
-import vn.cozynest.billing.infrastructure.persistence.repository.SpringDataUserBankAccountRepository;
+import vn.cozynest.billing.domain.model.UserBankAccount;
+import vn.cozynest.billing.domain.repository.UserBankAccountRepository;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class BankAccountService {
 
-    private final SpringDataUserBankAccountRepository repository;
+    private final UserBankAccountRepository repository;
 
-    public BankAccountService(SpringDataUserBankAccountRepository repository) {
+    public BankAccountService(UserBankAccountRepository repository) {
         this.repository = repository;
     }
 
@@ -31,22 +29,29 @@ public class BankAccountService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<UserBankAccount> findDomainByUserId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
     public boolean hasValidBankAccount(String userId) {
-        return getByUserId(userId)
-                .filter(a -> a.bankCode() != null && !a.bankCode().isBlank()
-                        && a.accountNumber() != null && !a.accountNumber().isBlank()
-                        && a.accountHolder() != null && !a.accountHolder().isBlank()
-                        && a.qrCodeUrl() != null && !a.qrCodeUrl().isBlank())
+        return findDomainByUserId(userId)
+                .filter(UserBankAccount::isMatched)
+                .filter(a -> a.getQrCodeUrl() != null && !a.getQrCodeUrl().isBlank())
                 .isPresent();
     }
 
     @Transactional(readOnly = true)
     public UserBankAccountDto requireValidBankAccount(String userId, String roleLabel) {
-        return getByUserId(userId)
-                .filter(a -> a.accountNumber() != null && !a.accountNumber().isBlank()
-                        && a.qrCodeUrl() != null && !a.qrCodeUrl().isBlank())
+        return findDomainByUserId(userId)
+                .filter(UserBankAccount::isMatched)
+                .filter(a -> a.getQrCodeUrl() != null && !a.getQrCodeUrl().isBlank())
+                .map(this::toDto)
                 .orElseThrow(() -> new IllegalStateException(
-                        roleLabel + " bắt buộc phải cung cấp Số tài khoản ngân hàng và Mã QR tại mục Tài khoản ngân hàng & QR để Sàn có thông tin giải ngân hoặc hoàn tiền."));
+                        roleLabel + " bắt buộc phải cung cấp Số tài khoản ngân hàng (MATCHED) và Mã QR tại mục Tài khoản ngân hàng & QR để Sàn có thông tin giải ngân hoặc hoàn tiền."));
     }
 
     @Transactional
@@ -70,32 +75,23 @@ public class BankAccountService {
         }
         String bankName = req.bankName() != null && !req.bankName().isBlank() ? req.bankName().trim() : bankCode;
 
-        String qrUrl = req.qrCodeUrl();
-        if (qrUrl == null || qrUrl.isBlank()) {
-            String encodedName = URLEncoder.encode(accountHolder, StandardCharsets.UTF_8);
-            qrUrl = "https://img.vietqr.io/image/" + bankCode + "-" + accountNumber + "-compact.png?accountName=" + encodedName;
-        }
+        String rawQr = req.qrCodeUrl();
+        final String finalQrUrl = (rawQr == null || rawQr.isBlank())
+                ? "https://img.vietqr.io/image/" + bankCode + "-" + accountNumber + "-compact.png?accountName=" + URLEncoder.encode(accountHolder, StandardCharsets.UTF_8)
+                : rawQr;
 
-        Instant now = Instant.now();
-        UserBankAccountJpaEntity entity = repository.findByUserId(userId)
-                .orElse(UserBankAccountJpaEntity.builder()
-                        .id(UUID.randomUUID().toString())
-                        .userId(userId)
-                        .createdAt(now)
-                        .build());
+        UserBankAccount domain = repository.findByUserId(userId)
+                .map(existing -> {
+                    existing.update(bankCode, bankName, accountNumber, accountHolder, finalQrUrl, "MATCHED");
+                    return existing;
+                })
+                .orElseGet(() -> UserBankAccount.create(userId, bankCode, bankName, accountNumber, accountHolder, finalQrUrl));
 
-        entity.setBankCode(bankCode);
-        entity.setBankName(bankName);
-        entity.setAccountNumber(accountNumber);
-        entity.setAccountHolder(accountHolder);
-        entity.setQrCodeUrl(qrUrl);
-        entity.setUpdatedAt(now);
-
-        UserBankAccountJpaEntity saved = repository.save(entity);
+        UserBankAccount saved = repository.save(domain);
         return toDto(saved);
     }
 
-    private UserBankAccountDto toDto(UserBankAccountJpaEntity e) {
+    private UserBankAccountDto toDto(UserBankAccount e) {
         return new UserBankAccountDto(
                 e.getId(),
                 e.getUserId(),
@@ -109,4 +105,3 @@ public class BankAccountService {
         );
     }
 }
-

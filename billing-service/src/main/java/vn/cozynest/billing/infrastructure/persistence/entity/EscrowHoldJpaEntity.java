@@ -29,6 +29,12 @@ public class EscrowHoldJpaEntity {
     @Column(nullable = false)
     private long amount;
 
+    @Column(name = "released_amount", nullable = false)
+    private long releasedAmount;
+
+    @Column(name = "retained_amount", nullable = false)
+    private long retainedAmount;
+
     @Column(nullable = false, length = 30)
     private String status;
 
@@ -43,6 +49,12 @@ public class EscrowHoldJpaEntity {
 
     @Column(name = "move_in_confirmed_at")
     private Instant moveInConfirmedAt;
+
+    @Column(name = "pending_release_until")
+    private Instant pendingReleaseUntil;
+
+    @Column(name = "pending_settled", nullable = false)
+    private boolean pendingSettled;
 
     @Column(name = "inspection_ends_at", nullable = false)
     private Instant inspectionEndsAt;
@@ -62,6 +74,18 @@ public class EscrowHoldJpaEntity {
     @Column(name = "receipt_url", columnDefinition = "MEDIUMTEXT")
     private String receiptUrl;
 
+    @Column(name = "deduction_claim_amount")
+    private Long deductionClaimAmount;
+
+    @Column(name = "deduction_claim_reason", length = 500)
+    private String deductionClaimReason;
+
+    @Column(name = "deduction_claim_proof_url", length = 500)
+    private String deductionClaimProofUrl;
+
+    @Column(name = "deduction_claim_status", length = 30)
+    private String deductionClaimStatus;
+
     @Column(name = "released_at")
     private Instant releasedAt;
 
@@ -71,4 +95,3 @@ public class EscrowHoldJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }
-

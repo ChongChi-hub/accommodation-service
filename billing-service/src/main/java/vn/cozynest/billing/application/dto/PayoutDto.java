@@ -23,6 +23,13 @@ public class PayoutDto {
             String otp
     ) {}
 
+    public record ConfirmPayoutPaidCommand(
+            @NotBlank(message = "Mã giao dịch ngân hàng (FT...) không được để trống")
+            String bankTxCode,
+            String proofUrl,
+            String note
+    ) {}
+
     public record PayoutResponse(
             String id,
             String payoutCode,
@@ -33,12 +40,25 @@ public class PayoutDto {
             String status,
             Instant createdAt,
             String landlordId,
-            String failureReason
+            String failureReason,
+            String bankTxCode,
+            String proofUrl,
+            String systemVietQrUrl,
+            String approvedBy,
+            String paidBy,
+            Instant paidAt
     ) {
         public PayoutResponse(String id, String payoutCode, long amount, String bankCode,
                               String accountNumber, String accountHolder, String status, Instant createdAt) {
-            this(id, payoutCode, amount, bankCode, accountNumber, accountHolder, status, createdAt, null, null);
+            this(id, payoutCode, amount, bankCode, accountNumber, accountHolder, status, createdAt,
+                    null, null, null, null, null, null, null, null);
+        }
+
+        public PayoutResponse(String id, String payoutCode, long amount, String bankCode,
+                              String accountNumber, String accountHolder, String status, Instant createdAt,
+                              String landlordId, String failureReason) {
+            this(id, payoutCode, amount, bankCode, accountNumber, accountHolder, status, createdAt,
+                    landlordId, failureReason, null, null, null, null, null, null);
         }
     }
 }
-

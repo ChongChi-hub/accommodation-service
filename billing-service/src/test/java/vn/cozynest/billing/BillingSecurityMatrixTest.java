@@ -49,6 +49,34 @@ class BillingSecurityMatrixTest {
                 .getAnnotation(PreAuthorize.class);
         assertThat(escrowInit).isNotNull();
         assertThat(escrowInit.value()).isEqualTo("hasRole('ADMIN')");
+
+        // Phase 1-3 [WALLET-VERIFY-LEDGER] RBAC Matrix Enforcement
+        PreAuthorize manualConfirm = PaymentController.class.getMethod("confirmPayment", String.class,
+                vn.cozynest.billing.application.dto.PaymentDto.ConfirmPaymentRequest.class,
+                org.springframework.security.core.Authentication.class).getAnnotation(PreAuthorize.class);
+        assertThat(manualConfirm).isNotNull();
+        assertThat(manualConfirm.value()).isEqualTo("hasRole('ADMIN')");
+
+        PreAuthorize invoiceRecordPay = InvoiceController.class.getMethod("recordPayment", String.class,
+                vn.cozynest.billing.application.dto.InvoiceDto.RecordPaymentCommand.class,
+                org.springframework.security.core.Authentication.class).getAnnotation(PreAuthorize.class);
+        assertThat(invoiceRecordPay).isNotNull();
+        assertThat(invoiceRecordPay.value()).isEqualTo("hasRole('ADMIN')");
+
+        PreAuthorize payoutConfirmPaid = PayoutController.class.getMethod("confirmPayoutPaid", String.class,
+                vn.cozynest.billing.application.dto.PayoutDto.ConfirmPayoutPaidCommand.class,
+                org.springframework.security.core.Authentication.class).getAnnotation(PreAuthorize.class);
+        assertThat(payoutConfirmPaid).isNotNull();
+        assertThat(payoutConfirmPaid.value()).isEqualTo("hasRole('ADMIN')");
+
+        PreAuthorize unmatchedQueue = BankWebhookAndProofController.class.getMethod("listUnmatchedInflows", String.class)
+                .getAnnotation(PreAuthorize.class);
+        assertThat(unmatchedQueue).isNotNull();
+        assertThat(unmatchedQueue.value()).isEqualTo("hasRole('ADMIN')");
+
+        PreAuthorize walletController = LandlordWalletController.class.getAnnotation(PreAuthorize.class);
+        assertThat(walletController).isNotNull();
+        assertThat(walletController.value()).contains("LANDLORD").contains("ADMIN");
     }
 
     @Test

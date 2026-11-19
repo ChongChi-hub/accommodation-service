@@ -18,6 +18,7 @@ public class LedgerService {
     public static final String ACC_GATEWAY = "1010-GATEWAY";
     public static final String ACC_ESCROW = "2010-ESCROW";
     public static final String ACC_REVENUE = "4010-REVENUE";
+    public static final String ACC_PLATFORM_REVENUE = "4010-REVENUE";
     public static final String ACC_EXPENSE = "5010-EXPENSE";
 
     private final LedgerAccountRepository accountRepository;
@@ -57,10 +58,34 @@ public class LedgerService {
         return "2020-WALLET-" + userId;
     }
 
+    public String getLandlordAvailableAccountNumber(String landlordId) {
+        return getWalletAccountNumber(landlordId);
+    }
+
+    public String getLandlordPendingAccountNumber(String landlordId) {
+        return "2025-PENDING-" + landlordId;
+    }
+
+    public String getWithdrawalHoldAccountNumber(String landlordId) {
+        return "2030-WDHOLD-" + landlordId;
+    }
+
     @Transactional
     public LedgerAccount getOrCreateWallet(String userId, String userName) {
         String accNum = getWalletAccountNumber(userId);
-        return getOrCreateAccount(accNum, "Ví tiền chủ trọ: " + (userName != null ? userName : userId), AccountType.LIABILITY, userId);
+        return getOrCreateAccount(accNum, "Ví khả dụng chủ trọ: " + (userName != null ? userName : userId), AccountType.LIABILITY, userId);
+    }
+
+    @Transactional
+    public LedgerAccount getOrCreateLandlordPendingWallet(String landlordId) {
+        String accNum = getLandlordPendingAccountNumber(landlordId);
+        return getOrCreateAccount(accNum, "Ví chờ giải phóng cọc chủ trọ: " + landlordId, AccountType.LIABILITY, landlordId);
+    }
+
+    @Transactional
+    public LedgerAccount getOrCreateWithdrawalHoldAccount(String landlordId) {
+        String accNum = getWithdrawalHoldAccountNumber(landlordId);
+        return getOrCreateAccount(accNum, "Tài khoản tạm giữ chờ rút tiền: " + landlordId, AccountType.LIABILITY, landlordId);
     }
 
     @Transactional
@@ -93,7 +118,13 @@ public class LedgerService {
         Map<String, LedgerAccount> lockedAccounts = new LinkedHashMap<>();
         for (String accNum : sortedAccountNumbers) {
             LedgerAccount locked = accountRepository.findByAccountNumberForUpdate(accNum)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản sổ cái: " + accNum));
+                    .or(() -> accountRepository.findByAccountNumber(accNum))
+                    .orElseGet(() -> {
+                        if (accNum.startsWith("2025-PENDING-") || accNum.startsWith("2030-WDHOLD-")) {
+                            return accountRepository.save(LedgerAccount.create(accNum, accNum, AccountType.LIABILITY, null));
+                        }
+                        throw new IllegalArgumentException("Không tìm thấy tài khoản sổ cái: " + accNum);
+                    });
             lockedAccounts.put(accNum, locked);
         }
 

@@ -120,9 +120,41 @@ public class EscrowController {
             Authentication auth) {
         String reason = body != null ? body.getOrDefault("reason", "Hoan coc theo quyet dinh Admin") : "Hoan coc theo quyet dinh Admin";
         EscrowHold hold = escrowService.getHoldForParticipant(contractId, (String) auth.getPrincipal(), true);
-        escrowService.refundDeposit(contractId, hold.getTenantId(), hold.getAmount(), reason, (String) auth.getPrincipal());
+        escrowService.refundDeposit(contractId, hold.getTenantId(), hold.getEffectiveRetainedAmount(), reason, (String) auth.getPrincipal());
         return ResponseEntity.ok(ApiResponse.success("Da hoan tien coc cho nguoi thue",
                 escrowService.getHoldForParticipant(contractId, (String) auth.getPrincipal(), true)));
+    }
+
+    @PostMapping("/{contractId}/deduction-claim")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'ADMIN')")
+    public ResponseEntity<ApiResponse<EscrowHold>> submitDeductionClaim(
+            @PathVariable String contractId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        long claimAmount = body.get("claimAmount") instanceof Number n ? n.longValue() : 0L;
+        String reason = String.valueOf(body.getOrDefault("reason", ""));
+        String proofUrl = body.get("proofUrl") != null ? String.valueOf(body.get("proofUrl")) : null;
+        EscrowHold updated = escrowService.submitDeductionClaim(contractId, (String) auth.getPrincipal(), claimAmount, reason, proofUrl);
+        return ResponseEntity.ok(ApiResponse.success("Da gui de nghi khau tru coc cho Admin xet duyet", updated));
+    }
+
+    @PostMapping("/{contractId}/deduction-decision")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<EscrowHold>> decideDeductionClaim(
+            @PathVariable String contractId,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        boolean approved = Boolean.TRUE.equals(body.get("approved"));
+        String note = String.valueOf(body.getOrDefault("note", approved ? "Phe duyet khau tru" : "Tu choi khau tru"));
+        EscrowHold updated = escrowService.decideDeductionClaim(contractId, (String) auth.getPrincipal(), approved, note);
+        return ResponseEntity.ok(ApiResponse.success("Da cap nhat quyet dinh khau tru coc", updated));
+    }
+
+    @PostMapping("/settle-pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> settlePendingReleases() {
+        int count = escrowService.settleMaturedPendingReleases(java.time.Instant.now());
+        return ResponseEntity.ok(ApiResponse.success("Da quet chuyen coc het thoi gian cho sang so du kha dung", Map.of("settledCount", count)));
     }
 
     private boolean isAdmin(Authentication auth) {

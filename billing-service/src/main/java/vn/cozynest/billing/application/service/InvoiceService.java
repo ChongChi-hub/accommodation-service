@@ -38,14 +38,9 @@ public class InvoiceService {
     }
 
     @Autowired
-    public InvoiceService(
-            InvoiceRepository repository,
-            LedgerService ledgerService,
-            Optional<BillingContractPort> contractPort,
-            Optional<UtilityReadingRepository> utilityReadingRepository,
-            Optional<BillingEventOutboxRepository> outboxRepository,
-            Optional<InvoicePdfService> pdfService
-    ) {
+    public InvoiceService(InvoiceRepository repository, LedgerService ledgerService,
+                          Optional<BillingContractPort> contractPort, Optional<UtilityReadingRepository> utilityReadingRepository,
+                          Optional<BillingEventOutboxRepository> outboxRepository, Optional<InvoicePdfService> pdfService) {
         this.repository = repository;
         this.ledgerService = ledgerService;
         this.contractPort = contractPort != null ? contractPort : Optional.empty();
@@ -61,19 +56,15 @@ public class InvoiceService {
         Invoice activeStandard = existing.stream()
                 .filter(i -> "STANDARD".equals(i.getInvoiceType()) && !"CANCELLED".equals(i.getStatus()))
                 .findFirst().orElse(null);
-        if (activeStandard != null) {
-            return toResponse(activeStandard);
-        }
+        if (activeStandard != null) return toResponse(activeStandard);
 
-        String code = "INV-" + cmd.periodMonth().getYear()
-                + String.format("%02d", cmd.periodMonth().getMonthValue())
+        String code = "INV-" + cmd.periodMonth().getYear() + String.format("%02d", cmd.periodMonth().getMonthValue())
                 + "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         long availableCredit = consumeOverpaymentCredits(cmd.contractId());
         Invoice invoice = Invoice.createWithCredits(
                 code, cmd.contractId(), cmd.utilityReadingId(), cmd.tenantId(), cmd.landlordId(),
                 cmd.periodMonth(), cmd.baseRent(), cmd.electricityAmount(), cmd.waterAmount(),
-                cmd.serviceAmount(), cmd.otherAmount(), availableCredit, cmd.dueDate()
-        );
+                cmd.serviceAmount(), cmd.otherAmount(), availableCredit, cmd.dueDate());
         Invoice saved = repository.save(invoice);
         emitInvoiceEvent("INVOICE_GENERATED", saved);
         return toResponse(saved);
@@ -81,14 +72,11 @@ public class InvoiceService {
 
     @Transactional
     @CacheEvict(value = "billingDashboardStats", allEntries = true)
-    public InvoiceDto.InvoiceResponse generateFromContract(
-            InvoiceDto.GenerateFromContractCommand cmd, String actorId, boolean isAdmin) {
+    public InvoiceDto.InvoiceResponse generateFromContract(InvoiceDto.GenerateFromContractCommand cmd, String actorId, boolean isAdmin) {
         BillingContractPort.ContractSnapshot snap = contractPort
                 .flatMap(port -> port.getContractSnapshot(cmd.contractId(), cmd.periodMonth()))
                 .orElseThrow(() -> new IllegalStateException("Khong the lay thong tin hop dong tu booking-service"));
-        if (!isAdmin && !snap.landlordId().equals(actorId)) {
-            throw new AccessDeniedException("Ban khong co quyen tao hoa don cho hop dong cua chu tro khac");
-        }
+        if (!isAdmin && !snap.landlordId().equals(actorId)) throw new AccessDeniedException("Ban khong co quyen tao hoa don cho hop dong cua chu tro khac");
         if (snap.status() != null && !"ACTIVE".equalsIgnoreCase(snap.status())) {
             throw new IllegalStateException("Chi co the tao hoa don cho hop dong dang hieu luc (trang thai hien tai: " + snap.status() + ")");
         }
@@ -98,18 +86,9 @@ public class InvoiceService {
         int dueDay = Math.min(28, Math.max(1, snap.paymentDueDay()));
         LocalDate dueDate = LocalDate.of(cmd.periodMonth().getYear(), cmd.periodMonth().getMonthValue(), dueDay);
         return generateInvoice(new InvoiceDto.GenerateInvoiceCommand(
-                cmd.contractId(),
-                reading.map(UtilityReading::getId).orElse(null),
-                snap.tenantId(),
-                snap.landlordId(),
-                cmd.periodMonth(),
-                snap.effectiveMonthlyRent(),
-                reading.map(UtilityReading::getElectricityCost).orElse(0L),
-                reading.map(UtilityReading::getWaterCost).orElse(0L),
-                cmd.serviceAmount(),
-                cmd.otherAmount(),
-                dueDate
-        ));
+                cmd.contractId(), reading.map(UtilityReading::getId).orElse(null), snap.tenantId(), snap.landlordId(),
+                cmd.periodMonth(), snap.effectiveMonthlyRent(), reading.map(UtilityReading::getElectricityCost).orElse(0L),
+                reading.map(UtilityReading::getWaterCost).orElse(0L), cmd.serviceAmount(), cmd.otherAmount(), dueDate));
     }
 
     @Transactional
@@ -135,15 +114,10 @@ public class InvoiceService {
         Invoice saved = repository.save(creditNote);
         if (ledgerService != null && target.getPaidAmount() > 0) {
             String walletAcc = ledgerService.getWalletAccountNumber(target.getLandlordId());
-            ledgerService.postEntryIdempotent(
-                    "CN-" + saved.getId(),
-                    "Dieu chinh giam hoa don " + target.getInvoiceCode() + ": " + cmd.reason(),
+            ledgerService.postEntryIdempotent("CN-" + saved.getId(), "Dieu chinh giam hoa don " + target.getInvoiceCode() + ": " + cmd.reason(),
                     "CREDIT_NOTE", saved.getId(), actorId,
-                    List.of(
-                            new LedgerDto.PostingItem(walletAcc, PostingDirection.DEBIT, cmd.amount()),
-                            new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, cmd.amount())
-                    )
-            );
+                    List.of(new LedgerDto.PostingItem(walletAcc, PostingDirection.DEBIT, cmd.amount()),
+                            new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, cmd.amount())));
         }
         return toResponse(saved);
     }
@@ -151,10 +125,8 @@ public class InvoiceService {
     @Transactional
     @CacheEvict(value = "billingDashboardStats", allEntries = true)
     public InvoiceDto.InvoiceResponse recordPayment(String invoiceId, long amount, String actorId, boolean isAdmin) {
+        if (!isAdmin) throw new AccessDeniedException("Chỉ hệ thống Webhook hoặc Quản trị viên (ADMIN) mới được phép ghi nhận thanh toán hóa đơn");
         Invoice invoice = findOrThrow(invoiceId);
-        if (!isAdmin && !invoice.getTenantId().equals(actorId) && !invoice.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Khong co quyen thanh toan hoa don nay");
-        }
         invoice.recordPayment(amount);
         Invoice saved = repository.save(invoice);
         emitInvoiceEvent("INVOICE_PAYMENT_RECORDED", saved);
@@ -165,9 +137,7 @@ public class InvoiceService {
     @CacheEvict(value = "billingDashboardStats", allEntries = true)
     public InvoiceDto.InvoiceResponse applyLateFee(String invoiceId, long feeAmount, String actorId, boolean isAdmin) {
         Invoice invoice = findOrThrow(invoiceId);
-        if (!isAdmin && !invoice.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Ban khong co quyen ap phi tre han cho hoa don nay");
-        }
+        if (!isAdmin && !invoice.getLandlordId().equals(actorId)) throw new AccessDeniedException("Ban khong co quyen ap phi tre han cho hoa don nay");
         invoice.applyLateFee(feeAmount);
         Invoice saved = repository.save(invoice);
         emitInvoiceEvent("INVOICE_LATE_FEE_APPLIED", saved);
@@ -178,16 +148,13 @@ public class InvoiceService {
     @Transactional
     public int markOverdueInvoices() {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        List<Invoice> candidates = repository.findOverdueCandidates(today);
         int sent = 0;
-        for (Invoice inv : candidates) {
+        for (Invoice inv : repository.findOverdueCandidates(today)) {
             int before = inv.getReminderCount();
             inv.markOverdue(today);
             if (inv.getReminderCount() > before || "OVERDUE".equals(inv.getStatus())) {
                 repository.save(inv);
-                if (inv.getReminderCount() > before) {
-                    emitInvoiceEvent("INVOICE_OVERDUE_REMINDER", inv);
-                }
+                if (inv.getReminderCount() > before) emitInvoiceEvent("INVOICE_OVERDUE_REMINDER", inv);
                 sent++;
             }
         }
@@ -197,11 +164,8 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public byte[] generateReceiptPdf(String invoiceId, String actorId, boolean isAdmin) {
         Invoice inv = findOrThrow(invoiceId);
-        if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Khong co quyen tai bien lai hoa don nay");
-        }
-        InvoicePdfService svc = pdfService.orElseGet(InvoicePdfService::new);
-        return svc.generateReceiptPdf(inv);
+        if (!isAdmin && !inv.getTenantId().equals(actorId) && !inv.getLandlordId().equals(actorId)) throw new AccessDeniedException("Khong co quyen tai bien lai hoa don nay");
+        return pdfService.orElseGet(InvoicePdfService::new).generateReceiptPdf(inv);
     }
 
     private long consumeOverpaymentCredits(String contractId) {
@@ -218,12 +182,9 @@ public class InvoiceService {
 
     private void emitInvoiceEvent(String eventType, Invoice inv) {
         outboxRepository.ifPresent(repo -> repo.save(BillingEventOutbox.create(
-                eventType,
-                "INVOICE",
-                inv.getId(),
+                eventType, "INVOICE", inv.getId(),
                 String.format("{\"invoiceId\":\"%s\",\"invoiceCode\":\"%s\",\"contractId\":\"%s\",\"tenantId\":\"%s\",\"status\":\"%s\",\"totalAmount\":%d}",
-                        inv.getId(), inv.getInvoiceCode(), inv.getContractId(), inv.getTenantId(), inv.getStatus(), inv.getTotalAmount())
-        )));
+                        inv.getId(), inv.getInvoiceCode(), inv.getContractId(), inv.getTenantId(), inv.getStatus(), inv.getTotalAmount()))));
     }
 
     @Transactional(readOnly = true)
@@ -262,16 +223,13 @@ public class InvoiceService {
     @Transactional
     public void cancelInvoice(String id, String actorId, boolean isAdmin) {
         Invoice inv = findOrThrow(id);
-        if (!isAdmin && !inv.getLandlordId().equals(actorId)) {
-            throw new AccessDeniedException("Ban khong co quyen huy hoa don nay");
-        }
+        if (!isAdmin && !inv.getLandlordId().equals(actorId)) throw new AccessDeniedException("Ban khong co quyen huy hoa don nay");
         inv.cancel();
         repository.save(inv);
     }
 
     private Invoice findOrThrow(String id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + id));
+        return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn: " + id));
     }
 
     private InvoiceDto.InvoiceResponse toResponse(Invoice i) {
@@ -281,7 +239,6 @@ public class InvoiceService {
                 i.getBaseRent(), i.getElectricityAmount(), i.getWaterAmount(),
                 i.getServiceAmount(), i.getOtherAmount(), i.getTotalAmount(),
                 i.getPaidAmount(), i.getDueDate(), i.getStatus(),
-                i.getInvoiceType(), i.getReferenceInvoiceId(), i.getCreditNoteReason(), i.getCreatedAt()
-        );
+                i.getInvoiceType(), i.getReferenceInvoiceId(), i.getCreditNoteReason(), i.getCreatedAt());
     }
 }

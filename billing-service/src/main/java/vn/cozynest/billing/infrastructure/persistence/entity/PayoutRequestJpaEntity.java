@@ -20,6 +20,9 @@ public class PayoutRequestJpaEntity {
     @Column(name = "payout_code", nullable = false, unique = true, length = 64)
     private String payoutCode;
 
+    @Column(name = "idempotency_key", unique = true, length = 64)
+    private String idempotencyKey;
+
     @Column(name = "landlord_id", nullable = false, length = 36)
     private String landlordId;
 
@@ -53,10 +56,24 @@ public class PayoutRequestJpaEntity {
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
+    @Column(name = "bank_tx_code", unique = true, length = 64)
+    private String bankTxCode;
+
+    @Column(name = "proof_url", length = 500)
+    private String proofUrl;
+
+    @Column(name = "approved_by", length = 36)
+    private String approvedBy;
+
+    @Column(name = "paid_by", length = 36)
+    private String paidBy;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }
-

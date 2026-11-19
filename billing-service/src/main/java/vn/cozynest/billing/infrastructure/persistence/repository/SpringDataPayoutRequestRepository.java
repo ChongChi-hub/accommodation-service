@@ -8,6 +8,6 @@ import java.util.Optional;
 
 public interface SpringDataPayoutRequestRepository extends JpaRepository<PayoutRequestJpaEntity, String> {
     Optional<PayoutRequestJpaEntity> findByPayoutCode(String payoutCode);
+    Optional<PayoutRequestJpaEntity> findByIdempotencyKey(String idempotencyKey);
     List<PayoutRequestJpaEntity> findByLandlordIdOrderByCreatedAtDesc(String landlordId);
 }
-

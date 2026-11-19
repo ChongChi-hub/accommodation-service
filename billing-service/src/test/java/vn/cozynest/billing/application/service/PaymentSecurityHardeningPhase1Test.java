@@ -8,13 +8,10 @@ import vn.cozynest.billing.application.exception.ObligationAlreadyPaidException;
 import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.billing.application.port.BillingContractPort;
 import vn.cozynest.billing.application.port.PaymentGatewayPort;
-import vn.cozynest.billing.domain.model.EscrowHold;
 import vn.cozynest.billing.domain.model.PaymentIntent;
 import vn.cozynest.billing.domain.repository.*;
 import vn.cozynest.billing.infrastructure.gateway.SandboxVietQrGatewayAdapter;
 
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,7 +36,7 @@ class PaymentSecurityHardeningPhase1Test {
         intentRepo = mock(PaymentIntentRepository.class);
         invoiceRepo = mock(InvoiceRepository.class);
         ledgerService = mock(LedgerService.class);
-        gatewayPort = new SandboxVietQrGatewayAdapter("https://img.vietqr.io/image", "970422", "SANDBOX99", "COZYNEST%20SANDBOX", false);
+        gatewayPort = new SandboxVietQrGatewayAdapter("https://img.vietqr.io/image", "970436", "1042701900", "LE%20THANH%20CUONG", false);
         webhookLogRepo = mock(PaymentWebhookLogRepository.class);
         escrowHoldRepo = mock(EscrowHoldRepository.class);
         contractPort = mock(BillingContractPort.class);
@@ -53,35 +50,37 @@ class PaymentSecurityHardeningPhase1Test {
 
     @Test
     void tenantCannotSimulateSandboxWebhook() {
-        PaymentIntent intent = PaymentIntent.create("PAY-SEC-1", "tenant-1", "DEPOSIT", "cnt-1", 1_000_000L, "qr", 15);
-        when(intentRepo.findByPaymentCode("PAY-SEC-1")).thenReturn(Optional.of(intent));
+        PaymentIntent intent = PaymentIntent.create("TOAMSEC00000001", "tenant-1", "DEPOSIT", "cnt-1", 1_000_000L, "qr", 15);
+        when(intentRepo.findByPaymentCode("TOAMSEC00000001")).thenReturn(Optional.of(intent));
 
-        assertThatThrownBy(() -> paymentService.simulateSandboxWebhook("PAY-SEC-1", 1_000_000L, "tenant-1", false))
+        assertThatThrownBy(() -> paymentService.simulateSandboxWebhook("TOAMSEC00000001", 1_000_000L, "tenant-1", false))
                 .isInstanceOf(WebhookSecurityException.class)
                 .extracting(e -> ((WebhookSecurityException) e).getHttpStatus())
                 .isEqualTo(403);
     }
 
     @Test
-    void tenantSubmitIntentConfirmsPlatformTransferPostsEscrowAndNotifiesLandlord() {
-        PaymentIntent intent = PaymentIntent.create("PAY-SEC-2", "tenant-1", "DEPOSIT", "cnt-2", 2_000_000L, "qr", 15);
-        when(intentRepo.findByPaymentCode("PAY-SEC-2")).thenReturn(Optional.of(intent));
+    void tenantSubmitIntentOnlyMarksSubmittedAndNeverPostsLedgerOrCreditsEscrow() {
+        PaymentIntent intent = PaymentIntent.create("TOAMSEC00000002", "tenant-1", "DEPOSIT", "cnt-2", 2_000_000L, "qr", 15);
+        when(intentRepo.findByPaymentCode("TOAMSEC00000002")).thenReturn(Optional.of(intent));
         when(intentRepo.save(any(PaymentIntent.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        PaymentDto.IntentResponse res = paymentService.submitIntent("PAY-SEC-2", "tenant-1", new PaymentDto.SubmitIntentRequest("Da chuyen qua app VCB", "https://img.cozynest/receipt.png"));
+        PaymentDto.IntentResponse res = paymentService.submitIntent("TOAMSEC00000002", "tenant-1",
+                new PaymentDto.SubmitIntentRequest("BANK_TX:FT26111911111", "https://img.cozynest/receipt.png"));
 
-        assertThat(res.status()).isEqualTo("PAID");
-        assertThat(intent.getStatus()).isEqualTo("PAID");
-        verify(ledgerService, times(1)).postEntryIdempotent(any(), any(), any(), any(), any(), any());
+        assertThat(res.status()).isEqualTo("SUBMITTED");
+        assertThat(intent.getStatus()).isEqualTo("SUBMITTED");
+        verify(ledgerService, never()).postEntryIdempotent(any(), any(), any(), any(), any(), any());
         verify(outboxRepo, times(1)).save(any());
     }
 
     @Test
     void tenantSubmitIntentRejectsUnverifiedTransferAndDoesNotPostEscrow() {
-        PaymentIntent intent = PaymentIntent.create("PAY-SEC-UNVERIFIED", "tenant-1", "DEPOSIT", "cnt-unv", 2_000_000L, "qr", 15);
-        when(intentRepo.findByPaymentCode("PAY-SEC-UNVERIFIED")).thenReturn(Optional.of(intent));
+        PaymentIntent intent = PaymentIntent.create("TOAMSEC00000003", "tenant-1", "DEPOSIT", "cnt-unv", 2_000_000L, "qr", 15);
+        when(intentRepo.findByPaymentCode("TOAMSEC00000003")).thenReturn(Optional.of(intent));
 
-        assertThatThrownBy(() -> paymentService.submitIntent("PAY-SEC-UNVERIFIED", "tenant-1", new PaymentDto.SubmitIntentRequest("UNVERIFIED_TRANSFER", null)))
+        assertThatThrownBy(() -> paymentService.submitIntent("TOAMSEC00000003", "tenant-1",
+                new PaymentDto.SubmitIntentRequest("UNVERIFIED_TRANSFER", null)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Chưa ghi nhận được biến động tiền cọc về tài khoản Sàn");
 
@@ -113,38 +112,24 @@ class PaymentSecurityHardeningPhase1Test {
     }
 
     @Test
-    void landlordCanConfirmSubmittedPayment() {
-        PaymentIntent intent = PaymentIntent.create("PAY-CONF-1", "tenant-1", "DEPOSIT", "cnt-conf", 2_000_000L, "qr", 15);
+    void onlyAdminCanManuallyConfirmPlatformPaymentLandlordGets403() {
+        PaymentIntent intent = PaymentIntent.create("TOAMCONF0000001", "tenant-1", "DEPOSIT", "cnt-conf", 2_000_000L, "qr", 15);
         intent.markSubmitted();
-        when(intentRepo.findByPaymentCode("PAY-CONF-1")).thenReturn(Optional.of(intent));
+        when(intentRepo.findByPaymentCode("TOAMCONF0000001")).thenReturn(Optional.of(intent));
         when(intentRepo.save(any(PaymentIntent.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        BillingContractPort.ContractSnapshot snap = new BillingContractPort.ContractSnapshot(
-                "cnt-conf", "r-3", "tenant-1", "landlord-1", "AWAITING_DEPOSIT", 2_000_000L, 5, 2_000_000L, null);
-        when(contractPort.getContractSnapshot(eq("cnt-conf"), any())).thenReturn(Optional.of(snap));
+        assertThatThrownBy(() -> paymentService.confirmPaymentByLandlordOrAdmin(
+                "TOAMCONF0000001", new PaymentDto.ConfirmPaymentRequest(2_000_000L, "VCB123456789", "Landlord try"), "landlord-1", false))
+                .isInstanceOf(WebhookSecurityException.class)
+                .extracting(e -> ((WebhookSecurityException) e).getHttpStatus())
+                .isEqualTo(403);
 
         PaymentDto.IntentResponse res = paymentService.confirmPaymentByLandlordOrAdmin(
-                "PAY-CONF-1", new PaymentDto.ConfirmPaymentRequest(2_000_000L, "VCB123456789", "Da nhan du 2tr"), "landlord-1", false);
+                "TOAMCONF0000001", new PaymentDto.ConfirmPaymentRequest(2_000_000L, "VCB123456789", "Admin sao ke"), "admin-1", true);
 
         assertThat(res.status()).isEqualTo("PAID");
         assertThat(intent.getStatus()).isEqualTo("PAID");
         verify(outboxRepo, atLeastOnce()).save(any());
-    }
-
-    @Test
-    void unauthorizedLandlordCannotConfirmPayment() {
-        PaymentIntent intent = PaymentIntent.create("PAY-CONF-2", "tenant-1", "DEPOSIT", "cnt-conf-2", 2_000_000L, "qr", 15);
-        when(intentRepo.findByPaymentCode("PAY-CONF-2")).thenReturn(Optional.of(intent));
-
-        BillingContractPort.ContractSnapshot snap = new BillingContractPort.ContractSnapshot(
-                "cnt-conf-2", "r-4", "tenant-1", "landlord-original", "AWAITING_DEPOSIT", 2_000_000L, 5, 2_000_000L, null);
-        when(contractPort.getContractSnapshot(eq("cnt-conf-2"), any())).thenReturn(Optional.of(snap));
-
-        assertThatThrownBy(() -> paymentService.confirmPaymentByLandlordOrAdmin(
-                "PAY-CONF-2", new PaymentDto.ConfirmPaymentRequest(2_000_000L, "VCB999", "Fake confirm"), "landlord-imposter", false))
-                .isInstanceOf(WebhookSecurityException.class)
-                .extracting(e -> ((WebhookSecurityException) e).getHttpStatus())
-                .isEqualTo(403);
     }
 
     @Test
@@ -154,14 +139,13 @@ class PaymentSecurityHardeningPhase1Test {
         when(escrowHoldRepo.existsByReceiptHash("sha256-usedreceipt")).thenReturn(true);
 
         assertThatThrownBy(() -> escrowService.recordDepositPaidWithProof(
-                "cnt-replay-1", "tenant-1", "landlord-1", 5_000L, 72, "PAY-1", "FT261119001", "sha256-new", "data:image/png;base64,abc"))
+                "cnt-replay-1", "tenant-1", "landlord-1", 5_000L, 72, "TOAM1", "FT261119001", "sha256-new", "data:image/png;base64,abc"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Mã giao dịch ngân hàng [FT261119001] đã được sử dụng");
 
         assertThatThrownBy(() -> escrowService.recordDepositPaidWithProof(
-                "cnt-replay-2", "tenant-1", "landlord-1", 5_000L, 72, "PAY-2", "FT261119002", "sha256-usedreceipt", "data:image/png;base64,abc"))
+                "cnt-replay-2", "tenant-1", "landlord-1", 5_000L, 72, "TOAM2", "FT261119002", "sha256-usedreceipt", "data:image/png;base64,abc"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Ảnh biên lai chuyển khoản này đã được sử dụng");
     }
 }
-

@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import vn.cozynest.billing.application.dto.SaveBankAccountRequest;
 import vn.cozynest.billing.application.dto.UserBankAccountDto;
-import vn.cozynest.billing.infrastructure.persistence.entity.UserBankAccountJpaEntity;
-import vn.cozynest.billing.infrastructure.persistence.repository.SpringDataUserBankAccountRepository;
+import vn.cozynest.billing.domain.model.UserBankAccount;
+import vn.cozynest.billing.domain.repository.UserBankAccountRepository;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -18,12 +18,12 @@ import static org.mockito.Mockito.*;
 
 class BankAccountSecurityAndPayoutTest {
 
-    private SpringDataUserBankAccountRepository repository;
+    private UserBankAccountRepository repository;
     private BankAccountService service;
 
     @BeforeEach
     void setUp() {
-        repository = mock(SpringDataUserBankAccountRepository.class);
+        repository = mock(UserBankAccountRepository.class);
         service = new BankAccountService(repository);
     }
 
@@ -31,7 +31,7 @@ class BankAccountSecurityAndPayoutTest {
     @DisplayName("saveOrUpdate generates VietQR compact URL and saves uppercase normalized values")
     void saveOrUpdate_generatesVietQrUrl() {
         when(repository.findByUserId("usr-123")).thenReturn(Optional.empty());
-        when(repository.save(any(UserBankAccountJpaEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(repository.save(any(UserBankAccount.class))).thenAnswer(i -> i.getArgument(0));
 
         SaveBankAccountRequest req = new SaveBankAccountRequest(
                 "vcb",
@@ -49,9 +49,10 @@ class BankAccountSecurityAndPayoutTest {
         assertThat(res.accountHolder()).isEqualTo("LE THANH CUONG");
         assertThat(res.qrCodeUrl()).contains("https://img.vietqr.io/image/VCB-1042701900-compact.png");
 
-        ArgumentCaptor<UserBankAccountJpaEntity> captor = ArgumentCaptor.forClass(UserBankAccountJpaEntity.class);
+        ArgumentCaptor<UserBankAccount> captor = ArgumentCaptor.forClass(UserBankAccount.class);
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getAccountNumber()).isEqualTo("1042701900");
+        assertThat(captor.getValue().isMatched()).isTrue();
     }
 
     @Test
@@ -60,17 +61,11 @@ class BankAccountSecurityAndPayoutTest {
         when(repository.findByUserId("usr-not-found")).thenReturn(Optional.empty());
         assertThat(service.getByUserId("usr-not-found")).isEmpty();
 
-        UserBankAccountJpaEntity entity = UserBankAccountJpaEntity.builder()
-                .id("acc-1")
-                .userId("usr-1")
-                .bankCode("MB")
-                .bankName("MBBank")
-                .accountNumber("0987654321")
-                .accountHolder("CUONG LE")
-                .qrCodeUrl("https://img.vietqr.io/image/MB-0987654321-compact.png")
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .build();
+        UserBankAccount entity = new UserBankAccount(
+                "acc-1", "usr-1", "MB", "MBBank", "0987654321", "CUONG LE",
+                "https://img.vietqr.io/image/MB-0987654321-compact.png", "MATCHED",
+                Instant.now(), Instant.now()
+        );
         when(repository.findByUserId("usr-1")).thenReturn(Optional.of(entity));
 
         Optional<UserBankAccountDto> opt = service.getByUserId("usr-1");
@@ -85,7 +80,6 @@ class BankAccountSecurityAndPayoutTest {
         when(repository.findByUserId("usr-missing")).thenReturn(Optional.empty());
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireValidBankAccount("usr-missing", "Khách thuê"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("bắt buộc phải cung cấp Số tài khoản ngân hàng và Mã QR");
+                .hasMessageContaining("bắt buộc phải cung cấp Số tài khoản ngân hàng");
     }
 }
-

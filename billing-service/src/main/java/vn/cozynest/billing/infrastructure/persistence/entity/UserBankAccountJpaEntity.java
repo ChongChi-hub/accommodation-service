@@ -35,10 +35,12 @@ public class UserBankAccountJpaEntity {
     @Column(name = "qr_code_url", length = 500)
     private String qrCodeUrl;
 
+    @Column(name = "verification_status", nullable = false, length = 30)
+    private String verificationStatus;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }
-

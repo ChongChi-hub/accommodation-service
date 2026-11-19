@@ -52,8 +52,8 @@ public class BillingDashboardService {
         long availableBalance = ledgerService.getAccountBalance(walletAcc);
         long escrowBalance = (escrowHoldRepository != null)
                 ? escrowHoldRepository.findByLandlordId(landlordId).stream()
-                        .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
-                        .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum()
+                        .filter(h -> "HELD".equals(h.getStatus()) || "PARTIALLY_RELEASED".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                        .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getEffectiveRetainedAmount).sum()
                 : ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
 
         List<Invoice> invoices = invoiceRepository.findByLandlordId(landlordId);
@@ -98,10 +98,10 @@ public class BillingDashboardService {
         if (escrowHoldRepository != null) {
             List<vn.cozynest.billing.domain.model.EscrowHold> holds = escrowHoldRepository.findByTenantId(tenantId);
             escrowBalance = holds.stream()
-                    .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
-                    .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum();
+                    .filter(h -> "HELD".equals(h.getStatus()) || "PARTIALLY_RELEASED".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                    .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getEffectiveRetainedAmount).sum();
             totalPaid += holds.stream()
-                    .filter(h -> "HELD".equals(h.getStatus()) || "RELEASED".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                    .filter(h -> "HELD".equals(h.getStatus()) || "PARTIALLY_RELEASED".equals(h.getStatus()) || "RELEASED".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
                     .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum();
         } else {
             escrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
