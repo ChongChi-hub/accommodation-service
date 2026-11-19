@@ -9,8 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import vn.cozynest.billing.application.dto.PaymentDto;
 import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.billing.application.port.NotificationProvider;
+import vn.cozynest.billing.application.service.AdminManualPaymentApprovalService;
 import vn.cozynest.billing.application.service.BankInflowWebhookService;
 import vn.cozynest.billing.application.service.PaymentProofStorageService;
 import vn.cozynest.billing.domain.model.PaymentIntent;
@@ -27,23 +29,29 @@ import java.util.Map;
 @RequestMapping("/api/v1/billing/payments")
 public class BankWebhookAndProofController {
     private final BankInflowWebhookService webhookService;
+    private final AdminManualPaymentApprovalService adminApprovalService;
     private final PaymentProofStorageService proofService;
     private final NotificationProvider notificationProvider;
     private final String fintechMode;
     private final String platformAccountNumber;
+    private final boolean autoVerifyWebhookEnabled;
 
     @Autowired
     public BankWebhookAndProofController(
             BankInflowWebhookService webhookService,
+            AdminManualPaymentApprovalService adminApprovalService,
             PaymentProofStorageService proofService,
             NotificationProvider notificationProvider,
             @Value("${fintech.mode:SANDBOX_ONLY}") String fintechMode,
-            @Value("${fintech.platform.account-number:1042701900}") String platformAccountNumber) {
+            @Value("${fintech.platform.account-number:1042701900}") String platformAccountNumber,
+            @Value("${fintech.webhook.auto-verify-enabled:false}") boolean autoVerifyWebhookEnabled) {
         this.webhookService = webhookService;
+        this.adminApprovalService = adminApprovalService;
         this.proofService = proofService;
         this.notificationProvider = notificationProvider;
         this.fintechMode = fintechMode;
         this.platformAccountNumber = platformAccountNumber;
+        this.autoVerifyWebhookEnabled = autoVerifyWebhookEnabled;
     }
 
     @PostMapping("/webhook/provider")
@@ -53,6 +61,12 @@ public class BankWebhookAndProofController {
             @RequestHeader(value = "X-Timestamp", required = false) Long headerTs,
             @RequestHeader Map<String, String> allHeaders,
             HttpServletRequest request) {
+        if (!autoVerifyWebhookEnabled) {
+            var disabled = new BankInflowWebhookService.WebhookOutcome(
+                    "AUTO_WEBHOOK_DISABLED", false, null, null,
+                    "Luồng xác minh webhook tự động đang tắt; Admin kiểm tra tài khoản sàn và duyệt giao dịch thủ công");
+            return ResponseEntity.ok(ApiResponse.success(disabled.message(), disabled));
+        }
         if (headerSig == null || headerSig.isBlank() || headerTs == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("Thiếu X-Signature hoặc X-Timestamp webhook", "ERR_INVALID_SIGNATURE"));
         }
@@ -71,9 +85,7 @@ public class BankWebhookAndProofController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<BankInflowWebhookService.WebhookOutcome>> triggerFakeProviderInflow(
             @RequestBody Map<String, Object> body) {
-        if (!"SANDBOX_ONLY".equalsIgnoreCase(fintechMode)) {
-            return ResponseEntity.notFound().build();
-        }
+        if (!"SANDBOX_ONLY".equalsIgnoreCase(fintechMode)) return ResponseEntity.notFound().build();
         String txId = String.valueOf(body.getOrDefault("providerTxId", "FT" + System.currentTimeMillis()));
         long amount = body.get("amount") instanceof Number n ? n.longValue() : 0L;
         String content = String.valueOf(body.getOrDefault("content", body.getOrDefault("paymentCode", "")));
@@ -88,6 +100,12 @@ public class BankWebhookAndProofController {
         return ResponseEntity.ok(ApiResponse.success(outcome.message(), outcome));
     }
 
+    @GetMapping("/admin/pending-approvals")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PaymentDto.AdminApprovalItem>>> listPendingAdminApprovals() {
+        return ResponseEntity.ok(ApiResponse.success(adminApprovalService.listPendingApprovals()));
+    }
+
     @GetMapping("/unmatched")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UnmatchedBankInflow>>> listUnmatchedInflows(
@@ -98,47 +116,48 @@ public class BankWebhookAndProofController {
     @PostMapping("/manual-confirm")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> manualConfirmByAdmin(
-            @RequestBody Map<String, Object> body,
-            Authentication auth) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
         String paymentCode = String.valueOf(body.getOrDefault("paymentCode", ""));
         String bankTxCode = String.valueOf(body.getOrDefault("bankTxCode", ""));
         long actualAmount = body.get("actualAmount") instanceof Number n ? n.longValue() : 0L;
         String reason = String.valueOf(body.getOrDefault("reason", ""));
         String checkerAdminId = body.get("checkerAdminId") != null ? String.valueOf(body.get("checkerAdminId")) : null;
-        PaymentIntent confirmed = webhookService.confirmManualByAdmin(
+        PaymentIntent confirmed = adminApprovalService.approveByAdmin(
                 paymentCode, bankTxCode, actualAmount, reason, String.valueOf(auth.getPrincipal()), checkerAdminId);
-        return ResponseEntity.ok(ApiResponse.success("Admin xác nhận thủ công thành công",
+        return ResponseEntity.ok(ApiResponse.success("Admin đã duyệt giao dịch và kích hoạt ký quỹ Escrow thành công",
                 Map.of("paymentCode", confirmed.getPaymentCode(), "status", confirmed.getStatus(), "paidAmount", confirmed.getPaidAmount())));
+    }
+
+    @PostMapping("/manual-reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> manualRejectByAdmin(
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String paymentCode = String.valueOf(body.getOrDefault("paymentCode", ""));
+        String reason = String.valueOf(body.getOrDefault("reason", ""));
+        PaymentIntent rejected = adminApprovalService.rejectByAdmin(paymentCode, reason, String.valueOf(auth.getPrincipal()));
+        return ResponseEntity.ok(ApiResponse.success("Admin đã hủy giao dịch không hợp lệ thành công",
+                Map.of("paymentCode", rejected.getPaymentCode(), "status", rejected.getStatus())));
     }
 
     @GetMapping("/proofs/{paymentCode}/meta")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<PaymentProofRecord>> getProofMeta(
-            @PathVariable String paymentCode,
-            Authentication auth) {
-        boolean isAdminOrMod = isAdminOrModerator(auth);
-        PaymentProofRecord record = proofService.findAuthorizedMetadata(paymentCode, String.valueOf(auth.getPrincipal()), isAdminOrMod)
+    public ResponseEntity<ApiResponse<PaymentProofRecord>> getProofMeta(@PathVariable String paymentCode, Authentication auth) {
+        PaymentProofRecord record = proofService.findAuthorizedMetadata(paymentCode, String.valueOf(auth.getPrincipal()), isAdminOrModerator(auth))
                 .orElseThrow(() -> new WebhookSecurityException(404, "Không tìm thấy bằng chứng thanh toán"));
         return ResponseEntity.ok(ApiResponse.success(record));
     }
 
     @GetMapping("/proofs/{paymentCode}/image")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<byte[]> streamProofImage(
-            @PathVariable String paymentCode,
-            Authentication auth,
-            HttpServletRequest request) {
-        boolean isAdminOrMod = isAdminOrModerator(auth);
+    public ResponseEntity<byte[]> streamProofImage(@PathVariable String paymentCode, Authentication auth, HttpServletRequest request) {
         String role = auth.getAuthorities().stream().findFirst().map(Object::toString).orElse("UNKNOWN");
         String ip = request != null ? request.getRemoteAddr() : "127.0.0.1";
         PaymentProofStorageService.StreamedProof streamed = proofService.loadAuthorizedProofImage(
-                paymentCode, String.valueOf(auth.getPrincipal()), isAdminOrMod, role, ip);
+                paymentCode, String.valueOf(auth.getPrincipal()), isAdminOrModerator(auth), role, ip);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore().mustRevalidate())
-                .header("Pragma", "no-cache")
-                .header("X-Content-Type-Options", "nosniff")
-                .contentType(MediaType.IMAGE_JPEG)
-                .body(streamed.imageBytes());
+                .header("Pragma", "no-cache").header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.IMAGE_JPEG).body(streamed.imageBytes());
     }
 
     private boolean isAdminOrModerator(Authentication auth) {

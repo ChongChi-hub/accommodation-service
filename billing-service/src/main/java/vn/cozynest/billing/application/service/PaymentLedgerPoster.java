@@ -138,8 +138,12 @@ public class PaymentLedgerPoster {
             contractPort.activateContractAfterDeposit(contractId, intent.getPaymentCode(), intent.getPaidAmount());
         }
         final String targetLandlord = landlordId;
+        final String targetTenant = tenantId;
         if (notificationPort != null) {
-            runAfterCommit(() -> notificationPort.notifyDepositConfirmed(targetLandlord, contractId, paidChunk));
+            runAfterCommit(() -> {
+                notificationPort.notifyDepositConfirmed(targetLandlord, contractId, paidChunk);
+                notificationPort.notifyTenantDepositConfirmed(targetTenant, contractId, paidChunk);
+            });
         }
     }
 

@@ -30,6 +30,7 @@ public class PaymentService {
     private final BankAccountService bankAccountService;
     private final PaymentProofStorageService proofStorageService;
     private final BankInflowWebhookService bankInflowWebhookService;
+    private final BillingNotificationPort notificationPort;
     private final String fintechMode;
 
     public PaymentService(PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
@@ -75,6 +76,7 @@ public class PaymentService {
         this.bankAccountService = bankAccountService != null ? bankAccountService.orElse(null) : null;
         this.proofStorageService = proofStorageService != null ? proofStorageService.orElse(null) : null;
         this.bankInflowWebhookService = bankInflowWebhookService != null ? bankInflowWebhookService.orElse(null) : null;
+        this.notificationPort = notificationPort != null ? notificationPort.orElse(null) : null;
         this.fintechMode = fintechMode != null ? fintechMode : "SANDBOX_ONLY";
         this.verifier = new PaymentWebhookVerifier(webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
         this.ledgerPoster = new PaymentLedgerPoster(ledgerService, invoiceRepository,
@@ -125,6 +127,10 @@ public class PaymentService {
         intent.markSubmitted();
         PaymentIntent saved = paymentIntentRepository.save(intent);
         webhookProcessor.publishPaymentEvent(saved, "PAYMENT_SUBMITTED");
+        if (notificationPort != null) {
+            String tenantLabel = (req != null && req.payerName() != null && !req.payerName().isBlank()) ? req.payerName().trim() : actorId;
+            notificationPort.notifyAdminDepositSubmitted(tenantLabel, saved.getOrderId(), saved.getPaymentCode(), saved.getAmount());
+        }
         return toResponse(saved);
     }
     @Transactional(rollbackFor = Exception.class)
@@ -152,53 +158,42 @@ public class PaymentService {
         Instant now = Instant.now();
         return paymentIntentRepository.findByOrderIdAndOrderType(orderId, orderType).stream()
                 .filter(i -> "PENDING".equals(i.getStatus()) || "SUBMITTED".equals(i.getStatus()))
-                .filter(i -> i.getExpiresAt() == null || i.getExpiresAt().isAfter(now))
+                .filter(i -> "SUBMITTED".equals(i.getStatus()) || i.getExpiresAt() == null || i.getExpiresAt().isAfter(now))
                 .filter(i -> isAdmin || actorId.equals(i.getPayerId()))
                 .findFirst().map(this::toResponse);
     }
 
-    @Transactional
-    public PaymentDto.IntentResponse cancelIntent(String paymentCode, String actorId, boolean isAdmin) {
-        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mã thanh toán: " + paymentCode));
+    @Transactional public PaymentDto.IntentResponse cancelIntent(String paymentCode, String actorId, boolean isAdmin) {
+        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mã thanh toán: " + paymentCode));
         if (!isAdmin && !intent.getPayerId().equals(actorId)) throw new SecurityException("Không có quyền hủy giao dịch");
         intent.cancel();
         return toResponse(paymentIntentRepository.save(intent));
     }
 
-    @Transactional(readOnly = true)
-    public PaymentDto.IntentResponse getIntent(String paymentCode, String actorId, boolean isAdmin) {
-        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
-                .orElseThrow(() -> new WebhookSecurityException(404, "Khong tim thay ma thanh toan: " + paymentCode));
+    @Transactional(readOnly = true) public PaymentDto.IntentResponse getIntent(String paymentCode, String actorId, boolean isAdmin) {
+        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode).orElseThrow(() -> new WebhookSecurityException(404, "Khong tim thay ma thanh toan: " + paymentCode));
         if (!isAdmin && !intent.getPayerId().equals(actorId)) throw new WebhookSecurityException(404, "Khong tim thay ma: " + paymentCode);
         return toResponse(intent);
     }
 
-    @Transactional(readOnly = true)
-    public List<PaymentDto.IntentResponse> getManualInterventionQueue() {
+    @Transactional(readOnly = true) public List<PaymentDto.IntentResponse> getManualInterventionQueue() {
         return paymentIntentRepository.findAll().stream()
                 .filter(i -> "SUBMITTED".equals(i.getStatus()) || "OVERPAID".equals(i.getStatus()) || "MISMATCH".equals(i.getStatus())
                         || ("EXPIRED".equals(i.getStatus()) && i.getPaidAmount() > 0) || "PARTIAL_PAID".equals(i.getStatus()))
                 .map(this::toResponse).toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<PaymentDto.AdminIntentResponse> getAllAdminIntents(int limit) {
+    @Transactional(readOnly = true) public List<PaymentDto.AdminIntentResponse> getAllAdminIntents(int limit) {
         int cap = Math.max(1, Math.min(limit, 500));
         return paymentIntentRepository.findAll().stream()
-                .sorted(Comparator.comparing(PaymentIntent::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(cap)
-                .map(i -> new PaymentDto.AdminIntentResponse(i.getId(), i.getPaymentCode(), i.getPayerId(),
-                        i.getOrderType(), i.getOrderId(), i.getAmount(), i.getPaidAmount(), i.getStatus(), i.getExpiresAt(), i.getCreatedAt()))
-                .toList();
+                .sorted(Comparator.comparing(PaymentIntent::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))).limit(cap)
+                .map(i -> new PaymentDto.AdminIntentResponse(i.getId(), i.getPaymentCode(), i.getPayerId(), i.getOrderType(), i.getOrderId(), i.getAmount(), i.getPaidAmount(), i.getStatus(), i.getExpiresAt(), i.getCreatedAt())).toList();
     }
 
-    @Transactional
-    public PaymentDto.IntentResponse simulateSandboxWebhook(String paymentCode, long amount, String actorId, boolean isAdmin) {
+    @Transactional public PaymentDto.IntentResponse simulateSandboxWebhook(String paymentCode, long amount, String actorId, boolean isAdmin) {
         if (!"SANDBOX_ONLY".equalsIgnoreCase(fintechMode)) throw new WebhookSecurityException(404, "Sandbox webhook bị vô hiệu hóa ở chế độ " + fintechMode);
         if (!isAdmin) throw new WebhookSecurityException(403, "Chức năng giả lập chỉ dành cho Quản trị viên hệ thống");
-        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
+        PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode).orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
         long payAmount = amount > 0 ? amount : intent.getAmount();
         long ts = Instant.now().getEpochSecond();
         String rawBody = String.format("{\"paymentCode\":\"%s\",\"amount\":%d,\"status\":\"SUCCESS\",\"timestamp\":%d}", paymentCode, payAmount, ts);
@@ -206,31 +201,19 @@ public class PaymentService {
         return paymentIntentRepository.findByPaymentCode(paymentCode).map(this::toResponse).orElseThrow();
     }
 
-    @Scheduled(fixedDelayString = "${fintech.gateway.expire-poll-ms:60000}")
-    @Transactional
-    public int expireOverdueIntents() {
+    @Scheduled(fixedDelayString = "${fintech.gateway.expire-poll-ms:60000}") @Transactional public int expireOverdueIntents() {
         Instant now = Instant.now();
         int expiredCount = 0;
-        for (PaymentIntent intent : paymentIntentRepository.findPendingExpiredBefore(now)) {
-            if (intent.markExpiredIfPast(now)) { paymentIntentRepository.save(intent); expiredCount++; }
-        }
+        for (PaymentIntent intent : paymentIntentRepository.findPendingExpiredBefore(now)) if (intent.markExpiredIfPast(now)) { paymentIntentRepository.save(intent); expiredCount++; }
         return expiredCount;
     }
 
-    @Transactional(readOnly = true)
-    public List<PaymentDto.IntentResponse> getLandlordSubmittedIntents(String landlordId) {
-        return paymentIntentRepository.findByStatus("SUBMITTED").stream()
-                .filter(i -> validator.isContractOwnedByLandlord(i.getOrderType(), i.getOrderId(), landlordId))
-                .map(this::toResponse).toList();
+    @Transactional(readOnly = true) public List<PaymentDto.IntentResponse> getLandlordSubmittedIntents(String landlordId) {
+        return paymentIntentRepository.findByStatus("SUBMITTED").stream().filter(i -> validator.isContractOwnedByLandlord(i.getOrderType(), i.getOrderId(), landlordId)).map(this::toResponse).toList();
     }
 
-    @Transactional
-    public boolean processWebhook(String rawBody, String signature, long timestamp) { return processWebhook(rawBody, signature, timestamp, "127.0.0.1"); }
-
-    @Transactional
-    public boolean processWebhook(String rawBody, String signature, long timestamp, String sourceIp) {
-        return webhookProcessor.processWebhook(rawBody, signature, timestamp, sourceIp);
-    }
+    @Transactional public boolean processWebhook(String rawBody, String signature, long timestamp) { return processWebhook(rawBody, signature, timestamp, "127.0.0.1"); }
+    @Transactional public boolean processWebhook(String rawBody, String signature, long timestamp, String sourceIp) { return webhookProcessor.processWebhook(rawBody, signature, timestamp, sourceIp); }
 
     private String extractBankTxFromNote(String note) {
         if (note == null) return "";

@@ -51,8 +51,10 @@ fintech:
     bank-bin: ${FINTECH_PLATFORM_BANK_BIN:970436}
     account-number: ${FINTECH_PLATFORM_ACCOUNT_NUMBER:1042701900}
     account-holder: ${FINTECH_PLATFORM_ACCOUNT_HOLDER:LE THANH CUONG}
+    admin-user-ids: ${FINTECH_PLATFORM_ADMIN_USER_IDS:u-admin-01,u-admin-02}
   webhook:
     provider: ${FINTECH_WEBHOOK_PROVIDER:FAKE}
+    auto-verify-enabled: ${FINTECH_WEBHOOK_AUTO_VERIFY_ENABLED:false}
     window-seconds: ${FINTECH_WEBHOOK_WINDOW_SECONDS:300}
   commission:
     percent: ${COMMISSION_PERCENT:5}

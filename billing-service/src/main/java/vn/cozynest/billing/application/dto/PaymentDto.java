@@ -25,8 +25,13 @@ public class PaymentDto {
 
     public record SubmitIntentRequest(
             String note,
-            String receiptUrl
-    ) {}
+            String receiptUrl,
+            String payerName
+    ) {
+        public SubmitIntentRequest(String note, String receiptUrl) {
+            this(note, receiptUrl, null);
+        }
+    }
 
     public record ConfirmPaymentRequest(
             @Min(value = 1, message = "Số tiền thực nhận phải lớn hơn 0")
@@ -59,6 +64,22 @@ public class PaymentDto {
             long amount,
             long paidAmount,
             String status,
+            Instant expiresAt,
+            Instant createdAt
+    ) {}
+
+    public record AdminApprovalItem(
+            String id,
+            String paymentCode,
+            String payerId,
+            String tenantName,
+            String orderType,
+            String orderId,
+            long amount,
+            long paidAmount,
+            String status,
+            String submittedBankTxCode,
+            boolean hasProofImage,
             Instant expiresAt,
             Instant createdAt
     ) {}

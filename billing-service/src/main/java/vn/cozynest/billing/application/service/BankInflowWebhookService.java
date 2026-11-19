@@ -178,7 +178,8 @@ public class BankInflowWebhookService {
 
         intent.markPaid(actualAmount);
         PaymentIntent saved = paymentIntentRepository.save(intent);
-        ledgerPoster.postLedgerForPaymentWithProof(saved, actualAmount, "BANKTX-" + normTx, "BANK_TX:" + normTx, null);
+        String secureProofUrl = "/api/v1/billing/payments/proofs/" + saved.getPaymentCode() + "/image";
+        ledgerPoster.postLedgerForPaymentWithProof(saved, actualAmount, "BANKTX-" + normTx, "BANK_TX:" + normTx, secureProofUrl);
         emitOutbox(saved, "PAYMENT_CONFIRMED_MANUAL");
         return saved;
     }
