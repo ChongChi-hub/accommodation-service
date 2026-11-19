@@ -597,3 +597,25 @@ sequenceDiagram
   * `booking-service`: `GET /internal/stats/booking`
   * `billing-service`: `GET /internal/stats/billing`
 * `admin-service` tổng hợp qua HTTP (`RestClient`, timeout 3s connect / 5s read), cache TTL 30s (xóa khi gọi `/api/v1/admin/clear-cache`), gắn cờ `degraded: true` + `failedSources` và trả `null` (không bao giờ giả lập `0`) khi nguồn lỗi. Công bố `GET /api/v1/admin/stats/overview` và `GET /api/v1/admin/stats/timeseries` với `@PreAuthorize("hasRole('ADMIN')")`.
+
+---
+
+## 22. Quyet dinh Kien truc `[FIX-PAYMENT-FLOW]` & `[MAIL-EMAILJS]`
+
+### 22.1. V1/V2/V3 — Chuoi Hop dong -> Dat coc -> Kich hoat -> Phong RENTED
+* **May trang thai Hop dong (`booking-service`):** Ky OTP du 2 ben chuyen `PENDING_SIGN -> AWAITING_DEPOSIT` (khi `depositAmount > 0`, sinh PDF ky so ngay tai thoi diem ky); chi chuyen `ACTIVE` sau khi tien coc duoc xac nhan `PAID`.
+* **Tinh tien coc phia server (`billing-service`):** `PaymentService.createIntent` voi `orderType=DEPOSIT` bat buoc tra cuu `BillingContractPort`, kiem tra quyen so huu (`404` IDOR), kiem tra trang thai `AWAITING_DEPOSIT` (`409`), gioi han toi da 1 intent `PENDING` moi hop dong, va tinh so tien coc tu `contract.depositAmount` (bo qua `amount` client gui len).
+* **Kich hoat idempotent & Dong bo Listing:** Khi webhook/sandbox xac nhan `PAID`, `billing-service` goi `POST /internal/contracts/{id}/activate-deposit` (bao ve bang `X-Internal-Service-Key`). `ContractActivationService` sinh ma don `TOAM-YYMMDD-XXXXXX` (Crockford Base32, `UNIQUE`, migration `V10`), sinh ma nhan phong 6 so, goi `POST /internal/rooms/{roomId}/status` (`RENTED`/`OCCUPIED`) tren `listing-service`, day `RentalSagaOrchestrator` sang `COMPLETED`, va ghi su kien `CONTRACT_ACTIVATED`. Neu `listing-service` loi, khong mat giao dich coc ma danh dau `listing_sync_status=FAILED_RETRY` va ghi outbox `CONTRACT_LISTING_SYNC_RETRY`.
+* **Tiet lo PII theo giai doan:** `GET /api/v1/booking/contracts/{id}/checkin-info` tra `404` voi nguoi ngoai; chi tra `areaHint` truoc `ACTIVE`, va mo khoa `orderCode`, `checkinCode`, `fullAddress`, `landlordName`, `landlordPhone`, `checkinInstructions` sau khi `ACTIVE`.
+
+### 22.2. Sua loi Chuoi & Bao mat (BUG-01..BUG-09)
+* **BUG-03:** Migration `V9__widen_outbox_aggregate_id_and_saga_id.sql` mo rong `appointment_events_outbox.aggregate_id` va `saga_instances.saga_id` len `VARCHAR(64)` de chua `saga-<uuid>` (41 ky tu).
+* **BUG-04:** `InvoiceDto.GenerateFromContractCommand` doi `serviceAmount`/`otherAmount` sang `Long` mac dinh `0L`; `billing-service` `SecurityConfig` cho phep `/error` de khong bien loi `400` thanh `401`; bat buoc hop dong `ACTIVE`.
+* **BUG-05:** Chan 2 khach thue giu cung 1 phong trong `RentalRequestService.approveRequest`/`createRequest` (`409 ROOM_HELD`).
+* **BUG-06:** Thong nhat `404` IDOR tren doc `Contract`, `PaymentIntent`, `Invoice`.
+* **BUG-08:** Bo sung `CHANGE_PLANS` (additive) vao `CancelReasonCode`.
+* **Manual Overdue Reminder:** Bo sung `POST /api/v1/billing/invoices/{id}/remind` dung `overdue_notified_at`/`reminder_count`, gioi han 1 lan / 24h, phat outbox `INVOICE_OVERDUE_REMINDER`.
+
+### 22.3. `[MAIL-EMAILJS]` — Cong gui Email da nha cung cap (`communication-service`)
+* Mac dinh giu `EMAIL_PROVIDER=smtp` (Mailpit). Ho tro `EMAIL_PROVIDER=emailjs|log` qua `EmailDispatchGateway` (`@Primary`) + `EmailJsMailTransport` (timeout 3s/5s, chi retry `429`/`5xx`, khong retry `400`).
+* Bang `email_outbox` (migration `V6`) chong gui trung theo `event_key`, han muc thang `EMAIL_MONTHLY_CAP=150`, gioi han theo nguoi nhan, che PII trong log, va `MAIL_REDIRECT_TO` chi cho phep o `dev`/`test` (fail-fast o `prod`).
