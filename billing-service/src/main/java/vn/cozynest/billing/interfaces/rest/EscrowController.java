@@ -93,6 +93,9 @@ public class EscrowController {
             @PathVariable String contractId,
             Authentication auth) {
         EscrowHold hold = escrowService.getHoldForParticipant(contractId, (String) auth.getPrincipal(), true);
+        if (!hold.isBothConfirmedMoveIn()) {
+            throw new IllegalStateException("Chưa đủ 2 điều kiện giải ngân: Chủ trọ phải bấm Bàn giao phòng và Khách thuê phải bấm Xác nhận nhận phòng.");
+        }
         escrowService.disburseDeposit(contractId, hold.getLandlordId(), hold.getAmount(), (String) auth.getPrincipal());
         return ResponseEntity.ok(ApiResponse.success("Da giai ngan tien coc cho chu tro",
                 escrowService.getHoldForParticipant(contractId, (String) auth.getPrincipal(), true)));

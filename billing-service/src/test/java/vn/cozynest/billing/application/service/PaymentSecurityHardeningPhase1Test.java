@@ -63,17 +63,30 @@ class PaymentSecurityHardeningPhase1Test {
     }
 
     @Test
-    void tenantSubmitIntentOnlyTransitionsToSubmittedWithoutPostingLedgerOrEscrow() {
+    void tenantSubmitIntentConfirmsPlatformTransferPostsEscrowAndNotifiesLandlord() {
         PaymentIntent intent = PaymentIntent.create("PAY-SEC-2", "tenant-1", "DEPOSIT", "cnt-2", 2_000_000L, "qr", 15);
         when(intentRepo.findByPaymentCode("PAY-SEC-2")).thenReturn(Optional.of(intent));
         when(intentRepo.save(any(PaymentIntent.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PaymentDto.IntentResponse res = paymentService.submitIntent("PAY-SEC-2", "tenant-1", new PaymentDto.SubmitIntentRequest("Da chuyen qua app VCB", "https://img.cozynest/receipt.png"));
 
-        assertThat(res.status()).isEqualTo("SUBMITTED");
-        assertThat(intent.getStatus()).isEqualTo("SUBMITTED");
-        verify(ledgerService, never()).postEntryIdempotent(any(), any(), any(), any(), any(), any());
+        assertThat(res.status()).isEqualTo("PAID");
+        assertThat(intent.getStatus()).isEqualTo("PAID");
+        verify(ledgerService, times(1)).postEntryIdempotent(any(), any(), any(), any(), any(), any());
         verify(outboxRepo, times(1)).save(any());
+    }
+
+    @Test
+    void tenantSubmitIntentRejectsUnverifiedTransferAndDoesNotPostEscrow() {
+        PaymentIntent intent = PaymentIntent.create("PAY-SEC-UNVERIFIED", "tenant-1", "DEPOSIT", "cnt-unv", 2_000_000L, "qr", 15);
+        when(intentRepo.findByPaymentCode("PAY-SEC-UNVERIFIED")).thenReturn(Optional.of(intent));
+
+        assertThatThrownBy(() -> paymentService.submitIntent("PAY-SEC-UNVERIFIED", "tenant-1", new PaymentDto.SubmitIntentRequest("UNVERIFIED_TRANSFER", null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Chưa ghi nhận được biến động tiền cọc về tài khoản Sàn");
+
+        assertThat(intent.getStatus()).isEqualTo("PENDING");
+        verify(ledgerService, never()).postEntryIdempotent(any(), any(), any(), any(), any(), any());
     }
 
     @Test

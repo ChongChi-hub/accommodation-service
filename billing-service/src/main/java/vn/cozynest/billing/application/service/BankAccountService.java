@@ -30,15 +30,45 @@ public class BankAccountService {
         return repository.findByUserId(userId).map(this::toDto);
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasValidBankAccount(String userId) {
+        return getByUserId(userId)
+                .filter(a -> a.bankCode() != null && !a.bankCode().isBlank()
+                        && a.accountNumber() != null && !a.accountNumber().isBlank()
+                        && a.accountHolder() != null && !a.accountHolder().isBlank()
+                        && a.qrCodeUrl() != null && !a.qrCodeUrl().isBlank())
+                .isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public UserBankAccountDto requireValidBankAccount(String userId, String roleLabel) {
+        return getByUserId(userId)
+                .filter(a -> a.accountNumber() != null && !a.accountNumber().isBlank()
+                        && a.qrCodeUrl() != null && !a.qrCodeUrl().isBlank())
+                .orElseThrow(() -> new IllegalStateException(
+                        roleLabel + " bắt buộc phải cung cấp Số tài khoản ngân hàng và Mã QR tại mục Tài khoản ngân hàng & QR để Sàn có thông tin giải ngân hoặc hoàn tiền."));
+    }
+
     @Transactional
     public UserBankAccountDto saveOrUpdate(String userId, SaveBankAccountRequest req) {
         if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("User ID khong duoc de trong");
+            throw new IllegalArgumentException("User ID không được để trống");
+        }
+        if (req == null || req.bankCode() == null || req.bankCode().isBlank()
+                || req.accountNumber() == null || req.accountNumber().isBlank()
+                || req.accountHolder() == null || req.accountHolder().isBlank()) {
+            throw new IllegalArgumentException("Bắt buộc phải cung cấp đầy đủ Ngân hàng, Số tài khoản, Chủ tài khoản và Mã QR");
         }
         String bankCode = req.bankCode().trim().toUpperCase();
         String accountNumber = req.accountNumber().trim().replaceAll("[^0-9a-zA-Z]", "");
+        if (accountNumber.length() < 6 || accountNumber.length() > 25) {
+            throw new IllegalArgumentException("Số tài khoản ngân hàng phải từ 6 đến 25 ký tự số/chữ");
+        }
         String accountHolder = req.accountHolder().trim().toUpperCase();
-        String bankName = req.bankName().trim();
+        if (accountHolder.length() < 2) {
+            throw new IllegalArgumentException("Tên chủ tài khoản không hợp lệ");
+        }
+        String bankName = req.bankName() != null && !req.bankName().isBlank() ? req.bankName().trim() : bankCode;
 
         String qrUrl = req.qrCodeUrl();
         if (qrUrl == null || qrUrl.isBlank()) {

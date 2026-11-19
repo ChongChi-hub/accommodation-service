@@ -94,11 +94,18 @@ public class BillingDashboardService {
                 }
             }
         }
-        long escrowBalance = (escrowHoldRepository != null)
-                ? escrowHoldRepository.findByTenantId(tenantId).stream()
-                        .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
-                        .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum()
-                : ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
+        long escrowBalance = 0;
+        if (escrowHoldRepository != null) {
+            List<vn.cozynest.billing.domain.model.EscrowHold> holds = escrowHoldRepository.findByTenantId(tenantId);
+            escrowBalance = holds.stream()
+                    .filter(h -> "HELD".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                    .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum();
+            totalPaid += holds.stream()
+                    .filter(h -> "HELD".equals(h.getStatus()) || "RELEASED".equals(h.getStatus()) || "DISPUTE_FROZEN".equals(h.getStatus()))
+                    .mapToLong(vn.cozynest.billing.domain.model.EscrowHold::getAmount).sum();
+        } else {
+            escrowBalance = ledgerService.getAccountBalance(LedgerService.ACC_ESCROW);
+        }
         return new DashboardStatsDto.TenantFinancialStats(
                 totalPaid, unpaidTotal, escrowBalance, overdueCount, invoices.size()
         );

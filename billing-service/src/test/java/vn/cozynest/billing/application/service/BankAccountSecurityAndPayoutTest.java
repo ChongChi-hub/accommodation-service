@@ -78,5 +78,14 @@ class BankAccountSecurityAndPayoutTest {
         assertThat(opt.get().bankCode()).isEqualTo("MB");
         assertThat(opt.get().accountNumber()).isEqualTo("0987654321");
     }
+
+    @Test
+    @DisplayName("requireValidBankAccount throws IllegalStateException when user has not provided bank account and QR")
+    void requireValidBankAccount_throwsWhenMissing() {
+        when(repository.findByUserId("usr-missing")).thenReturn(Optional.empty());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.requireValidBankAccount("usr-missing", "Khách thuê"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("bắt buộc phải cung cấp Số tài khoản ngân hàng và Mã QR");
+    }
 }
 

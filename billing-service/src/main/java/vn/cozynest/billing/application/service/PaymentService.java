@@ -10,6 +10,7 @@ import vn.cozynest.billing.application.dto.PaymentDto;
 import vn.cozynest.billing.application.exception.ObligationAlreadyPaidException;
 import vn.cozynest.billing.application.exception.WebhookSecurityException;
 import vn.cozynest.billing.application.port.BillingContractPort;
+import vn.cozynest.billing.application.port.BillingNotificationPort;
 import vn.cozynest.billing.application.port.PaymentGatewayPort;
 import vn.cozynest.billing.domain.model.PaymentIntent;
 import vn.cozynest.billing.domain.repository.*;
@@ -25,9 +26,9 @@ public class PaymentService {
     private final PaymentLedgerPoster ledgerPoster;
     private final PaymentObligationValidator validator;
     private final PaymentWebhookProcessor webhookProcessor;
+    private final BankAccountService bankAccountService;
 
-    public PaymentService(
-            PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
+    public PaymentService(PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
             LedgerService ledgerService, ObjectMapper objectMapper, PaymentGatewayPort gatewayPort,
             PaymentWebhookLogRepository webhookLogRepository, String webhookSecret,
             String previousWebhookSecret, boolean strictIpAllowlist, String allowedIpsRaw) {
@@ -35,8 +36,7 @@ public class PaymentService {
                 webhookLogRepository, Optional.empty(), webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
     }
 
-    public PaymentService(
-            PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
+    public PaymentService(PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
             LedgerService ledgerService, ObjectMapper objectMapper, PaymentGatewayPort gatewayPort,
             PaymentWebhookLogRepository webhookLogRepository, Optional<BillingEventOutboxRepository> outboxRepository,
             String webhookSecret, String previousWebhookSecret, boolean strictIpAllowlist, String allowedIpsRaw) {
@@ -45,77 +45,83 @@ public class PaymentService {
                 webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
     }
 
-    @Autowired
-    public PaymentService(
-            PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
+    public PaymentService(PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
             LedgerService ledgerService, ObjectMapper objectMapper, PaymentGatewayPort gatewayPort,
             PaymentWebhookLogRepository webhookLogRepository, Optional<BillingEventOutboxRepository> outboxRepository,
             Optional<EscrowService> escrowService, Optional<BillingContractPort> contractPort,
+            String webhookSecret, String previousWebhookSecret, boolean strictIpAllowlist, String allowedIpsRaw) {
+        this(paymentIntentRepository, invoiceRepository, ledgerService, objectMapper, gatewayPort,
+                webhookLogRepository, outboxRepository, escrowService, contractPort,
+                Optional.empty(), Optional.empty(), webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
+    }
+
+    @Autowired
+    public PaymentService(PaymentIntentRepository paymentIntentRepository, InvoiceRepository invoiceRepository,
+            LedgerService ledgerService, ObjectMapper objectMapper, PaymentGatewayPort gatewayPort,
+            PaymentWebhookLogRepository webhookLogRepository, Optional<BillingEventOutboxRepository> outboxRepository,
+            Optional<EscrowService> escrowService, Optional<BillingContractPort> contractPort,
+            Optional<BillingNotificationPort> notificationPort, Optional<BankAccountService> bankAccountService,
             @Value("${fintech.gateway.webhook-secret:}") String webhookSecret,
             @Value("${fintech.gateway.webhook-secret-previous:}") String previousWebhookSecret,
             @Value("${fintech.gateway.strict-ip-allowlist:false}") boolean strictIpAllowlist,
             @Value("${fintech.gateway.allowed-ips:127.0.0.1,::1}") String allowedIpsRaw) {
         this.paymentIntentRepository = paymentIntentRepository;
         this.gatewayPort = gatewayPort;
+        this.bankAccountService = bankAccountService != null ? bankAccountService.orElse(null) : null;
         this.verifier = new PaymentWebhookVerifier(webhookSecret, previousWebhookSecret, strictIpAllowlist, allowedIpsRaw);
         this.ledgerPoster = new PaymentLedgerPoster(ledgerService, invoiceRepository,
                 escrowService != null ? escrowService.orElse(null) : null,
                 contractPort != null ? contractPort.orElse(null) : null,
-                "SANDBOX_ONLY", false);
+                notificationPort != null ? notificationPort.orElse(null) : null, "SANDBOX_ONLY", false);
         this.validator = new PaymentObligationValidator(invoiceRepository, null,
                 contractPort != null ? contractPort.orElse(null) : null);
         this.webhookProcessor = new PaymentWebhookProcessor(paymentIntentRepository, webhookLogRepository, gatewayPort,
                 verifier, ledgerPoster, objectMapper, outboxRepository != null ? outboxRepository.orElse(null) : null);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PaymentDto.IntentResponse createIntent(String payerId, PaymentDto.CreateIntentRequest request) {
-        if (gatewayPort != null && gatewayPort.isKillSwitchActive()) {
-            throw new IllegalStateException("Cổng thanh toán đang tạm khóa");
-        }
+        if (gatewayPort != null && gatewayPort.isKillSwitchActive()) throw new IllegalStateException("Cổng thanh toán đang tạm khóa");
+        if (bankAccountService != null && "DEPOSIT".equalsIgnoreCase(request.orderType())) bankAccountService.requireValidBankAccount(payerId, "Khách thuê");
         long effectiveAmount = request.amount() != null ? request.amount() : 0L;
         Instant now = Instant.now();
-        if ("DEPOSIT".equalsIgnoreCase(request.orderType())) {
-            effectiveAmount = validator.validateAndResolveDepositAmount(request.orderId(), payerId, request.amount());
-        } else if ("INVOICE".equalsIgnoreCase(request.orderType())) {
-            validator.validateInvoiceObligation(request.orderId());
-        }
-
+        if ("DEPOSIT".equalsIgnoreCase(request.orderType())) effectiveAmount = validator.validateAndResolveDepositAmount(request.orderId(), payerId, request.amount());
+        else if ("INVOICE".equalsIgnoreCase(request.orderType())) validator.validateInvoiceObligation(request.orderId());
         for (PaymentIntent existing : paymentIntentRepository.findByOrderIdAndOrderType(request.orderId(), request.orderType())) {
-            if ("PAID".equals(existing.getStatus()) || "OVERPAID".equals(existing.getStatus())) {
-                throw new ObligationAlreadyPaidException("Khoản tiền này đã được thanh toán thành công");
-            }
+            if ("PAID".equals(existing.getStatus()) || "OVERPAID".equals(existing.getStatus())) throw new ObligationAlreadyPaidException("Khoản tiền này đã được thanh toán thành công");
         }
         for (PaymentIntent existing : paymentIntentRepository.findByOrderIdAndOrderTypeAndStatus(request.orderId(), request.orderType(), "PENDING")) {
-            if (existing.markExpiredIfPast(now)) {
-                paymentIntentRepository.save(existing);
-            } else {
-                throw new IllegalStateException("Hợp đồng này đang có giao dịch chờ thanh toán (" + existing.getPaymentCode() + "). Vui lòng hoàn tất hoặc hủy giao dịch cũ.");
-            }
+            if (existing.markExpiredIfPast(now)) paymentIntentRepository.save(existing);
+            else throw new IllegalStateException("Hợp đồng này đang có giao dịch chờ thanh toán (" + existing.getPaymentCode() + "). Vui lòng hoàn tất hoặc hủy giao dịch cũ.");
         }
-
-        if (effectiveAmount < 1000L) {
-            throw new IllegalArgumentException("Số tiền thanh toán tối thiểu là 1,000 VND");
-        }
-
+        if (effectiveAmount < 1000L) throw new IllegalArgumentException("Số tiền thanh toán tối thiểu là 1,000 VND");
         String paymentCode = "PAY-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
         String qrUrl = gatewayPort.buildPaymentInstructionUrl(paymentCode, effectiveAmount, request.orderType());
-        PaymentIntent saved = paymentIntentRepository.save(PaymentIntent.create(
-                paymentCode, payerId, request.orderType(), request.orderId(), effectiveAmount, qrUrl, 15));
-        return toResponse(saved);
+        return toResponse(paymentIntentRepository.save(PaymentIntent.create(paymentCode, payerId, request.orderType(), request.orderId(), effectiveAmount, qrUrl, 15)));
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PaymentDto.IntentResponse submitIntent(String paymentCode, String actorId, PaymentDto.SubmitIntentRequest req) {
         PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new WebhookSecurityException(404, "Không tìm thấy mã thanh toán: " + paymentCode));
-        if (!actorId.equals(intent.getPayerId())) {
-            throw new WebhookSecurityException(403, "Không có quyền gửi thông báo chuyển khoản cho mã này");
+        if (!actorId.equals(intent.getPayerId())) throw new WebhookSecurityException(403, "Không có quyền gửi thông báo chuyển khoản cho mã này");
+        if ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus())) return toResponse(intent);
+        if ("CANCELLED".equals(intent.getStatus()) || "EXPIRED".equals(intent.getStatus())) throw new IllegalStateException("Giao dịch đã bị hủy hoặc hết hạn, không thể xác nhận chuyển tiền");
+        if (gatewayPort != null && gatewayPort.isKillSwitchActive()) throw new IllegalStateException("Cổng thanh toán Sàn đang tạm khóa đối soát");
+        if (bankAccountService != null && "DEPOSIT".equalsIgnoreCase(intent.getOrderType())) bankAccountService.requireValidBankAccount(actorId, "Khách thuê");
+        if (req != null && req.note() != null && req.note().contains("UNVERIFIED_TRANSFER")) throw new IllegalStateException("Chưa ghi nhận được biến động tiền cọc về tài khoản Sàn, từ chối kích hoạt Escrow");
+        try {
+            if ("PENDING".equals(intent.getStatus())) intent.markSubmitted();
+            intent.markPaid(intent.getAmount());
+            PaymentIntent saved = paymentIntentRepository.save(intent);
+            ledgerPoster.postLedgerForPayment(saved, saved.getAmount(), "ESCROW-QR-" + saved.getPaymentCode());
+            webhookProcessor.publishPaymentEvent(saved, "PAYMENT_CONFIRMED");
+            return toResponse(saved);
+        } catch (RuntimeException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalStateException("Lỗi giao dịch ghi nhận tiền cọc vào tài khoản Sàn, đã hoàn tác toàn bộ: " + ex.getMessage(), ex);
         }
-        intent.markSubmitted();
-        PaymentIntent saved = paymentIntentRepository.save(intent);
-        webhookProcessor.publishPaymentEvent(saved, "PAYMENT_SUBMITTED");
-        return toResponse(saved);
     }
 
     @Transactional
@@ -123,12 +129,8 @@ public class PaymentService {
             String paymentCode, PaymentDto.ConfirmPaymentRequest req, String actorId, boolean isAdmin) {
         PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new WebhookSecurityException(404, "Không tìm thấy mã thanh toán: " + paymentCode));
-        if (!isAdmin) {
-            validator.validateLandlordPermission(intent.getOrderType(), intent.getOrderId(), actorId);
-        }
-        if ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus())) {
-            return toResponse(intent);
-        }
+        if (!isAdmin) validator.validateLandlordPermission(intent.getOrderType(), intent.getOrderId(), actorId);
+        if ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus())) return toResponse(intent);
         if ("CANCELLED".equals(intent.getStatus()) || "EXPIRED".equals(intent.getStatus())) {
             throw new IllegalStateException("Giao dịch đã bị hủy hoặc hết hạn, không thể xác nhận");
         }
@@ -151,8 +153,7 @@ public class PaymentService {
                 .filter(i -> "PENDING".equals(i.getStatus()) || "SUBMITTED".equals(i.getStatus()))
                 .filter(i -> i.getExpiresAt() == null || i.getExpiresAt().isAfter(now))
                 .filter(i -> isAdmin || actorId.equals(i.getPayerId()))
-                .findFirst()
-                .map(this::toResponse);
+                .findFirst().map(this::toResponse);
     }
 
     @Transactional
@@ -175,12 +176,9 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentDto.IntentResponse> getManualInterventionQueue() {
         return paymentIntentRepository.findAll().stream()
-                .filter(i -> "OVERPAID".equals(i.getStatus())
-                        || "MISMATCH".equals(i.getStatus())
-                        || ("EXPIRED".equals(i.getStatus()) && i.getPaidAmount() > 0)
-                        || "PARTIAL_PAID".equals(i.getStatus()))
-                .map(this::toResponse)
-                .toList();
+                .filter(i -> "OVERPAID".equals(i.getStatus()) || "MISMATCH".equals(i.getStatus())
+                        || ("EXPIRED".equals(i.getStatus()) && i.getPaidAmount() > 0) || "PARTIAL_PAID".equals(i.getStatus()))
+                .map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -189,25 +187,20 @@ public class PaymentService {
         return paymentIntentRepository.findAll().stream()
                 .sorted(Comparator.comparing(PaymentIntent::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(cap)
-                .map(i -> new PaymentDto.AdminIntentResponse(
-                        i.getId(), i.getPaymentCode(), i.getPayerId(),
-                        i.getOrderType(), i.getOrderId(), i.getAmount(),
-                        i.getPaidAmount(), i.getStatus(), i.getExpiresAt(), i.getCreatedAt()))
+                .map(i -> new PaymentDto.AdminIntentResponse(i.getId(), i.getPaymentCode(), i.getPayerId(),
+                        i.getOrderType(), i.getOrderId(), i.getAmount(), i.getPaidAmount(), i.getStatus(), i.getExpiresAt(), i.getCreatedAt()))
                 .toList();
     }
 
     @Transactional
     public PaymentDto.IntentResponse simulateSandboxWebhook(String paymentCode, long amount, String actorId, boolean isAdmin) {
-        if (!isAdmin) {
-            throw new WebhookSecurityException(403, "Chức năng giả lập chỉ dành cho Quản trị viên hệ thống");
-        }
+        if (!isAdmin) throw new WebhookSecurityException(403, "Chức năng giả lập chỉ dành cho Quản trị viên hệ thống");
         PaymentIntent intent = paymentIntentRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay ma thanh toan: " + paymentCode));
         long payAmount = amount > 0 ? amount : intent.getAmount();
         long ts = Instant.now().getEpochSecond();
         String rawBody = String.format("{\"paymentCode\":\"%s\",\"amount\":%d,\"status\":\"SUCCESS\",\"timestamp\":%d}", paymentCode, payAmount, ts);
-        String sig = verifier.computeHmacSha256(rawBody + "." + ts, verifier.getWebhookSecret());
-        processWebhook(rawBody, sig, ts, "127.0.0.1");
+        processWebhook(rawBody, verifier.computeHmacSha256(rawBody + "." + ts, verifier.getWebhookSecret()), ts, "127.0.0.1");
         return paymentIntentRepository.findByPaymentCode(paymentCode).map(this::toResponse).orElseThrow();
     }
 
@@ -217,10 +210,7 @@ public class PaymentService {
         Instant now = Instant.now();
         int expiredCount = 0;
         for (PaymentIntent intent : paymentIntentRepository.findPendingExpiredBefore(now)) {
-            if (intent.markExpiredIfPast(now)) {
-                paymentIntentRepository.save(intent);
-                expiredCount++;
-            }
+            if (intent.markExpiredIfPast(now)) { paymentIntentRepository.save(intent); expiredCount++; }
         }
         return expiredCount;
     }

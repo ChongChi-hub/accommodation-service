@@ -67,30 +67,48 @@ public class PaymentLedgerPoster {
     }
 
     private void postDeposit(PaymentIntent intent, long paidChunk, String refKey) {
-        ledgerService.postEntryIdempotent(refKey, "Thu tiền cọc hợp đồng " + intent.getOrderId(),
-                "DEPOSIT", intent.getOrderId(), "SYSTEM_WEBHOOK",
-                List.of(
-                        new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.DEBIT, paidChunk),
-                        new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, paidChunk)));
-
+        if (intent == null || paidChunk <= 0 || paidChunk < intent.getAmount()
+                || (!"PAID".equals(intent.getStatus()) && !"OVERPAID".equals(intent.getStatus()))) {
+            throw new IllegalStateException("Chưa xác thực đủ tiền cọc tại tài khoản Sàn, từ chối ghi nhận Escrow và thông báo chủ trọ");
+        }
         String contractId = intent.getOrderId();
         String tenantId = intent.getPayerId();
         String landlordId = "u-landlord-01";
-        if (contractPort != null) {
-            var snap = contractPort.getContractSnapshot(contractId, LocalDate.now());
-            if (snap.isPresent()) {
-                tenantId = snap.get().tenantId();
-                landlordId = snap.get().landlordId();
+        try {
+            if (contractPort != null) {
+                var snap = contractPort.getContractSnapshot(contractId, LocalDate.now());
+                if (snap.isPresent()) {
+                    if ("CANCELLED".equalsIgnoreCase(snap.get().status()) || "TERMINATED".equalsIgnoreCase(snap.get().status())) {
+                        throw new IllegalStateException("Hợp đồng đã hủy hoặc chấm dứt, không thể ghi nhận tiền cọc");
+                    }
+                    tenantId = snap.get().tenantId();
+                    landlordId = snap.get().landlordId();
+                }
             }
+            ledgerService.postEntryIdempotent(refKey, "Thu tiền cọc hợp đồng " + contractId + " vào tài khoản Sàn",
+                    "DEPOSIT", contractId, "ESCROW_PLATFORM",
+                    List.of(
+                            new LedgerDto.PostingItem(LedgerService.ACC_GATEWAY, PostingDirection.DEBIT, paidChunk),
+                            new LedgerDto.PostingItem(LedgerService.ACC_ESCROW, PostingDirection.CREDIT, paidChunk)));
+
+            if (escrowService != null) {
+                EscrowHold hold = escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
+                if (hold == null || !"HELD".equals(hold.getStatus())) {
+                    throw new IllegalStateException("Không thể kích hoạt quỹ ký quỹ Escrow cho hợp đồng " + contractId);
+                }
+            }
+            if (contractPort != null) {
+                contractPort.activateContractAfterDeposit(contractId, intent.getPaymentCode(), intent.getPaidAmount());
+            }
+        } catch (Exception ex) {
+            if (ex instanceof IllegalStateException ise) {
+                throw ise;
+            }
+            throw new IllegalStateException("Lỗi giao dịch ghi nhận tiền cọc vào tài khoản Sàn (đã hoàn tác toàn bộ): " + ex.getMessage(), ex);
         }
-        if (escrowService != null) {
-            escrowService.recordDepositPaid(contractId, tenantId, landlordId, paidChunk, 72);
-        }
-        if (contractPort != null && ("PAID".equals(intent.getStatus()) || "OVERPAID".equals(intent.getStatus()))) {
-            contractPort.activateContractAfterDeposit(intent.getOrderId(), intent.getPaymentCode(), intent.getPaidAmount());
-        }
+
         if (notificationPort != null) {
-            notificationPort.notifyDepositConfirmed(landlordId, intent.getOrderId(), paidChunk);
+            notificationPort.notifyDepositConfirmed(landlordId, contractId, paidChunk);
         }
     }
 

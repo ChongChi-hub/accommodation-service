@@ -22,13 +22,22 @@ public class HttpBillingNotificationAdapter implements BillingNotificationPort {
     @Autowired
     public HttpBillingNotificationAdapter(
             @Value("${app.communication-service.url:${COMMUNICATION_SERVICE_URL:http://localhost:8085}}") String baseUrl,
+            @Value("${app.booking-service.url:${BOOKING_SERVICE_URL:http://localhost:8083}}") String bookingUrl,
             @Value("${app.internal.service-key:${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}}") String internalServiceKey
     ) {
+        String resolvedUrl = baseUrl;
+        if (resolvedUrl.contains("localhost") && bookingUrl != null && bookingUrl.contains("booking-service")) {
+            resolvedUrl = "http://communication-service:8085";
+        }
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(3));
         factory.setReadTimeout(Duration.ofSeconds(5));
-        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
+        this.restClient = RestClient.builder().baseUrl(resolvedUrl).requestFactory(factory).build();
         this.internalServiceKey = internalServiceKey;
+    }
+
+    public HttpBillingNotificationAdapter(String baseUrl, String internalServiceKey) {
+        this(baseUrl, "http://localhost:8083", internalServiceKey);
     }
 
     @Override
@@ -43,8 +52,11 @@ public class HttpBillingNotificationAdapter implements BillingNotificationPort {
                     .body(Map.of(
                             "userId", landlordId,
                             "type", "ESCROW_DEPOSIT_CONFIRMED",
-                            "title", "Khách thuê đã thanh toán đủ tiền cọc hợp đồng",
-                            "content", "Khoản cọc hợp đồng " + contractId + " đã được nạp an toàn vào Quỹ Ký Quỹ Escrow. Vui lòng tiến hành bàn giao phòng cho khách thuê.",
+                            "title", "Đã nhận tiền cọc ký quỹ từ khách thuê",
+                            "content", "Hệ thống Sàn Tổ Ấm đã nhận và ghi nhận khoản tiền cọc "
+                                    + String.format("%,d", amount)
+                                    + " VND của hợp đồng " + contractId
+                                    + " vào Quỹ Ký Quỹ Escrow. Bạn đã có thể bấm nút Bàn giao phòng cho khách thuê.",
                             "linkUrl", "/dashboard/landlord/deposits"
                     ))
                     .retrieve()
