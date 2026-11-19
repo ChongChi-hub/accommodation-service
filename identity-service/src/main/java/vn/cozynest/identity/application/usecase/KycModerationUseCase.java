@@ -204,20 +204,23 @@ public class KycModerationUseCase {
         v.approve(reviewerId);
         UserVerification saved = verificationRepository.save(v);
 
-        // R2: Grant LANDLORD role (user retains TENANT role as well)
-        User user = userRepository.findById(v.getUserId())
-                .orElseThrow(() -> new IdentityDomainException("Người dùng không tồn tại", "ERR_AUTH_USER_NOT_FOUND"));
-        user.addRole(UserRoleType.LANDLORD);
-        userRepository.save(user);
+        // Only grant LANDLORD role when the user actually has a LandlordProfile application
+        Optional<LandlordProfile> profileOpt = landlordProfileRepository.findByUserId(v.getUserId());
+        boolean isLandlordApplicant = profileOpt.isPresent();
 
-        // Update LandlordProfile to APPROVED
-        LandlordProfile profile = landlordProfileRepository.findByUserId(v.getUserId())
-                .orElseGet(() -> LandlordProfile.createNew(v.getUserId()));
-        if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
-            profile.submitKyc();
+        if (isLandlordApplicant) {
+            User user = userRepository.findById(v.getUserId())
+                    .orElseThrow(() -> new IdentityDomainException("Người dùng không tồn tại", "ERR_AUTH_USER_NOT_FOUND"));
+            user.addRole(UserRoleType.LANDLORD);
+            userRepository.save(user);
+
+            LandlordProfile profile = profileOpt.get();
+            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+                profile.submitKyc();
+            }
+            profile.approve(reviewerId);
+            landlordProfileRepository.save(profile);
         }
-        profile.approve(reviewerId);
-        landlordProfileRepository.save(profile);
 
         historyRepository.save(KycStatusHistory.record(
                 saved.getId(), KycStatus.PENDING.name(), KycStatus.APPROVED.name(), reviewerId, "Phe duyet ho so thanh cong"
@@ -225,15 +228,23 @@ public class KycModerationUseCase {
         accessLogRepository.save(KycAccessLog.record(saved.getId(), reviewerId, reviewerRole, KycAccessAction.APPROVE, clientIp));
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"APPROVED\"}";
-        outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordApproved", outboxPayload));
+        outboxRepository.save(KycEventOutbox.create(
+                saved.getId(),
+                isLandlordApplicant ? "LandlordApproved" : "TenantKycApproved",
+                outboxPayload
+        ));
 
         if (notificationClient.isPresent()) {
+            String message = isLandlordApplicant
+                    ? "Chúc mừng! Hồ sơ xác thực căn cước công dân của bạn đã được kiểm duyệt thành công. Bạn đã có quyền đăng tin cho thuê phòng."
+                    : "Chúc mừng! Hồ sơ xác thực căn cước công dân của bạn đã được phê duyệt. Bạn đã có thể ký hợp đồng thuê trọ điện tử.";
+            String link = isLandlordApplicant ? "/dashboard/landlord/kyc" : "/dashboard/tenant/kyc";
             notificationClient.get().sendNotification(
                     saved.getUserId(),
                     "KYC",
                     "Hồ sơ định danh eKYC đã được phê duyệt",
-                    "Chúc mừng! Hồ sơ xác thực căn cước công dân của bạn đã được kiểm duyệt thành công. Bạn đã có quyền đăng tin cho thuê phòng.",
-                    "/dashboard/landlord/kyc"
+                    message,
+                    link
             );
         }
     }
@@ -254,14 +265,17 @@ public class KycModerationUseCase {
         v.reject(reviewerId, request.getReasonCode(), request.getReasonNote());
         UserVerification saved = verificationRepository.save(v);
 
-        // Update LandlordProfile to REJECTED
-        LandlordProfile profile = landlordProfileRepository.findByUserId(v.getUserId())
-                .orElseGet(() -> LandlordProfile.createNew(v.getUserId()));
-        if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
-            profile.submitKyc();
+        // Only update LandlordProfile if the user actually applied to become a landlord
+        Optional<LandlordProfile> profileOpt = landlordProfileRepository.findByUserId(v.getUserId());
+        boolean isLandlordApplicant = profileOpt.isPresent();
+        if (isLandlordApplicant) {
+            LandlordProfile profile = profileOpt.get();
+            if (profile.getApprovalStatus() == LandlordApprovalStatus.AWAITING_KYC) {
+                profile.submitKyc();
+            }
+            profile.reject(reviewerId, request.getReasonCode() != null ? request.getReasonCode().name() : "REJECTED", request.getReasonNote());
+            landlordProfileRepository.save(profile);
         }
-        profile.reject(reviewerId, request.getReasonCode() != null ? request.getReasonCode().name() : "REJECTED", request.getReasonNote());
-        landlordProfileRepository.save(profile);
 
         historyRepository.save(KycStatusHistory.record(
                 saved.getId(), KycStatus.PENDING.name(), KycStatus.REJECTED.name(), reviewerId,
@@ -270,18 +284,23 @@ public class KycModerationUseCase {
         accessLogRepository.save(KycAccessLog.record(saved.getId(), reviewerId, reviewerRole, KycAccessAction.REJECT, clientIp));
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + saved.getUserId() + "\",\"status\":\"REJECTED\",\"reasonCode\":\"" + request.getReasonCode() + "\"}";
-        outboxRepository.save(KycEventOutbox.create(saved.getId(), "LandlordRejected", outboxPayload));
+        outboxRepository.save(KycEventOutbox.create(
+                saved.getId(),
+                isLandlordApplicant ? "LandlordRejected" : "TenantKycRejected",
+                outboxPayload
+        ));
 
         if (notificationClient.isPresent()) {
             String note = request.getReasonNote() != null && !request.getReasonNote().isBlank()
                     ? request.getReasonNote()
                     : (request.getReasonCode() != null ? request.getReasonCode().name() : "Chưa đạt yêu cầu");
+            String link = isLandlordApplicant ? "/dashboard/landlord/kyc" : "/dashboard/tenant/kyc";
             notificationClient.get().sendNotification(
                     saved.getUserId(),
                     "KYC",
                     "Hồ sơ định danh eKYC bị từ chối",
                     "Hồ sơ CCCD của bạn chưa được duyệt: " + note + ". Vui lòng kiểm tra lại ảnh chụp và gửi lại.",
-                    "/dashboard/landlord/kyc"
+                    link
             );
         }
     }

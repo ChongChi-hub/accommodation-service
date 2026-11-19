@@ -92,6 +92,8 @@ class LandlordKycUseCaseTest {
         when(verificationRepository.findByUserId("u-landlord-01")).thenReturn(Optional.empty());
         when(verificationRepository.existsByActiveIdHashAndUserIdNot(anyString(), eq("u-landlord-01"))).thenReturn(false);
         when(verificationRepository.save(any(UserVerification.class))).thenAnswer(i -> i.getArgument(0));
+        when(landlordProfileRepository.findByUserId("u-landlord-01"))
+                .thenReturn(Optional.of(vn.cozynest.identity.domain.model.LandlordProfile.createNew("u-landlord-01")));
 
         LandlordKycStatusResponse res = useCase.submitKyc(
                 "u-landlord-01", front, back, "Nguyen Van Toan", "000085000001",
@@ -104,6 +106,26 @@ class LandlordKycUseCaseTest {
         verify(outboxRepository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
         verify(landlordProfileRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("Pure tenant submitting KYC must NOT auto-create LandlordProfile")
+    void shouldSubmitTenantKycWithoutCreatingLandlordProfile() throws IOException {
+        MockMultipartFile front = createMockImage("front");
+        MockMultipartFile back = createMockImage("back");
+
+        when(verificationRepository.findByUserId("u-google-tenant-01")).thenReturn(Optional.empty());
+        when(verificationRepository.existsByActiveIdHashAndUserIdNot(anyString(), eq("u-google-tenant-01"))).thenReturn(false);
+        when(verificationRepository.save(any(UserVerification.class))).thenAnswer(i -> i.getArgument(0));
+        when(landlordProfileRepository.findByUserId("u-google-tenant-01")).thenReturn(Optional.empty());
+
+        LandlordKycStatusResponse res = useCase.submitKyc(
+                "u-google-tenant-01", front, back, "Le Thanh Cuong", "000085000099",
+                LocalDate.of(1998, 5, 15), LocalDate.of(2022, 6, 10), "CA HN", true
+        );
+
+        assertThat(res.getStatus()).isEqualTo(KycStatus.PENDING.name());
+        verify(landlordProfileRepository, never()).save(any());
     }
 
     @Test

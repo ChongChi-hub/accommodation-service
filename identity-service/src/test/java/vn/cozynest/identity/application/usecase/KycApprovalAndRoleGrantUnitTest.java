@@ -98,6 +98,35 @@ class KycApprovalAndRoleGrantUnitTest {
     }
 
     @Test
+    @DisplayName("Approving KYC for a pure TENANT (no LandlordProfile) must NOT grant LANDLORD role")
+    void testApproveKycForPureTenantDoesNotGrantLandlordRole() {
+        String userId = "google-tenant-01";
+        String kycId = "kyc-tenant-001";
+        String reviewerId = "admin-moderator-01";
+
+        UserVerification verification = new UserVerification(
+                kycId, userId, "Nguyen Van Khach", LocalDate.of(1998, 8, 8),
+                "enc", "hash", "5678", LocalDate.of(2022, 1, 1), "CA HN",
+                "frontKey", "backKey", null, KycStatus.PENDING, Instant.now(), "v1.0",
+                null, null, null, null, null, 1, 0L, Instant.now(), Instant.now()
+        );
+
+        when(verificationRepository.findById(kycId)).thenReturn(Optional.of(verification));
+        when(verificationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(landlordProfileRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        moderationUseCase.approveKyc(reviewerId, "ADMIN", kycId, 0L, "127.0.0.1");
+
+        assertThat(verification.getStatus()).isEqualTo(KycStatus.APPROVED);
+        verify(userRepository, never()).save(any());
+        verify(landlordProfileRepository, never()).save(any());
+
+        ArgumentCaptor<KycEventOutbox> outboxCaptor = ArgumentCaptor.forClass(KycEventOutbox.class);
+        verify(outboxRepository).save(outboxCaptor.capture());
+        assertThat(outboxCaptor.getValue().getEventType()).isEqualTo("TenantKycApproved");
+    }
+
+    @Test
     @DisplayName("R8: Reviewer cannot approve their own application (ERR_KYC_SELF_REVIEW_FORBIDDEN)")
     void testSelfReviewApproveForbidden() {
         String userId = "admin-user-01";

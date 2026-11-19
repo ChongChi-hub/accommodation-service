@@ -209,15 +209,19 @@ public class LandlordKycUseCase {
             });
         }
 
-        // Transition LandlordProfile to PENDING_REVIEW
-        LandlordProfile profile = landlordProfileRepository.findByUserId(landlordId)
-                .orElseGet(() -> LandlordProfile.createNew(landlordId));
-        profile.submitKyc();
-        landlordProfileRepository.save(profile);
+        // Only transition LandlordProfile if the user actually applied to become a landlord
+        Optional<LandlordProfile> existingProfileOpt = landlordProfileRepository.findByUserId(landlordId);
+        if (existingProfileOpt.isPresent()) {
+            LandlordProfile profile = existingProfileOpt.get();
+            profile.submitKyc();
+            landlordProfileRepository.save(profile);
+        }
 
         // Audit Trail & Outbox
+        boolean isLandlordApplicant = existingProfileOpt.isPresent();
         historyRepository.save(KycStatusHistory.record(
-                saved.getId(), fromStatus, KycStatus.PENDING.name(), landlordId, "Chu tro nop ho so xac minh danh tinh"
+                saved.getId(), fromStatus, KycStatus.PENDING.name(), landlordId,
+                isLandlordApplicant ? "Chu tro nop ho so xac minh danh tinh" : "Khach thue nop ho so xac minh danh tinh"
         ));
 
         String outboxPayload = "{\"verificationId\":\"" + saved.getId() + "\",\"userId\":\"" + landlordId + "\"}";
@@ -227,10 +231,11 @@ public class LandlordKycUseCase {
             String applicantName = (userRepository != null)
                     ? userRepository.findById(landlordId).map(User::getFullName).orElse(fullNameOnId)
                     : fullNameOnId;
+            String roleLabel = isLandlordApplicant ? "Chủ trọ " : "Khách thuê ";
             notificationClient.get().notifyModeratorsAndAdmins(
                     "KYC",
                     "Hồ sơ KYC mới cần xét duyệt",
-                    "Chủ trọ " + applicantName + " vừa nộp hồ sơ định danh CCCD. Vui lòng kiểm tra và thẩm định.",
+                    roleLabel + applicantName + " vừa nộp hồ sơ định danh CCCD. Vui lòng kiểm tra và thẩm định.",
                     "/dashboard/moderator/kyc"
             );
         }
