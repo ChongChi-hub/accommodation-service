@@ -180,11 +180,11 @@ services:
     image: ghcr.io/${GHCR_OWNER:-chongchi-hub}/cozynest-listing-service:${IMAGE_TAG:-latest}
     container_name: cozynest_listing
     restart: unless-stopped
-    mem_limit: 350m
+    mem_limit: 768m
     logging: *default-logging
     environment:
       <<: [*storage-env, *broker-env]
-      JAVA_OPTS: "-Xms96m -Xmx224m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseSerialGC -XX:MaxMetaspaceSize=192m -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError"
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SWAGGER_ENABLED: "false"
       DB_HOST: mysql
