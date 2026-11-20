@@ -1,6 +1,5 @@
 package vn.cozynest.identity.interfaces.rest;
 
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -14,11 +13,21 @@ import vn.cozynest.identity.application.dto.LandlordKycStatusResponse;
 import vn.cozynest.identity.application.usecase.LandlordKycUseCase;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.List;
 
 @RestController
 @RequestMapping({"/api/v1/landlord/kyc", "/api/v1/me/kyc"})
 @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
 public class LandlordKycController {
+
+    private static final List<DateTimeFormatter> ACCEPTED_DATE_FORMATS = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+            DateTimeFormatter.ofPattern("yyyy/MM/dd")
+    );
 
     private final LandlordKycUseCase landlordKycUseCase;
 
@@ -45,8 +54,8 @@ public class LandlordKycController {
             @RequestParam("fullNameOnId") String fullNameOnId,
             @RequestParam("idNumber") String idNumber,
             @RequestParam(value = "phone", required = false) String phone,
-            @RequestParam("dateOfBirth") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateOfBirth,
-            @RequestParam("issueDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate issueDate,
+            @RequestParam("dateOfBirth") String dateOfBirthRaw,
+            @RequestParam("issueDate") String issueDateRaw,
             @RequestParam("issuePlace") String issuePlace,
             @RequestParam("consent") boolean consent) {
         MultipartFile actualFront = front != null ? front : frontImage;
@@ -54,6 +63,8 @@ public class LandlordKycController {
         if (actualFront == null || actualBack == null) {
             throw new IllegalArgumentException("Vui long tai len ca 2 mat CCCD (front va back)");
         }
+        LocalDate dateOfBirth = parseFlexibleDate(dateOfBirthRaw, "Ngay sinh");
+        LocalDate issueDate = parseFlexibleDate(issueDateRaw, "Ngay cap CCCD");
         String landlordId = (String) authentication.getPrincipal();
         LandlordKycStatusResponse response = landlordKycUseCase.submitKyc(
                 landlordId, actualFront, actualBack, fullNameOnId, idNumber, dateOfBirth, issueDate, issuePlace, consent, frontImageUrl, backImageUrl, phone
@@ -76,5 +87,19 @@ public class LandlordKycController {
 
         return new ResponseEntity<>(imageBytes, headers, HttpStatus.OK);
     }
-}
 
+    static LocalDate parseFlexibleDate(String raw, String fieldLabel) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " khong duoc de trong");
+        }
+        String normalized = raw.trim().replace("\"", "");
+        for (DateTimeFormatter fmt : ACCEPTED_DATE_FORMATS) {
+            try {
+                return LocalDate.parse(normalized, fmt);
+            } catch (DateTimeParseException ignored) {
+                // try next accepted format
+            }
+        }
+        throw new IllegalArgumentException(fieldLabel + " khong dung dinh dang yyyy-MM-dd: " + normalized);
+    }
+}

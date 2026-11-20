@@ -75,5 +75,9 @@ cozynest:
   broker:
     enabled: ${COZYNEST_BROKER_ENABLED:false}
 
+app:
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}
+
 spring.rabbitmq.listener.simple.auto-startup: ${COZYNEST_BROKER_ENABLED:false}
 spring.rabbitmq.listener.simple.default-requeue-rejected: false

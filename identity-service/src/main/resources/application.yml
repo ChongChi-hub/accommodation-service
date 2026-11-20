@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: identity-service
+  mvc:
+    format:
+      date: iso
+      date-time: iso
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:cozynest_identity}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
     username: ${DB_USER:root}
@@ -86,4 +90,8 @@ management:
   health:
     mail:
       enabled: false
+
+app:
+  internal:
+    service-key: ${INTERNAL_SERVICE_KEY:CozyNestInternalServiceKeySecret2026}
 

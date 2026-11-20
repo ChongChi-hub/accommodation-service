@@ -3,6 +3,7 @@ package vn.cozynest.booking.interfaces.rest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -46,7 +47,7 @@ public class InternalContractQueryController {
     @GetMapping("/{contractId}/effective-rent")
     public ResponseEntity<ApiResponse<ContractService.EffectiveRentSnapshot>> getEffectiveRent(
             @PathVariable String contractId,
-            @RequestParam(required = false) LocalDate billingDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate billingDate,
             @RequestHeader(value = "X-Internal-Service-Key", required = false) String serviceKey
     ) {
         if (serviceKey == null || !isKeyValid(serviceKey)) {

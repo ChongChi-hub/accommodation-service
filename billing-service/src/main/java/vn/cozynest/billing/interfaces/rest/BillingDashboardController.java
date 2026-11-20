@@ -1,5 +1,6 @@
 package vn.cozynest.billing.interfaces.rest;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -58,8 +59,8 @@ public class BillingDashboardController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> exportStatsCsv(
             Authentication auth,
-            @RequestParam(required = false) LocalDate fromDate,
-            @RequestParam(required = false) LocalDate toDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
         boolean isLandlord = auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_LANDLORD".equalsIgnoreCase(a.getAuthority()));
         String scope = isLandlord ? "LANDLORD" : "TENANT";
