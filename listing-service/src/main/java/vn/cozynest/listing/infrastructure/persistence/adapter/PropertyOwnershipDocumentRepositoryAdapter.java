@@ -34,6 +34,11 @@ public class PropertyOwnershipDocumentRepositoryAdapter implements PropertyOwner
     }
 
     @Override
+    public List<PropertyOwnershipDocument> findAll() {
+        return springRepo.findAll().stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
     public Optional<PropertyOwnershipDocument> findById(String id) {
         return springRepo.findById(id).map(mapper::toDomain);
     }

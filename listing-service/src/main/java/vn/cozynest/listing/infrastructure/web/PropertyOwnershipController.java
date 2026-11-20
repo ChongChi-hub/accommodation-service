@@ -53,6 +53,16 @@ public class PropertyOwnershipController {
                 ownershipService.getDocumentsByRoom(roomId, landlordId, privileged, actorId)));
     }
 
+    @GetMapping("/api/v1/admin/rooms/ownership-docs")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    @Operation(summary = "Danh sach ho so giay to so huu (KYC-03) cho Admin/Moderator kiem duyet")
+    public ResponseEntity<ApiResponse<List<PropertyOwnershipDocument>>> listAllForModeration(
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                ownershipService.getAllDocumentsForModeration(status)));
+    }
+
     @PostMapping("/api/v1/admin/rooms/ownership-docs/{docId}/review")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     @Operation(summary = "Moderator kiem duyet giay to so huu")

@@ -114,6 +114,16 @@ public class S3CompatibleStorageAdapter implements ObjectStoragePort, PrivateObj
             cipher.init(Cipher.DECRYPT_MODE, aesKey, new GCMParameterSpec(GCM_TAG_BITS, iv));
             return cipher.doFinal(cipherText);
         } catch (Exception e) {
+            try {
+                byte[] raw = Files.readAllBytes(target);
+                if (raw.length >= 4 && (
+                        (raw[0] == (byte) 0x89 && raw[1] == 0x50 && raw[2] == 0x4E && raw[3] == 0x47) ||
+                        (raw[0] == (byte) 0xFF && raw[1] == (byte) 0xD8) ||
+                        (raw[0] == 0x25 && raw[1] == 0x50 && raw[2] == 0x44 && raw[3] == 0x46)
+                )) {
+                    return raw;
+                }
+            } catch (Exception ignored) {}
             throw new IllegalStateException("Failed to get object from storage: " + safeKey, e);
         }
     }

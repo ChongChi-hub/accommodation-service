@@ -46,6 +46,7 @@ management:
 
 storage:
   media-dir: ${STORAGE_MEDIA_DIR:./storage/media}
+  aes-key-base64: ${STORAGE_AES_KEY_BASE64:k9x8W2pQ5vZ7rM3tY6uA1bC4dE8fG0hI2jK4lM6nO8P=}
 
 cozynest:
   broker:

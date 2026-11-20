@@ -101,6 +101,13 @@ public class PropertyOwnershipService {
         return docRepository.findByRoomId(roomId);
     }
 
+    public List<PropertyOwnershipDocument> getAllDocumentsForModeration(String status) {
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status.trim())) {
+            return docRepository.findByStatus(status.trim().toUpperCase());
+        }
+        return docRepository.findAll();
+    }
+
     public PropertyOwnershipDocument reviewDocument(String docId, String reviewerId, boolean approve, String rejectReason) {
         PropertyOwnershipDocument doc = docRepository.findById(docId)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy giấy tờ sở hữu #" + docId));

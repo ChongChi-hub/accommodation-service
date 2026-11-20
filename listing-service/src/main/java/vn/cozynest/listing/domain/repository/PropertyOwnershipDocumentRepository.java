@@ -10,6 +10,9 @@ public interface PropertyOwnershipDocumentRepository {
     List<PropertyOwnershipDocument> findByRoomId(Long roomId);
     List<PropertyOwnershipDocument> findByLandlordId(Long landlordId);
     List<PropertyOwnershipDocument> findByStatus(String status);
+    default List<PropertyOwnershipDocument> findAll() {
+        return List.of();
+    }
     Optional<PropertyOwnershipDocument> findById(String id);
     PropertyOwnershipDocument save(PropertyOwnershipDocument doc);
     List<PropertyOwnershipDocument> findByStatusAndExpiresAtBefore(String status, LocalDateTime before);

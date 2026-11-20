@@ -60,6 +60,10 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/internal/**").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/v3/api-docs/**", "/docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Ownership KYC & private storage signed-url allow ADMIN/MODERATOR moderation
+                        .requestMatchers("/api/v1/admin/rooms/ownership-docs", "/api/v1/admin/rooms/ownership-docs/**").hasAnyRole("ADMIN", "MODERATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/landlord/rooms/*/ownership-docs").hasAnyRole("LANDLORD", "ADMIN", "MODERATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/landlord/storage/signed-url").hasAnyRole("LANDLORD", "ADMIN", "MODERATOR")
                         // Landlord protected endpoints
                         .requestMatchers("/api/v1/landlord/**").hasRole("LANDLORD")
                         .anyRequest().authenticated()
