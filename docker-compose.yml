@@ -501,11 +501,23 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    env_file:
+      - path: ../accommodation-web/.env.local
+        required: false
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
       INTERNAL_API_URL: http://api-gateway:8080/api/v1
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-865044247606-e93b5l98l4mp66eqkfdlatvks5rsn8r4.apps.googleusercontent.com}
       NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED: "true"
+      EMAILJS_ACC1_SERVICE_ID: ${EMAILJS_ACC1_SERVICE_ID:-}
+      EMAILJS_ACC1_PUBLIC_KEY: ${EMAILJS_ACC1_PUBLIC_KEY:-}
+      EMAILJS_ACC1_PRIVATE_KEY: ${EMAILJS_ACC1_PRIVATE_KEY:-}
+      EMAILJS_TEMPLATE_REGISTER: ${EMAILJS_TEMPLATE_REGISTER:-}
+      EMAILJS_TEMPLATE_VERIFY_EMAIL: ${EMAILJS_TEMPLATE_VERIFY_EMAIL:-}
+      EMAILJS_ACC2_SERVICE_ID: ${EMAILJS_ACC2_SERVICE_ID:-}
+      EMAILJS_ACC2_PUBLIC_KEY: ${EMAILJS_ACC2_PUBLIC_KEY:-}
+      EMAILJS_ACC2_PRIVATE_KEY: ${EMAILJS_ACC2_PRIVATE_KEY:-}
+      EMAILJS_TEMPLATE_CHANGE_PASSWORD: ${EMAILJS_TEMPLATE_CHANGE_PASSWORD:-}
     depends_on:
       - api-gateway
     networks:
